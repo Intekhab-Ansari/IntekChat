@@ -1,8 +1,6 @@
 'use client';
-
 import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
-import { Radio, X, AlertTriangle } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import RadarView from '@/components/IntekDrop/RadarView';
 import ChatView from '@/components/IntekChat/ChatView';
@@ -37,13 +35,6 @@ export default function Home() {
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [soundMuted, setSoundMuted] = useState(false);
   const [currentTheme, setCurrentTheme] = useState('sapphire'); // 'sapphire' | 'silk' | 'cyberpunk' | 'amber' | 'amethyst' | 'emerald' | 'obsidian' | 'frost'
-  const [signalingError, setSignalingError] = useState(false);
-  const [dismissSignalingBanner, setDismissSignalingBanner] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return sessionStorage.getItem('intekchat_dismiss_signal') === 'true';
-    }
-    return false;
-  });
 
   const socketRef = useRef(null);
   const webrtcRef = useRef(null);
@@ -647,31 +638,6 @@ export default function Home() {
         isRoomProtected={isRoomProtected}
         onOpenRoomModal={() => handleOpenRoomModal()}
       />
-
-      {/* Signaling Server Offline Banner for Vercel Serverless Hosting */}
-      {signalingError && !dismissSignalingBanner && (
-        <div className="signaling-status-banner">
-          <div className="signaling-banner-left">
-            <Radio size={14} className="text-amber animate-pulse flex-shrink-0" />
-            <span>
-              <strong>WebSockets Offline on Vercel:</strong> Test via local Wi-Fi: <code>http://192.168.1.132:3000</code> or deploy on Render.
-            </span>
-          </div>
-          <div className="signaling-banner-actions">
-            <button 
-              type="button" 
-              className="btn-close-signaling-banner"
-              onClick={() => {
-                setDismissSignalingBanner(true);
-                try { sessionStorage.setItem('intekchat_dismiss_signal', 'true'); } catch {}
-              }}
-              aria-label="Dismiss banner"
-            >
-              <X size={15} />
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Main View Area */}
       <main className="main-content">
