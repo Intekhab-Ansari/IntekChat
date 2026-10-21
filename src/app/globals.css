@@ -4649,3 +4649,294 @@ body {
   }
 }
 
+/* =========================================================
+   QR MODAL: MODE SWITCHER, TAB SELECTOR & LIVE CAMERA SCANNER
+   ========================================================= */
+.qr-mode-tabs {
+  display: flex;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 4px;
+  gap: 6px;
+  margin-bottom: 1rem;
+}
+
+.btn-qr-mode-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.84rem;
+  font-weight: 600;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-qr-mode-tab:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.btn-qr-mode-tab.active {
+  background: var(--accent-gradient, linear-gradient(135deg, #06b6d4, #3b82f6));
+  color: #ffffff;
+  box-shadow: 0 4px 16px rgba(6, 182, 212, 0.35);
+}
+
+.qr-tab-target-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.85rem;
+}
+
+.qr-target-label {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
+.qr-target-btn-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-qr-target {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-qr-target:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text-main);
+}
+
+.btn-qr-target.active-drop {
+  border-color: #06b6d4;
+  color: #06b6d4;
+  background: rgba(6, 182, 212, 0.12);
+  box-shadow: 0 0 12px rgba(6, 182, 212, 0.25);
+}
+
+.btn-qr-target.active-chat {
+  border-color: #8b5cf6;
+  color: #c084fc;
+  background: rgba(139, 92, 246, 0.12);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.25);
+}
+
+/* Camera Scanner Container */
+.qr-scanner-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.5rem 0;
+  width: 100%;
+}
+
+.qr-camera-viewport {
+  position: relative;
+  width: 100%;
+  max-width: 320px;
+  height: 250px;
+  margin: 0 auto 0.85rem;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #000000;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qr-video-feed {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.qr-viewfinder-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.qr-viewfinder-box {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  border-radius: 10px;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+}
+
+.viewfinder-corner {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-color: #06b6d4;
+}
+
+.viewfinder-corner.top-left {
+  top: 0;
+  left: 0;
+  border-top: 3px solid #06b6d4;
+  border-left: 3px solid #06b6d4;
+  border-top-left-radius: 6px;
+}
+
+.viewfinder-corner.top-right {
+  top: 0;
+  right: 0;
+  border-top: 3px solid #06b6d4;
+  border-right: 3px solid #06b6d4;
+  border-top-right-radius: 6px;
+}
+
+.viewfinder-corner.bottom-left {
+  bottom: 0;
+  left: 0;
+  border-bottom: 3px solid #06b6d4;
+  border-left: 3px solid #06b6d4;
+  border-bottom-left-radius: 6px;
+}
+
+.viewfinder-corner.bottom-right {
+  bottom: 0;
+  right: 0;
+  border-bottom: 3px solid #06b6d4;
+  border-right: 3px solid #06b6d4;
+  border-bottom-right-radius: 6px;
+}
+
+.qr-laser-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #06b6d4 50%, transparent);
+  box-shadow: 0 0 8px #06b6d4;
+  animation: laserScanAnim 2s ease-in-out infinite alternate;
+}
+
+@keyframes laserScanAnim {
+  0% { top: 6px; }
+  100% { top: 152px; }
+}
+
+.viewfinder-hint {
+  margin-top: 0.65rem;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.85);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+
+.camera-error-message {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #fca5a5;
+  font-size: 0.78rem;
+  margin-bottom: 0.75rem;
+  max-width: 320px;
+  text-align: left;
+}
+
+.qr-scanner-controls {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  width: 100%;
+}
+
+.btn-camera-toggle,
+.btn-camera-upload {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-camera-toggle:hover,
+.btn-camera-upload:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.qr-scan-success-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 1.5rem 1rem;
+  gap: 0.5rem;
+}
+
+.scan-success-icon-wrap {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.35rem;
+  animation: popSuccess 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes popSuccess {
+  0% { transform: scale(0.6); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.qr-scan-success-card h4 {
+  font-size: 1.05rem;
+  color: #34d399;
+  font-weight: 600;
+}
+
+.qr-scan-success-card p {
+  font-size: 0.84rem;
+  color: var(--text-dim);
+}
+

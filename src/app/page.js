@@ -13,6 +13,7 @@ import { getOrCreatePeerProfile } from '@/lib/peer';
 import { sounds } from '@/lib/sound';
 import { deriveKey, encryptPayload, decryptPayload, hashPassword } from '@/lib/crypto';
 import { WebRTCManager } from '@/lib/webrtc';
+import { CloudSignalingAdapter } from '@/lib/cloudSignaling';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('drop'); // 'drop' | 'chat'
@@ -74,7 +75,6 @@ export default function Home() {
           setRoomPassword(initialPwd);
           setIsRoomProtected(true);
         }
-        setActiveTab('chat');
         // Clean URL address bar if room name had spaces
         if (roomParam !== cleanRoom) {
           try {
@@ -117,11 +117,11 @@ export default function Home() {
     setupCrypto();
   }, [roomName, roomPassword]);
 
-  // 3. Connect to Signaling Server & WebRTC Manager
+  // 3. Connect to Signaling Server & WebRTC Manager (Hybrid: Local Socket.IO + Cloud Fallback)
   useEffect(() => {
     if (!userProfile) return;
 
-    // Connect to signaling server (supports custom backend when deployed on serverless hosts like Vercel)
+    let activeSignaling = null;
     let customServerUrl = undefined;
     if (typeof window !== 'undefined') {
       const storedUrl = localStorage.getItem('intekchat_signaling_url');
@@ -129,208 +129,241 @@ export default function Home() {
       else if (process.env.NEXT_PUBLIC_SIGNALING_SERVER) customServerUrl = process.env.NEXT_PUBLIC_SIGNALING_SERVER;
     }
 
-    const socket = io(customServerUrl || undefined, {
-      transports: ['websocket', 'polling'],
-      reconnectionAttempts: 10,
-      timeout: 10000
-    });
-    socketRef.current = socket;
+    const isVercel = typeof window !== 'undefined' && 
+      (window.location.hostname.endsWith('vercel.app') || window.location.hostname.includes('vercel'));
 
-    socket.on('connect', async () => {
-      setSignalingError(false);
-      // Join network / room with password hash if set
-      let passwordHash = null;
-      if (roomPassword) {
-        try {
-          passwordHash = await hashPassword(roomPassword);
-        } catch (err) {
-          console.error('Failed to hash room password:', err);
-        }
-      }
-      socket.emit('join-network', {
-        room: roomName,
-        passwordHash,
-        peerInfo: userProfile
+    let socket = null;
+    let usingCloudFallback = false;
+
+    const setupSignalingListeners = (signaling) => {
+      socketRef.current = signaling;
+
+      // Handle room password protection required from server
+      signaling.on('room-password-required', ({ room, isProtected, reason }) => {
+        setIsRoomProtected(true);
+        setPendingRoom(room);
+        setPasswordPromptError(reason || 'This room is password-protected. Enter password to unlock.');
+        setIsPasswordPromptOpen(true);
       });
-    });
 
-    socket.on('connect_error', (err) => {
-      setSignalingError(true);
-    });
+      // Room Peers Update
+      signaling.on('room-peers', ({ peers: initialPeers, selfId, isProtected, totalCount }) => {
+        if (typeof isProtected === 'boolean') {
+          setIsRoomProtected(isProtected);
+        }
+        const filtered = (initialPeers || []).filter((p) => p.id !== selfId);
+        setPeers(filtered);
+        setTotalParticipants(typeof totalCount === 'number' ? totalCount : filtered.length + 1);
+        filtered.forEach((p) => {
+          webrtcRef.current?.connectToPeer(p.id);
+        });
+      });
 
-    socket.on('disconnect', () => {
-      setSignalingError(true);
-    });
+      signaling.on('room-count-update', ({ totalCount }) => {
+        if (typeof totalCount === 'number') {
+          setTotalParticipants(totalCount);
+        }
+      });
 
-    // Handle room password protection required from server
-    socket.on('room-password-required', ({ room, isProtected, reason }) => {
-      setIsRoomProtected(true);
-      setPendingRoom(room);
-      setPasswordPromptError(reason || 'This room is password-protected. Enter password to unlock.');
-      setIsPasswordPromptOpen(true);
-    });
-
-    // Initialize WebRTC Manager
-    const webrtc = new WebRTCManager(socket, userProfile, {
-      onChannelOpen: (peerId) => {
+      signaling.on('peer-joined', (newPeer) => {
         sounds.playJoin();
-      },
-      onFileTransferStart: (meta) => {
-        setActiveTransfers((prev) => ({
-          ...prev,
-          [meta.id]: {
-            id: meta.id,
-            direction: 'receive',
-            fileName: meta.name,
-            totalBytes: meta.size,
-            receivedBytes: 0,
-            progress: 0,
-            speed: 0,
-            senderId: meta.senderId
+        setPeers((prev) => {
+          if (prev.some((p) => p.id === newPeer.id)) return prev;
+          const next = [...prev, newPeer];
+          setTotalParticipants(next.length + 1);
+          return next;
+        });
+        webrtcRef.current?.connectToPeer(newPeer.id);
+      });
+
+      signaling.on('peer-updated', (updatedPeer) => {
+        setPeers((prev) =>
+          prev.map((p) => (p.id === updatedPeer.id ? updatedPeer : p))
+        );
+      });
+
+      signaling.on('peer-left', ({ id }) => {
+        sounds.playLeave();
+        setPeers((prev) => {
+          const next = prev.filter((p) => p.id !== id);
+          setTotalParticipants(Math.max(1, next.length + 1));
+          return next;
+        });
+        setActiveTransfers((prev) => {
+          const next = { ...prev };
+          for (const [key, val] of Object.entries(next)) {
+            if (val.senderId === id || val.peerId === id) delete next[key];
           }
-        }));
-      },
-      onTransferProgress: (progressData) => {
-        setActiveTransfers((prev) => {
-          if (!prev[progressData.id]) return prev;
-          return {
-            ...prev,
-            [progressData.id]: {
-              ...prev[progressData.id],
-              ...progressData
-            }
-          };
-        });
-      },
-      onFileTransferComplete: (completedFile) => {
-        setActiveTransfers((prev) => {
-          const next = { ...prev };
-          delete next[completedFile.id];
           return next;
         });
-        setReceivedFileModal(completedFile);
-      },
-      onFileTransferCancel: (transferId) => {
-        setActiveTransfers((prev) => {
-          const next = { ...prev };
-          delete next[transferId];
-          return next;
-        });
-      },
-      onChatMessage: async (encryptedPayload, fromPeerId) => {
-        const decrypted = await decryptPayload(encryptedPayload, cryptoKeyRef.current);
-        if (decrypted) {
-          sounds.playMessage();
-          setMessages((prev) => [...prev, decrypted]);
-        }
-      },
-      onChatClear: () => {
-        sounds.playBurn();
-        setMessages([]);
-      },
-      onViewOnceBurned: (messageId) => {
-        setMessages((prev) =>
-          prev.map((m) => (m.id === messageId ? { ...m, isBurned: true } : m))
-        );
-      }
-    });
-    webrtcRef.current = webrtc;
+      });
 
-    // Socket Room Events
-    socket.on('room-peers', ({ peers: initialPeers, selfId, isProtected, totalCount }) => {
-      if (typeof isProtected === 'boolean') {
+      // Room Details Updated by Host
+      signaling.on('room-details-updated', ({ oldRoom, newRoom, isProtected, message }) => {
+        sounds.playSuccess();
+        setRoomName(newRoom);
         setIsRoomProtected(isProtected);
-      }
-      const filtered = initialPeers.filter((p) => p.id !== selfId);
-      setPeers(filtered);
-      setTotalParticipants(typeof totalCount === 'number' ? totalCount : filtered.length + 1);
-      // Auto-connect to existing peers
-      filtered.forEach((p) => {
-        webrtc.connectToPeer(p.id);
-      });
-    });
-
-    socket.on('room-count-update', ({ totalCount }) => {
-      if (typeof totalCount === 'number') {
-        setTotalParticipants(totalCount);
-      }
-    });
-
-    socket.on('peer-joined', (newPeer) => {
-      sounds.playJoin();
-      setPeers((prev) => {
-        if (prev.some((p) => p.id === newPeer.id)) return prev;
-        const next = [...prev, newPeer];
-        setTotalParticipants(next.length + 1);
-        return next;
-      });
-      webrtc.connectToPeer(newPeer.id);
-    });
-
-    socket.on('peer-updated', (updatedPeer) => {
-      setPeers((prev) =>
-        prev.map((p) => (p.id === updatedPeer.id ? updatedPeer : p))
-      );
-    });
-
-    socket.on('peer-left', ({ id }) => {
-      sounds.playLeave();
-      setPeers((prev) => {
-        const next = prev.filter((p) => p.id !== id);
-        setTotalParticipants(Math.max(1, next.length + 1));
-        return next;
-      });
-      setActiveTransfers((prev) => {
-        const next = { ...prev };
-        for (const [key, val] of Object.entries(next)) {
-          if (val.senderId === id || val.peerId === id) delete next[key];
+        if (typeof window !== 'undefined') {
+          const url = new URL(window.location.href);
+          url.searchParams.set('room', newRoom);
+          window.history.pushState({}, '', url.toString());
         }
-        return next;
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `sys-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            system: true,
+            text: message || `Room details were updated to #${newRoom}`,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }
+        ]);
       });
-    });
 
-    // Room Details Updated by Host (Renamed or password changed/removed)
-    socket.on('room-details-updated', ({ oldRoom, newRoom, isProtected, message }) => {
-      sounds.playSuccess();
-      setRoomName(newRoom);
-      setIsRoomProtected(isProtected);
-      if (typeof window !== 'undefined') {
-        const url = new URL(window.location.href);
-        url.searchParams.set('room', newRoom);
-        window.history.pushState({}, '', url.toString());
-      }
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `sys-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-          system: true,
-          text: message || `Room details were updated to #${newRoom}`,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      // Encrypted Relay Fallback
+      signaling.on('e2ee-relay', async ({ from, payload, type }) => {
+        if (type === 'chat') {
+          const decrypted = await decryptPayload(payload, cryptoKeyRef.current);
+          if (decrypted) {
+            sounds.playMessage();
+            setMessages((prev) => [...prev, decrypted]);
+          }
+        } else if (type === 'clear') {
+          sounds.playBurn();
+          setMessages([]);
+        } else if (type === 'view-once-burned') {
+          setMessages((prev) =>
+            prev.map((m) => (m.id === payload.messageId ? { ...m, isBurned: true } : m))
+          );
         }
-      ]);
-    });
+      });
+    };
 
-    // Fallback Encrypted Relay (in case direct WebRTC P2P channel is blocked)
-    socket.on('e2ee-relay', async ({ from, payload, type }) => {
-      if (type === 'chat') {
-        const decrypted = await decryptPayload(payload, cryptoKeyRef.current);
-        if (decrypted) {
-          sounds.playMessage();
-          setMessages((prev) => [...prev, decrypted]);
+    const initWebRTC = (signaling) => {
+      const webrtc = new WebRTCManager(signaling, userProfile, {
+        onChannelOpen: (peerId) => {
+          sounds.playJoin();
+        },
+        onFileTransferStart: (meta) => {
+          setActiveTransfers((prev) => ({
+            ...prev,
+            [meta.id]: {
+              id: meta.id,
+              direction: 'receive',
+              fileName: meta.name,
+              totalBytes: meta.size,
+              receivedBytes: 0,
+              progress: 0,
+              speed: 0,
+              senderId: meta.senderId
+            }
+          }));
+        },
+        onTransferProgress: (progressData) => {
+          setActiveTransfers((prev) => {
+            if (!prev[progressData.id]) return prev;
+            return {
+              ...prev,
+              [progressData.id]: {
+                ...prev[progressData.id],
+                ...progressData
+              }
+            };
+          });
+        },
+        onFileTransferComplete: (completedFile) => {
+          setActiveTransfers((prev) => {
+            const next = { ...prev };
+            delete next[completedFile.id];
+            return next;
+          });
+          setReceivedFileModal(completedFile);
+        },
+        onFileTransferCancel: (transferId) => {
+          setActiveTransfers((prev) => {
+            const next = { ...prev };
+            delete next[transferId];
+            return next;
+          });
+        },
+        onChatMessage: async (encryptedPayload, fromPeerId) => {
+          const decrypted = await decryptPayload(encryptedPayload, cryptoKeyRef.current);
+          if (decrypted) {
+            sounds.playMessage();
+            setMessages((prev) => [...prev, decrypted]);
+          }
+        },
+        onChatClear: () => {
+          sounds.playBurn();
+          setMessages([]);
+        },
+        onViewOnceBurned: (messageId) => {
+          setMessages((prev) =>
+            prev.map((m) => (m.id === messageId ? { ...m, isBurned: true } : m))
+          );
         }
-      } else if (type === 'clear') {
-        sounds.playBurn();
-        setMessages([]);
-      } else if (type === 'view-once-burned') {
-        setMessages((prev) =>
-          prev.map((m) => (m.id === payload.messageId ? { ...m, isBurned: true } : m))
-        );
-      }
-    });
+      });
+      webrtcRef.current = webrtc;
+    };
+
+    // If on Vercel and no custom server URL configured, use CloudSignalingAdapter directly
+    if (isVercel && !customServerUrl) {
+      usingCloudFallback = true;
+      activeSignaling = new CloudSignalingAdapter(roomName, userProfile);
+      initWebRTC(activeSignaling);
+      setupSignalingListeners(activeSignaling);
+    } else {
+      // Connect to local or custom Socket.IO signaling server
+      socket = io(customServerUrl || undefined, {
+        transports: ['websocket', 'polling'],
+        reconnectionAttempts: 5,
+        timeout: 4000
+      });
+      activeSignaling = socket;
+      initWebRTC(activeSignaling);
+      setupSignalingListeners(activeSignaling);
+
+      socket.on('connect', async () => {
+        let passwordHash = null;
+        if (roomPassword) {
+          try {
+            passwordHash = await hashPassword(roomPassword);
+          } catch (err) {
+            console.error('Failed to hash room password:', err);
+          }
+        }
+        socket.emit('join-network', {
+          room: roomName,
+          passwordHash,
+          peerInfo: userProfile
+        });
+      });
+
+      // If socket.io fails to connect, automatically fall back to cloud signaling
+      const fallbackTimer = setTimeout(() => {
+        if (!socket.connected && !usingCloudFallback) {
+          usingCloudFallback = true;
+          try { socket.disconnect(); } catch {}
+          activeSignaling = new CloudSignalingAdapter(roomName, userProfile);
+          initWebRTC(activeSignaling);
+          setupSignalingListeners(activeSignaling);
+        }
+      }, 4000);
+
+      socket.on('connect_error', () => {
+        if (!socket.connected && !usingCloudFallback) {
+          usingCloudFallback = true;
+          clearTimeout(fallbackTimer);
+          try { socket.disconnect(); } catch {}
+          activeSignaling = new CloudSignalingAdapter(roomName, userProfile);
+          initWebRTC(activeSignaling);
+          setupSignalingListeners(activeSignaling);
+        }
+      });
+    }
 
     return () => {
-      webrtc.destroy();
-      socket.disconnect();
+      webrtcRef.current?.destroy();
+      activeSignaling?.disconnect?.();
     };
   }, [userProfile, roomName, roomPassword]);
 
@@ -379,6 +412,30 @@ export default function Home() {
       window.history.pushState({}, '', url.toString());
     }
     setMessages([]);
+    sounds.playJoin();
+  };
+
+  // Handle Joining from in-app Camera QR Scanner
+  const handleJoinScannedRoom = ({ room, pwd, tab }) => {
+    if (room) {
+      const cleanRoom = room.trim().toLowerCase().replace(/\s+/g, '-');
+      setRoomName(cleanRoom);
+      setRoomPassword(pwd || '');
+      setIsRoomProtected(!!pwd);
+      setTotalParticipants(1);
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.set('room', cleanRoom);
+        if (pwd) url.searchParams.set('pwd', pwd);
+        else url.searchParams.delete('pwd');
+        if (tab) url.searchParams.set('tab', tab);
+        window.history.pushState({}, '', url.toString());
+      }
+      setMessages([]);
+    }
+    if (tab === 'chat' || tab === 'drop') {
+      setActiveTab(tab);
+    }
     sounds.playJoin();
   };
 
@@ -680,13 +737,15 @@ export default function Home() {
         onUpdateProfile={handleUpdateProfile}
       />
 
-      {/* QR Code / Share Room Modal */}
+      {/* QR Code / Share Room Modal & Camera Scanner */}
       <QrModal
         isOpen={isQrModalOpen}
         onClose={() => setIsQrModalOpen(false)}
         roomName={roomName}
         roomPassword={roomPassword}
         isRoomProtected={isRoomProtected}
+        activeTab={activeTab}
+        onJoinScannedRoom={handleJoinScannedRoom}
       />
 
       {/* File Received Notification & Download Modal */}
