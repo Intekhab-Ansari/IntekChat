@@ -24,6 +24,21 @@ function base64ToBuffer(base64) {
 }
 
 /**
+ * Computes SHA-256 hash of room password for zero-knowledge signaling verification
+ */
+export async function hashPassword(password) {
+  if (!password) return null;
+  if (typeof window === 'undefined' || !window.crypto || !window.crypto.subtle) {
+    return null;
+  }
+  const enc = new TextEncoder();
+  const data = enc.encode(`intekchat-pwd-${password}`);
+  const hashBuf = await window.crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuf));
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
  * Derives a 256-bit AES-GCM CryptoKey from a room secret string
  */
 export async function deriveKey(roomSecret) {

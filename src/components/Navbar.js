@@ -14,7 +14,8 @@ import {
   Lock, 
   Copy, 
   Check,
-  Palette
+  Palette,
+  Plus
 } from 'lucide-react';
 import { getAvatarColor } from '@/lib/peer';
 
@@ -29,7 +30,9 @@ export default function Navbar({
   soundMuted,
   onToggleSound,
   currentTheme = 'sapphire',
-  onSelectTheme
+  onSelectTheme,
+  isRoomProtected = false,
+  onOpenRoomModal
 }) {
   const [copied, setCopied] = React.useState(false);
   const [showThemePicker, setShowThemePicker] = React.useState(false);
@@ -98,12 +101,18 @@ export default function Navbar({
       </div>
 
       <div className="nav-right">
-        {/* Network / Room Status Badge */}
-        <div className="network-pill" title={roomName ? `In private room: ${roomName}` : 'Local Wi-Fi Network'}>
+        {/* Network / Room Status Badge (Interactive Room Trigger) */}
+        <button 
+          type="button"
+          className="network-pill interactive-pill" 
+          onClick={onOpenRoomModal}
+          title={roomName ? `In room: #${roomName} (${isRoomProtected ? 'Password Protected' : 'Open E2EE'}). Click to manage.` : 'On Local Wi-Fi Network. Click to create or join a room.'}
+        >
           {roomName ? (
             <>
-              <Lock size={14} className="text-accent" />
+              <Lock size={14} className={isRoomProtected ? 'text-pink' : 'text-accent'} />
               <span className="room-label">#{roomName}</span>
+              {isRoomProtected && <span className="room-mini-badge">🔒</span>}
             </>
           ) : (
             <>
@@ -114,7 +123,18 @@ export default function Navbar({
           <span className="peer-badge" title="Active connected peers in this room/network">
             {peerCount} {peerCount === 1 ? 'peer' : 'peers'}
           </span>
-        </div>
+        </button>
+
+        {/* Create / Join Room Dedicated Button */}
+        <button
+          type="button"
+          className="icon-btn btn-room-trigger"
+          onClick={onOpenRoomModal}
+          title="Create New Room or Join with Password"
+          aria-label="Room Manager"
+        >
+          <Plus size={18} />
+        </button>
 
         {/* QR Code & Share link */}
         <button 

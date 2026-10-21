@@ -49,16 +49,24 @@ export default function ChatView({
   peers = [],
   peerCount = 0,
   userProfile,
-  onJoinRoom
+  onJoinRoom,
+  isRoomProtected = false,
+  onOpenRoomModal
 }) {
   const [inputText, setInputText] = useState('');
-  const [newRoomInput, setNewRoomInput] = useState('');
   const [imageMode, setImageMode] = useState('permanent');
   const [showImageModePicker, setShowImageModePicker] = useState(false);
   const [isStealthTextMode, setIsStealthTextMode] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [viewOnceModalData, setViewOnceModalData] = useState(null);
   const [viewOnceTimer, setViewOnceTimer] = useState(10);
+
+  // Hero Room Creation & Join States
+  const [heroTab, setHeroTab] = useState('create'); // 'create' | 'join'
+  const [heroRoomName, setHeroRoomName] = useState('');
+  const [heroProtectPassword, setHeroProtectPassword] = useState(false);
+  const [heroPassword, setHeroPassword] = useState('');
+  const [heroShowPassword, setHeroShowPassword] = useState(false);
 
   // Chat Wallpaper States
   const [isWallpaperModalOpen, setIsWallpaperModalOpen] = useState(false);
@@ -71,6 +79,24 @@ export default function ChatView({
   const fileInputRef = useRef(null);
   const imageInputRef = useRef(null);
   const timerRef = useRef(null);
+
+  const generateHeroRandomRoom = () => {
+    sounds.playClick();
+    const adjectives = ['cyber', 'stealth', 'quantum', 'shadow', 'nexus', 'sonic', 'phantom', 'cosmic'];
+    const nouns = ['vault', 'matrix', 'sanctum', 'bunker', 'haven', 'node'];
+    const num = Math.floor(100 + Math.random() * 900);
+    const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+    const noun = nouns[Math.floor(Math.random() * nouns.length)];
+    setHeroRoomName(`${adj}-${noun}-${num}`);
+  };
+
+  const handleHeroSubmit = (e) => {
+    e.preventDefault();
+    if (!heroRoomName.trim()) return;
+    sounds.playSuccess();
+    const clean = heroRoomName.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '-');
+    onJoinRoom(clean, heroProtectPassword ? heroPassword.trim() : null);
+  };
 
   // Load saved wallpaper preferences from localStorage
   useEffect(() => {
@@ -234,7 +260,7 @@ export default function ChatView({
     return <FileText size={20} className="text-cyan" />;
   };
 
-  // If no room is active, render Klaklak-style hero prompt
+  // If no room is active, render interactive Room Creation & Joining Hero
   if (!roomName) {
     return (
       <div className="chat-join-hero">
@@ -246,51 +272,154 @@ export default function ChatView({
           </div>
 
           <h1 className="hero-title">
-            Make an anonymous room.<br />
-            <span className="text-gradient">No login. No trace.</span>
+            Private Disposable Rooms.<br />
+            <span className="text-gradient">No login. No server trace.</span>
           </h1>
 
           <p className="hero-subtitle">
-            Create any room name or enter an existing one. All messages, images, and files stay strictly inside your browsers with AES-256-GCM encryption.
+            Create a custom room with a unique name and optional password protection. All chats, images, and files stay strictly inside your browsers with AES-256-GCM encryption.
           </p>
 
-          <form 
-            className="hero-form" 
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (newRoomInput.trim()) {
-                onJoinRoom(newRoomInput.trim());
-              }
-            }}
-          >
+          {/* Hero Tabs: Create vs Join */}
+          <div className="hero-tabs">
+            <button
+              type="button"
+              className={`hero-tab ${heroTab === 'create' ? 'hero-tab-active' : ''}`}
+              onClick={() => {
+                sounds.playClick();
+                setHeroTab('create');
+              }}
+            >
+              <Sparkles size={15} />
+              <span>Create New Room</span>
+            </button>
+
+            <button
+              type="button"
+              className={`hero-tab ${heroTab === 'join' ? 'hero-tab-active' : ''}`}
+              onClick={() => {
+                sounds.playClick();
+                setHeroTab('join');
+              }}
+            >
+              <ArrowRight size={15} />
+              <span>Join Existing</span>
+            </button>
+          </div>
+
+          <form className="hero-form" onSubmit={handleHeroSubmit}>
+            {/* Room Name Input with Prefix and Random Generator */}
             <div className="room-input-wrap">
               <span className="room-prefix">intekchat.com/</span>
               <input
                 type="text"
                 className="room-input"
-                placeholder="my-secret-room"
-                value={newRoomInput}
-                onChange={(e) => setNewRoomInput(e.target.value)}
+                placeholder={heroTab === 'create' ? 'my-secret-vault' : 'enter-room-name'}
+                value={heroRoomName}
+                onChange={(e) => setHeroRoomName(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
+                required
               />
+              {heroTab === 'create' && (
+                <button
+                  type="button"
+                  className="btn-hero-random"
+                  onClick={generateHeroRandomRoom}
+                  title="Generate Unique Memorable Name"
+                >
+                  <Sparkles size={13} />
+                  <span>Random</span>
+                </button>
+              )}
             </div>
 
-            <button type="submit" className="btn-primary hero-btn">
-              <span>Join Room</span>
+            {/* Password Protection for Create Mode */}
+            {heroTab === 'create' && (
+              <div className="hero-password-box">
+                <label className="hero-checkbox-row">
+                  <input
+                    type="checkbox"
+                    checked={heroProtectPassword}
+                    onChange={(e) => setHeroProtectPassword(e.target.checked)}
+                    className="hero-checkbox"
+                  />
+                  <div className="hero-checkbox-text">
+                    <span className="hero-checkbox-title">
+                      <Lock size={13} className="text-accent" />
+                      <span>Protect Room with Password</span>
+                    </span>
+                    <span className="hero-checkbox-desc">Peers will need this password to join & decrypt</span>
+                  </div>
+                </label>
+
+                {heroProtectPassword && (
+                  <div className="hero-password-input-wrap">
+                    <Key size={16} className="text-dim" />
+                    <input
+                      type={heroShowPassword ? 'text' : 'password'}
+                      className="hero-password-input"
+                      placeholder="Set room password..."
+                      value={heroPassword}
+                      onChange={(e) => setHeroPassword(e.target.value)}
+                      required={heroProtectPassword}
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      className="btn-toggle-eye"
+                      onClick={() => setHeroShowPassword(!heroShowPassword)}
+                      tabIndex={-1}
+                    >
+                      {heroShowPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Optional Password Input for Join Mode */}
+            {heroTab === 'join' && (
+              <div className="hero-password-input-wrap join-password-wrap">
+                <Key size={16} className="text-dim" />
+                <input
+                  type={heroShowPassword ? 'text' : 'password'}
+                  className="hero-password-input"
+                  placeholder="Room password (if protected)..."
+                  value={heroPassword}
+                  onChange={(e) => setHeroPassword(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="btn-toggle-eye"
+                  onClick={() => setHeroShowPassword(!heroShowPassword)}
+                  tabIndex={-1}
+                >
+                  {heroShowPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            )}
+
+            <button 
+              type="submit" 
+              className="btn-primary hero-btn"
+              disabled={!heroRoomName.trim() || (heroTab === 'create' && heroProtectPassword && !heroPassword.trim())}
+            >
+              <span>{heroTab === 'create' ? 'Create Encrypted Room' : 'Join Room'}</span>
               <ArrowRight size={18} />
             </button>
           </form>
 
           <div className="hero-quick-action">
-            <span>Or create a random disposable room:</span>
+            <span>Need an instant throwaway room?</span>
             <button 
+              type="button"
               className="btn-quick-create"
               onClick={() => {
                 const randomRoom = `room-${Math.random().toString(36).substring(2, 8)}`;
-                onJoinRoom(randomRoom);
+                onJoinRoom(randomRoom, null);
               }}
             >
               <Sparkles size={14} />
-              <span>Instant Room</span>
+              <span>Create Instant Room</span>
             </button>
           </div>
         </div>
@@ -318,9 +447,14 @@ export default function ChatView({
       {/* Left Room Sidebar (Structured Info) */}
       <aside className={`chat-room-sidebar ${isSidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
         <div className="sidebar-header">
-          <div className="sidebar-room-pill">
-            <Lock size={15} className="text-accent" />
+          <div 
+            className="sidebar-room-pill clickable-room-pill" 
+            onClick={onOpenRoomModal}
+            title="Click to manage or switch rooms"
+          >
+            {isRoomProtected ? <Lock size={15} className="text-pink" /> : <Lock size={15} className="text-accent" />}
             <span className="sidebar-room-name">#{roomName}</span>
+            {isRoomProtected && <span className="room-mini-lock">🔒</span>}
           </div>
           <button 
             type="button"
@@ -340,12 +474,16 @@ export default function ChatView({
           </div>
           <div className="security-specs-card">
             <div className="spec-row">
+              <span className="spec-label">Access Mode:</span>
+              <span className="spec-value">{isRoomProtected ? '🔒 Password Protected' : '🔓 Open E2EE'}</span>
+            </div>
+            <div className="spec-row">
               <span className="spec-label">Encryption:</span>
               <span className="spec-value">AES-256-GCM</span>
             </div>
             <div className="spec-row">
               <span className="spec-label">Key Exchange:</span>
-              <span className="spec-value">PBKDF2-SHA256</span>
+              <span className="spec-value">{isRoomProtected ? 'PBKDF2 (Password Salted)' : 'PBKDF2-SHA256'}</span>
             </div>
             <div className="spec-row">
               <span className="spec-label">Storage:</span>
@@ -455,9 +593,14 @@ export default function ChatView({
               </button>
             )}
 
-            <div className="chat-room-badge">
-              <Lock size={14} className="text-accent" />
+            <div 
+              className="chat-room-badge clickable-room-badge"
+              onClick={onOpenRoomModal}
+              title="Click to manage room or switch rooms"
+            >
+              {isRoomProtected ? <Lock size={15} className="text-pink" /> : <Lock size={14} className="text-accent" />}
               <span className="room-title">#{roomName}</span>
+              {isRoomProtected && <span className="room-protected-pill">Protected</span>}
             </div>
             <span className="chat-peer-status">
               {peerCount} active {peerCount === 1 ? 'peer' : 'peers'} connected

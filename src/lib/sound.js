@@ -221,6 +221,32 @@ class SoundEngine {
       osc.stop(t + 0.04);
     } catch {}
   }
+
+  // Bright triple-tone success chime
+  playSuccess() {
+    if (this.muted) return;
+    try {
+      this.init();
+      if (!this.ctx) return;
+      const t = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(523.25, t); // C5
+      osc.frequency.setValueAtTime(659.25, t + 0.1); // E5
+      osc.frequency.setValueAtTime(783.99, t + 0.2); // G5
+
+      gain.gain.setValueAtTime(0.06, t);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(t);
+      osc.stop(t + 0.35);
+    } catch {}
+  }
 }
 
 export const sounds = new SoundEngine();

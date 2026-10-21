@@ -12,6 +12,8 @@ const handle = app.getRequestHandler();
 // Store active rooms and peers
 // roomKey -> Map(socketId -> peerInfo)
 const rooms = new Map();
+// roomKey -> { passwordHash: string | null, isProtected: boolean, roomName: string, createdAt: number }
+const roomsMeta = new Map();
 
 function getClientIp(req) {
   let ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
@@ -49,11 +51,59 @@ app.prepare().then(() => {
     const rawIp = getClientIp(socket.request);
     let currentRoom = null;
 
-    socket.on('join-network', ({ room, peerInfo }) => {
-      // If room is not explicitly given, group by IP (Snapdrop style)
-      const targetRoom = (room && room.trim().length > 0) 
-        ? `room:${room.trim().toLowerCase()}` 
+    socket.on('join-network', ({ room, peerInfo, passwordHash }) => {
+      // Leave previous room if already joined
+      if (currentRoom && rooms.has(currentRoom)) {
+        socket.leave(currentRoom);
+        const prevPeers = rooms.get(currentRoom);
+        prevPeers.delete(socket.id);
+        if (prevPeers.size === 0) {
+          rooms.delete(currentRoom);
+          const meta = roomsMeta.get(currentRoom);
+          if (meta) {
+            meta.expiresAt = Date.now() + 30 * 60 * 1000;
+          }
+        } else {
+          socket.to(currentRoom).emit('peer-left', { id: socket.id });
+        }
+      }
+
+      const isCustomRoom = Boolean(room && room.trim().length > 0);
+      const cleanRoom = isCustomRoom ? room.trim().toLowerCase() : '';
+      const targetRoom = isCustomRoom 
+        ? `room:${cleanRoom}` 
         : `network:${rawIp}`;
+
+      // Check room protection if it's a custom room
+      if (isCustomRoom) {
+        const existingMeta = roomsMeta.get(targetRoom);
+        const isExpired = existingMeta && existingMeta.expiresAt && Date.now() > existingMeta.expiresAt;
+
+        if (!existingMeta || isExpired) {
+          // Creating this room: if passwordHash provided, protect it
+          roomsMeta.set(targetRoom, {
+            passwordHash: passwordHash || null,
+            isProtected: Boolean(passwordHash),
+            roomName: cleanRoom,
+            createdAt: Date.now(),
+            expiresAt: null
+          });
+        } else {
+          // Room already exists: verify password
+          if (existingMeta.isProtected) {
+            if (!passwordHash || passwordHash !== existingMeta.passwordHash) {
+              socket.emit('room-password-required', {
+                room: cleanRoom,
+                isProtected: true,
+                reason: passwordHash ? 'Incorrect room password. Please try again.' : 'This room is password-protected. Enter password to unlock.',
+                error: passwordHash ? 'Incorrect room password. Please try again.' : 'This room is password-protected. Enter password to unlock.'
+              });
+              return;
+            }
+          }
+          existingMeta.expiresAt = null; // Active peer joined, clear expiration
+        }
+      }
 
       currentRoom = targetRoom;
       socket.join(targetRoom);
@@ -69,14 +119,18 @@ app.prepare().then(() => {
         deviceType: peerInfo?.deviceType || 'desktop',
         os: peerInfo?.os || 'unknown',
         avatar: peerInfo?.avatar || 'zap',
-        isLocalNetwork: !room || room.trim().length === 0,
+        isLocalNetwork: !isCustomRoom,
         joinedAt: Date.now()
       };
 
-      // Send list of current peers in this room to the joining socket (excluding themselves)
       const existingPeers = Array.from(roomPeers.values());
+      const meta = isCustomRoom ? roomsMeta.get(targetRoom) : null;
+
+      // Send list of current peers in this room to the joining socket (excluding themselves)
       socket.emit('room-peers', {
         room: targetRoom,
+        roomName: cleanRoom,
+        isProtected: meta?.isProtected || false,
         peers: existingPeers,
         selfId: socket.id,
         networkType: peerData.isLocalNetwork ? 'Local Wi-Fi / LAN' : 'Custom Room'
@@ -87,6 +141,24 @@ app.prepare().then(() => {
 
       // Notify others in room
       socket.to(targetRoom).emit('peer-joined', peerData);
+    });
+
+    socket.on('leave-room', () => {
+      if (currentRoom && rooms.has(currentRoom)) {
+        socket.leave(currentRoom);
+        const prevPeers = rooms.get(currentRoom);
+        prevPeers.delete(socket.id);
+        if (prevPeers.size === 0) {
+          rooms.delete(currentRoom);
+          const meta = roomsMeta.get(currentRoom);
+          if (meta) {
+            meta.expiresAt = Date.now() + 30 * 60 * 1000;
+          }
+        } else {
+          socket.to(currentRoom).emit('peer-left', { id: socket.id });
+        }
+        currentRoom = null;
+      }
     });
 
     // WebRTC Signaling Handshakes
@@ -147,6 +219,10 @@ app.prepare().then(() => {
         roomPeers.delete(socket.id);
         if (roomPeers.size === 0) {
           rooms.delete(currentRoom);
+          const meta = roomsMeta.get(currentRoom);
+          if (meta) {
+            meta.expiresAt = Date.now() + 30 * 60 * 1000;
+          }
         } else {
           socket.to(currentRoom).emit('peer-left', { id: socket.id });
         }

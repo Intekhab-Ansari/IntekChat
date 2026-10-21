@@ -8,14 +8,23 @@ import ChatView from '@/components/IntekChat/ChatView';
 import ProfileModal from '@/components/Modals/ProfileModal';
 import QrModal from '@/components/Modals/QrModal';
 import FileReceiveModal from '@/components/Modals/FileReceiveModal';
+import RoomModal from '@/components/Modals/RoomModal';
+import PasswordPromptModal from '@/components/Modals/PasswordPromptModal';
 import { getOrCreatePeerProfile } from '@/lib/peer';
 import { sounds } from '@/lib/sound';
-import { deriveKey, encryptPayload, decryptPayload } from '@/lib/crypto';
+import { deriveKey, encryptPayload, decryptPayload, hashPassword } from '@/lib/crypto';
 import { WebRTCManager } from '@/lib/webrtc';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('drop'); // 'drop' | 'chat'
   const [roomName, setRoomName] = useState('');
+  const [roomPassword, setRoomPassword] = useState('');
+  const [isRoomProtected, setIsRoomProtected] = useState(false);
+  const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
+  const [isPasswordPromptOpen, setIsPasswordPromptOpen] = useState(false);
+  const [passwordPromptError, setPasswordPromptError] = useState('');
+  const [pendingRoom, setPendingRoom] = useState('');
+
   const [peers, setPeers] = useState([]);
   const [userProfile, setUserProfile] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -51,6 +60,7 @@ export default function Home() {
       const roomParam = params.get('room');
       if (roomParam) {
         setRoomName(roomParam.trim());
+        setActiveTab('chat');
       }
     }
   }, []);
@@ -63,18 +73,21 @@ export default function Home() {
     }
   };
 
-  // 2. Initialize E2EE Cryptographic Key whenever Room Changes
+  // 2. Initialize E2EE Cryptographic Key whenever Room or Password Changes
   useEffect(() => {
     async function setupCrypto() {
       try {
-        const key = await deriveKey(roomName || 'intekchat-local-wifi-default');
+        const secret = roomPassword 
+          ? `${roomName || 'intekchat-local-wifi-default'}:${roomPassword}` 
+          : (roomName || 'intekchat-local-wifi-default');
+        const key = await deriveKey(secret);
         cryptoKeyRef.current = key;
       } catch (err) {
         console.error('Failed to derive encryption key:', err);
       }
     }
     setupCrypto();
-  }, [roomName]);
+  }, [roomName, roomPassword]);
 
   // 3. Connect to Signaling Server & WebRTC Manager
   useEffect(() => {
@@ -86,12 +99,29 @@ export default function Home() {
     });
     socketRef.current = socket;
 
-    socket.on('connect', () => {
-      // Join network / room
+    socket.on('connect', async () => {
+      // Join network / room with password hash if set
+      let passwordHash = null;
+      if (roomPassword) {
+        try {
+          passwordHash = await hashPassword(roomPassword);
+        } catch (err) {
+          console.error('Failed to hash room password:', err);
+        }
+      }
       socket.emit('join-network', {
         room: roomName,
+        passwordHash,
         peerInfo: userProfile
       });
+    });
+
+    // Handle room password protection required from server
+    socket.on('room-password-required', ({ room, isProtected, reason }) => {
+      setIsRoomProtected(true);
+      setPendingRoom(room);
+      setPasswordPromptError(reason || 'This room is password-protected. Enter password to unlock.');
+      setIsPasswordPromptOpen(true);
     });
 
     // Initialize WebRTC Manager
@@ -161,7 +191,10 @@ export default function Home() {
     webrtcRef.current = webrtc;
 
     // Socket Room Events
-    socket.on('room-peers', ({ peers: initialPeers, selfId }) => {
+    socket.on('room-peers', ({ peers: initialPeers, selfId, isProtected }) => {
+      if (typeof isProtected === 'boolean') {
+        setIsRoomProtected(isProtected);
+      }
       const filtered = initialPeers.filter((p) => p.id !== selfId);
       setPeers(filtered);
       // Auto-connect to existing peers
@@ -219,7 +252,7 @@ export default function Home() {
       webrtc.destroy();
       socket.disconnect();
     };
-  }, [userProfile, roomName]);
+  }, [userProfile, roomName, roomPassword]);
 
   // Handle Profile Update
   const handleUpdateProfile = (updatedProfile) => {
@@ -233,16 +266,52 @@ export default function Home() {
   };
 
   // Handle Joining / Creating Room
-  const handleJoinRoom = (newRoom) => {
-    const cleanRoom = newRoom.trim().toLowerCase();
+  const handleCreateOrJoinRoom = (newRoom, password = '') => {
+    const cleanRoom = (newRoom || '').trim().toLowerCase();
     setRoomName(cleanRoom);
+    setRoomPassword(password || '');
+    setIsRoomProtected(!!password);
+    setActiveTab('chat');
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
-      url.searchParams.set('room', cleanRoom);
+      if (cleanRoom) {
+        url.searchParams.set('room', cleanRoom);
+      } else {
+        url.searchParams.delete('room');
+      }
       window.history.pushState({}, '', url.toString());
     }
     setMessages([]);
     sounds.playJoin();
+  };
+
+  const handleLeaveRoom = () => {
+    setRoomName('');
+    setRoomPassword('');
+    setIsRoomProtected(false);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('room');
+      window.history.pushState({}, '', url.toString());
+    }
+    setMessages([]);
+    sounds.playLeave();
+  };
+
+  const handlePasswordPromptSubmit = (enteredPassword) => {
+    setPasswordPromptError('');
+    setIsPasswordPromptOpen(false);
+    setRoomPassword(enteredPassword);
+    if (pendingRoom && pendingRoom !== roomName) {
+      setRoomName(pendingRoom);
+    }
+  };
+
+  const handlePasswordPromptCancel = () => {
+    setIsPasswordPromptOpen(false);
+    setPasswordPromptError('');
+    setPendingRoom('');
+    handleLeaveRoom();
   };
 
   // Send File in IntekDrop Tab
@@ -402,6 +471,8 @@ export default function Home() {
         onToggleSound={handleToggleSound}
         currentTheme={currentTheme}
         onSelectTheme={handleSelectTheme}
+        isRoomProtected={isRoomProtected}
+        onOpenRoomModal={() => setIsRoomModalOpen(true)}
       />
 
       {/* Main View Area */}
@@ -426,7 +497,9 @@ export default function Home() {
             peers={peers}
             peerCount={peers.length}
             userProfile={userProfile}
-            onJoinRoom={handleJoinRoom}
+            onJoinRoom={handleCreateOrJoinRoom}
+            isRoomProtected={isRoomProtected}
+            onOpenRoomModal={() => setIsRoomModalOpen(true)}
           />
         )}
       </main>
@@ -450,6 +523,26 @@ export default function Home() {
       <FileReceiveModal
         fileData={receivedFileModal}
         onClose={() => setReceivedFileModal(null)}
+      />
+
+      {/* Room Manager Modal (Create Unique Room, Password Protection, Join & Leave) */}
+      <RoomModal
+        isOpen={isRoomModalOpen}
+        onClose={() => setIsRoomModalOpen(false)}
+        currentRoom={roomName}
+        isRoomProtected={isRoomProtected}
+        onCreateRoom={handleCreateOrJoinRoom}
+        onJoinRoom={handleCreateOrJoinRoom}
+        onLeaveRoom={handleLeaveRoom}
+      />
+
+      {/* Password Prompt Modal for Unlocking Protected Rooms */}
+      <PasswordPromptModal
+        isOpen={isPasswordPromptOpen}
+        roomName={pendingRoom || roomName}
+        error={passwordPromptError}
+        onSubmitPassword={handlePasswordPromptSubmit}
+        onCancel={handlePasswordPromptCancel}
       />
     </div>
   );
