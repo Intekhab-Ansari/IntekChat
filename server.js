@@ -69,7 +69,7 @@ app.prepare().then(() => {
       }
 
       const isCustomRoom = Boolean(room && room.trim().length > 0);
-      const cleanRoom = isCustomRoom ? room.trim().toLowerCase() : '';
+      const cleanRoom = isCustomRoom ? room.trim().toLowerCase().replace(/\s+/g, '-') : '';
       const targetRoom = isCustomRoom 
         ? `room:${cleanRoom}` 
         : `network:${rawIp}`;
@@ -126,21 +126,28 @@ app.prepare().then(() => {
       const existingPeers = Array.from(roomPeers.values());
       const meta = isCustomRoom ? roomsMeta.get(targetRoom) : null;
 
+      // Save peer to room map first
+      roomPeers.set(socket.id, peerData);
+
       // Send list of current peers in this room to the joining socket (excluding themselves)
       socket.emit('room-peers', {
         room: targetRoom,
         roomName: cleanRoom,
         isProtected: meta?.isProtected || false,
         peers: existingPeers,
+        totalCount: roomPeers.size,
         selfId: socket.id,
         networkType: peerData.isLocalNetwork ? 'Local Wi-Fi / LAN' : 'Custom Room'
       });
 
-      // Save peer to room map
-      roomPeers.set(socket.id, peerData);
-
       // Notify others in room
       socket.to(targetRoom).emit('peer-joined', peerData);
+
+      // Broadcast updated real-time participant count to everyone in the room
+      io.to(targetRoom).emit('room-count-update', {
+        room: cleanRoom,
+        totalCount: roomPeers.size
+      });
     });
 
     socket.on('leave-room', () => {
@@ -156,6 +163,9 @@ app.prepare().then(() => {
           }
         } else {
           socket.to(currentRoom).emit('peer-left', { id: socket.id });
+          io.to(currentRoom).emit('room-count-update', {
+            totalCount: prevPeers.size
+          });
         }
         currentRoom = null;
       }
@@ -312,6 +322,9 @@ app.prepare().then(() => {
           }
         } else {
           socket.to(currentRoom).emit('peer-left', { id: socket.id });
+          io.to(currentRoom).emit('room-count-update', {
+            totalCount: roomPeers.size
+          });
         }
       }
     });

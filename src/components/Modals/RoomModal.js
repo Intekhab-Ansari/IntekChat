@@ -28,6 +28,7 @@ export default function RoomModal({
   isOpen,
   onClose,
   currentRoom,
+  roomPassword = '',
   isRoomProtected = false,
   onCreateRoom,
   onJoinRoom,
@@ -36,6 +37,7 @@ export default function RoomModal({
   initialTab = null
 }) {
   const [modalTab, setModalTab] = useState(initialTab || (currentRoom ? 'edit' : 'create')); // 'create' | 'join' | 'edit'
+  const [showBannerPassword, setShowBannerPassword] = useState(false);
   
   // Create Room state
   const [createRoomName, setCreateRoomName] = useState('');
@@ -78,8 +80,16 @@ export default function RoomModal({
       setEditAction('keep');
       setEditError('');
       setEditSuccess('');
+
+      const handleKeyDown = (e) => {
+        if (e.key === 'Escape') {
+          onClose();
+        }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
     }
-  }, [isOpen, initialTab, currentRoom]);
+  }, [isOpen, initialTab, currentRoom, onClose]);
 
   if (!isOpen) return null;
 
@@ -240,9 +250,24 @@ export default function RoomModal({
               <div className="current-room-text">
                 <span className="current-room-label">Current Active Room</span>
                 <span className="current-room-name">#{currentRoom}</span>
-                <span className="current-room-badge-pill">
-                  {isRoomProtected ? '🔒 Password Protected' : '🔓 Open E2EE Room'}
-                </span>
+                <div className="current-room-pills-row">
+                  <span className="current-room-badge-pill">
+                    {isRoomProtected ? '🔒 Password Protected' : '🔓 Open E2EE Room'}
+                  </span>
+                  {isRoomProtected && roomPassword && (
+                    <span className="current-room-pass-badge">
+                      Key: {showBannerPassword ? roomPassword : '••••••••'}
+                      <button 
+                        type="button" 
+                        className="btn-mini-eye ml-1"
+                        onClick={() => setShowBannerPassword(!showBannerPassword)}
+                        title={showBannerPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showBannerPassword ? <EyeOff size={11} /> : <Eye size={11} />}
+                      </button>
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 

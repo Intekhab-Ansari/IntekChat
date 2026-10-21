@@ -24,6 +24,7 @@ export default function Navbar({
   setActiveTab,
   roomName,
   peerCount,
+  totalParticipants = 1,
   userProfile,
   onOpenProfile,
   onOpenQr,
@@ -123,8 +124,11 @@ export default function Navbar({
               <span className="room-label">Local Wi-Fi</span>
             </>
           )}
-          <span className="peer-badge" title="Active connected peers in this room/network">
-            {peerCount} {peerCount === 1 ? 'peer' : 'peers'}
+          <span className="peer-badge" title="Active participants in real time">
+            <span className="realtime-live-dot" />
+            {roomName 
+              ? (totalParticipants <= 1 ? '1 in room (You)' : `${totalParticipants} in room`) 
+              : `${peerCount} ${peerCount === 1 ? 'peer' : 'peers'}`}
           </span>
         </button>
 

@@ -49,6 +49,8 @@ export default function ChatView({
   roomName,
   peers = [],
   peerCount = 0,
+  totalParticipants = 1,
+  roomPassword = '',
   userProfile,
   onJoinRoom,
   isRoomProtected = false,
@@ -60,6 +62,7 @@ export default function ChatView({
   const [showImageModePicker, setShowImageModePicker] = useState(false);
   const [isStealthTextMode, setIsStealthTextMode] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [showSidebarPassword, setShowSidebarPassword] = useState(false);
   const [viewOnceModalData, setViewOnceModalData] = useState(null);
   const [viewOnceTimer, setViewOnceTimer] = useState(10);
 
@@ -505,8 +508,34 @@ export default function ChatView({
           </div>
           <div className="security-specs-card">
             <div className="spec-row">
+              <span className="spec-label">Room ID:</span>
+              <span className="spec-value font-mono">#{roomName}</span>
+            </div>
+            {isRoomProtected && (
+              <div className="spec-row">
+                <span className="spec-label">Password:</span>
+                <span className="spec-value text-accent font-mono spec-password-cell">
+                  {showSidebarPassword ? roomPassword : '••••••••'}
+                  <button 
+                    type="button" 
+                    className="btn-mini-eye"
+                    onClick={() => setShowSidebarPassword(!showSidebarPassword)}
+                    title={showSidebarPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showSidebarPassword ? <EyeOff size={11} /> : <Eye size={11} />}
+                  </button>
+                </span>
+              </div>
+            )}
+            <div className="spec-row">
               <span className="spec-label">Access Mode:</span>
               <span className="spec-value">{isRoomProtected ? '🔒 Password Protected' : '🔓 Open E2EE'}</span>
+            </div>
+            <div className="spec-row">
+              <span className="spec-label">Online In Room:</span>
+              <span className="spec-value text-emerald font-bold">
+                {totalParticipants <= 1 ? '1 Person (You)' : `${totalParticipants} Connected`}
+              </span>
             </div>
             <div className="spec-row">
               <span className="spec-label">Encryption:</span>
@@ -519,10 +548,6 @@ export default function ChatView({
             <div className="spec-row">
               <span className="spec-label">Storage:</span>
               <span className="spec-value text-accent">0 B (RAM only)</span>
-            </div>
-            <div className="spec-row">
-              <span className="spec-label">Server Footprint:</span>
-              <span className="spec-value text-accent">Zero Logs</span>
             </div>
           </div>
         </div>
@@ -644,8 +669,11 @@ export default function ChatView({
               <span>Edit Room</span>
             </button>
 
-            <span className="chat-peer-status">
-              {peerCount} active {peerCount === 1 ? 'peer' : 'peers'} connected
+            <span className="chat-peer-status" title="Real-time participants in this room">
+              <span className="realtime-live-dot" />
+              {peerCount === 0 
+                ? '1 in room (You • Waiting for others to join)' 
+                : `${totalParticipants || (peerCount + 1)} in room (${peerCount} peer${peerCount === 1 ? '' : 's'} + You)`}
             </span>
           </div>
 

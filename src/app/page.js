@@ -20,6 +20,7 @@ export default function Home() {
   const [roomName, setRoomName] = useState('');
   const [roomPassword, setRoomPassword] = useState('');
   const [isRoomProtected, setIsRoomProtected] = useState(false);
+  const [totalParticipants, setTotalParticipants] = useState(1);
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
   const [roomModalInitialTab, setRoomModalInitialTab] = useState('create');
   const [isPasswordPromptOpen, setIsPasswordPromptOpen] = useState(false);
@@ -41,7 +42,7 @@ export default function Home() {
   const cryptoKeyRef = useRef(null);
   const cancelTokensRef = useRef(new Set());
 
-  // 1. Initialize Profile, Theme & URL Room Params
+  // 1. Initialize Profile, Theme & URL Room Params (including 1-scan QR auto join)
   useEffect(() => {
     const profile = getOrCreatePeerProfile();
     setUserProfile(profile);
@@ -59,8 +60,21 @@ export default function Home() {
 
       const params = new URLSearchParams(window.location.search);
       const roomParam = params.get('room');
+      const pwdParam = params.get('pwd') || params.get('pass') || params.get('password');
+      let hashPwd = '';
+      if (window.location.hash) {
+        const hashMatch = window.location.hash.match(/(?:#|&)pwd=([^&]+)/);
+        if (hashMatch) hashPwd = decodeURIComponent(hashMatch[1]);
+      }
+      const initialPwd = (pwdParam || hashPwd || '').trim();
+
       if (roomParam) {
-        setRoomName(roomParam.trim());
+        const cleanRoom = roomParam.trim().toLowerCase().replace(/\s+/g, '-');
+        setRoomName(cleanRoom);
+        if (initialPwd) {
+          setRoomPassword(initialPwd);
+          setIsRoomProtected(true);
+        }
         setActiveTab('chat');
       }
       const tabParam = params.get('tab');
@@ -198,23 +212,32 @@ export default function Home() {
     webrtcRef.current = webrtc;
 
     // Socket Room Events
-    socket.on('room-peers', ({ peers: initialPeers, selfId, isProtected }) => {
+    socket.on('room-peers', ({ peers: initialPeers, selfId, isProtected, totalCount }) => {
       if (typeof isProtected === 'boolean') {
         setIsRoomProtected(isProtected);
       }
       const filtered = initialPeers.filter((p) => p.id !== selfId);
       setPeers(filtered);
+      setTotalParticipants(typeof totalCount === 'number' ? totalCount : filtered.length + 1);
       // Auto-connect to existing peers
       filtered.forEach((p) => {
         webrtc.connectToPeer(p.id);
       });
     });
 
+    socket.on('room-count-update', ({ totalCount }) => {
+      if (typeof totalCount === 'number') {
+        setTotalParticipants(totalCount);
+      }
+    });
+
     socket.on('peer-joined', (newPeer) => {
       sounds.playJoin();
       setPeers((prev) => {
         if (prev.some((p) => p.id === newPeer.id)) return prev;
-        return [...prev, newPeer];
+        const next = [...prev, newPeer];
+        setTotalParticipants(next.length + 1);
+        return next;
       });
       webrtc.connectToPeer(newPeer.id);
     });
@@ -227,7 +250,11 @@ export default function Home() {
 
     socket.on('peer-left', ({ id }) => {
       sounds.playLeave();
-      setPeers((prev) => prev.filter((p) => p.id !== id));
+      setPeers((prev) => {
+        const next = prev.filter((p) => p.id !== id);
+        setTotalParticipants(Math.max(1, next.length + 1));
+        return next;
+      });
       setActiveTransfers((prev) => {
         const next = { ...prev };
         for (const [key, val] of Object.entries(next)) {
@@ -305,17 +332,24 @@ export default function Home() {
 
   // Handle Joining / Creating Room
   const handleCreateOrJoinRoom = (newRoom, password = '') => {
-    const cleanRoom = (newRoom || '').trim().toLowerCase();
+    const cleanRoom = (newRoom || '').trim().toLowerCase().replace(/\s+/g, '-');
     setRoomName(cleanRoom);
     setRoomPassword(password || '');
     setIsRoomProtected(!!password);
+    setTotalParticipants(1);
     setActiveTab('chat');
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
       if (cleanRoom) {
         url.searchParams.set('room', cleanRoom);
+        if (password) {
+          url.searchParams.set('pwd', password);
+        } else {
+          url.searchParams.delete('pwd');
+        }
       } else {
         url.searchParams.delete('room');
+        url.searchParams.delete('pwd');
       }
       window.history.pushState({}, '', url.toString());
     }
@@ -391,9 +425,11 @@ export default function Home() {
     setRoomName('');
     setRoomPassword('');
     setIsRoomProtected(false);
+    setTotalParticipants(1);
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
       url.searchParams.delete('room');
+      url.searchParams.delete('pwd');
       window.history.pushState({}, '', url.toString());
     }
     setMessages([]);
@@ -566,6 +602,7 @@ export default function Home() {
         setActiveTab={setActiveTab}
         roomName={roomName}
         peerCount={peers.length}
+        totalParticipants={totalParticipants}
         userProfile={userProfile}
         onOpenProfile={() => setIsProfileModalOpen(true)}
         onOpenQr={() => setIsQrModalOpen(true)}
@@ -596,8 +633,10 @@ export default function Home() {
             onClearChat={handleClearChat}
             onBurnViewOnce={handleBurnViewOnce}
             roomName={roomName}
+            roomPassword={roomPassword}
             peers={peers}
             peerCount={peers.length}
+            totalParticipants={totalParticipants}
             userProfile={userProfile}
             onJoinRoom={handleCreateOrJoinRoom}
             isRoomProtected={isRoomProtected}
@@ -620,6 +659,8 @@ export default function Home() {
         isOpen={isQrModalOpen}
         onClose={() => setIsQrModalOpen(false)}
         roomName={roomName}
+        roomPassword={roomPassword}
+        isRoomProtected={isRoomProtected}
       />
 
       {/* File Received Notification & Download Modal */}
@@ -633,6 +674,7 @@ export default function Home() {
         isOpen={isRoomModalOpen}
         onClose={() => setIsRoomModalOpen(false)}
         currentRoom={roomName}
+        roomPassword={roomPassword}
         isRoomProtected={isRoomProtected}
         onCreateRoom={handleCreateOrJoinRoom}
         onJoinRoom={handleCreateOrJoinRoom}
