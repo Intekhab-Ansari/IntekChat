@@ -2817,22 +2817,124 @@ body {
 }
 
 /* ==========================================================================
-   ROOM MANAGER MODAL & PASSWORD PROMPT MODAL
+   ROOM MANAGER MODAL & PASSWORD PROMPT MODAL (ULTRA-PREMIUM GLASSMORPHISM)
    ========================================================================== */
 .room-modal-card {
-  max-width: 530px;
+  max-width: 540px;
   width: 95%;
+  background: linear-gradient(155deg, rgba(20, 26, 44, 0.96), rgba(11, 15, 26, 0.98)) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.8), 0 0 45px rgba(59, 130, 246, 0.15) !important;
+  backdrop-filter: blur(24px) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.room-modal-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent-bright), rgba(168, 85, 247, 0.8), transparent);
 }
 
 .password-prompt-card {
-  max-width: 440px;
+  max-width: 450px;
   width: 92%;
+  background: linear-gradient(155deg, rgba(24, 20, 32, 0.96), rgba(12, 10, 18, 0.98)) !important;
+  border: 1px solid rgba(244, 63, 94, 0.25) !important;
+  box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.8), 0 0 40px rgba(244, 63, 94, 0.15) !important;
+  backdrop-filter: blur(24px) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.password-prompt-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #fb7185, #f43f5e, transparent);
 }
 
 .password-badge {
   background: rgba(244, 63, 94, 0.15) !important;
-  border-color: rgba(244, 63, 94, 0.35) !important;
+  border: 1px solid rgba(244, 63, 94, 0.35) !important;
   color: #fb7185 !important;
+  box-shadow: 0 0 12px rgba(244, 63, 94, 0.2);
+}
+
+/* Quick Preset Chips */
+.room-preset-chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.65rem;
+}
+
+.hero-preset-chips {
+  justify-content: center;
+  margin-top: 0.2rem;
+  margin-bottom: 1.1rem;
+}
+
+.preset-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-right: 0.2rem;
+}
+
+.preset-chip {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.preset-chip:hover {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: var(--accent-primary);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(59, 130, 246, 0.25);
+}
+
+.protect-active {
+  background: linear-gradient(135deg, rgba(244, 63, 94, 0.08), rgba(168, 85, 247, 0.08)) !important;
+  border: 1px solid rgba(244, 63, 94, 0.4) !important;
+  box-shadow: 0 0 20px rgba(244, 63, 94, 0.12) !important;
+}
+
+.protect-status-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.5rem;
+  background: rgba(244, 63, 94, 0.2);
+  border: 1px solid rgba(244, 63, 94, 0.4);
+  color: #fb7185;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  letter-spacing: 0.05em;
+}
+
+.icon-locked {
+  background: rgba(244, 63, 94, 0.15) !important;
+  border-color: rgba(244, 63, 94, 0.35) !important;
 }
 
 .current-room-banner {
@@ -2845,6 +2947,17 @@ body {
   padding: 0.95rem 1.15rem;
   margin-bottom: 1.25rem;
   gap: 1rem;
+}
+
+.local-banner {
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.08), rgba(59, 130, 246, 0.08)) !important;
+  border: 1px solid rgba(6, 182, 212, 0.3) !important;
+}
+
+.local-icon {
+  background: rgba(6, 182, 212, 0.12) !important;
+  border-color: rgba(6, 182, 212, 0.3) !important;
+  box-shadow: 0 0 15px rgba(6, 182, 212, 0.2);
 }
 
 .current-room-info {
@@ -3204,6 +3317,14 @@ body {
   border-radius: 8px;
   font-size: 0.82rem;
   font-weight: 600;
+  animation: modalShake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes modalShake {
+  10%, 90% { transform: translate3d(-1px, 0, 0); }
+  20%, 80% { transform: translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+  40%, 60% { transform: translate3d(4px, 0, 0); }
 }
 
 .password-input-wrap {

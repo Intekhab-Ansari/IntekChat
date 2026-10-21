@@ -62,6 +62,12 @@ export default function Home() {
         setRoomName(roomParam.trim());
         setActiveTab('chat');
       }
+      const tabParam = params.get('tab');
+      if (tabParam === 'chat' || tabParam === 'drop') {
+        setActiveTab(tabParam);
+      } else if (window.location.hash === '#chat') {
+        setActiveTab('chat');
+      }
     }
   }, []);
 

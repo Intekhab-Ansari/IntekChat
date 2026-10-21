@@ -213,18 +213,44 @@ export default function RoomModal({
                   <span>Random</span>
                 </button>
               </div>
+
+              {/* Quick Presets */}
+              <div className="room-preset-chips">
+                <span className="preset-label">Quick Ideas:</span>
+                {['cyber-vault', 'secret-drop', 'phantom-hub', 'dev-squad', 'stealth-zone'].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    className="preset-chip"
+                    onClick={() => {
+                      sounds.playClick();
+                      const num = Math.floor(100 + Math.random() * 900);
+                      setCreateRoomName(`${preset}-${num}`);
+                    }}
+                  >
+                    #{preset}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Password Protection Toggle */}
-            <div className="password-protect-card">
+            <div className={`password-protect-card ${enablePassword ? 'protect-active' : ''}`}>
               <div className="protect-toggle-header">
                 <div className="protect-title-group">
-                  <div className="protect-icon-circle">
+                  <div className={`protect-icon-circle ${enablePassword ? 'icon-locked' : ''}`}>
                     {enablePassword ? <Lock size={16} className="text-pink" /> : <Unlock size={16} className="text-dim" />}
                   </div>
                   <div>
-                    <span className="protect-title">Password Protection</span>
-                    <span className="protect-subtitle">Require a password for peers to enter & decrypt</span>
+                    <span className="protect-title">
+                      Password Protection
+                      {enablePassword && <span className="protect-status-badge">ACTIVE</span>}
+                    </span>
+                    <span className="protect-subtitle">
+                      {enablePassword 
+                        ? 'Zero-Knowledge PBKDF2 salting enabled' 
+                        : 'Require a password for peers to enter & decrypt'}
+                    </span>
                   </div>
                 </div>
                 <label className="toggle-switch">

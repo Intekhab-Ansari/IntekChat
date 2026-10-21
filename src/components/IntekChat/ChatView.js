@@ -332,6 +332,27 @@ export default function ChatView({
               )}
             </div>
 
+            {/* Quick Presets for Hero */}
+            {heroTab === 'create' && (
+              <div className="room-preset-chips hero-preset-chips">
+                <span className="preset-label">Suggestions:</span>
+                {['quantum-vault', 'stealth-drop', 'cyber-matrix', 'crypto-haven', 'phantom-hub'].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    className="preset-chip"
+                    onClick={() => {
+                      sounds.playClick();
+                      const num = Math.floor(100 + Math.random() * 900);
+                      setHeroRoomName(`${preset}-${num}`);
+                    }}
+                  >
+                    #{preset}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {/* Password Protection for Create Mode */}
             {heroTab === 'create' && (
               <div className="hero-password-box">
