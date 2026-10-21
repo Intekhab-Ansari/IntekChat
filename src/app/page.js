@@ -21,6 +21,7 @@ export default function Home() {
   const [roomPassword, setRoomPassword] = useState('');
   const [isRoomProtected, setIsRoomProtected] = useState(false);
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
+  const [roomModalInitialTab, setRoomModalInitialTab] = useState('create');
   const [isPasswordPromptOpen, setIsPasswordPromptOpen] = useState(false);
   const [passwordPromptError, setPasswordPromptError] = useState('');
   const [pendingRoom, setPendingRoom] = useState('');
@@ -33,7 +34,7 @@ export default function Home() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [soundMuted, setSoundMuted] = useState(false);
-  const [currentTheme, setCurrentTheme] = useState('sapphire'); // 'sapphire' | 'obsidian' | 'amethyst' | 'emerald'
+  const [currentTheme, setCurrentTheme] = useState('sapphire'); // 'sapphire' | 'silk' | 'cyberpunk' | 'amber' | 'amethyst' | 'emerald' | 'obsidian' | 'frost'
 
   const socketRef = useRef(null);
   const webrtcRef = useRef(null);
@@ -48,7 +49,7 @@ export default function Home() {
 
     if (typeof window !== 'undefined') {
       let savedTheme = localStorage.getItem('intekchat_theme') || 'sapphire';
-      const validThemes = ['sapphire', 'frost', 'obsidian', 'amethyst', 'emerald'];
+      const validThemes = ['sapphire', 'silk', 'cyberpunk', 'amber', 'amethyst', 'emerald', 'obsidian', 'frost'];
       if (!validThemes.includes(savedTheme)) {
         savedTheme = 'sapphire';
         localStorage.setItem('intekchat_theme', 'sapphire');
@@ -236,6 +237,27 @@ export default function Home() {
       });
     });
 
+    // Room Details Updated by Host (Renamed or password changed/removed)
+    socket.on('room-details-updated', ({ oldRoom, newRoom, isProtected, message }) => {
+      sounds.playSuccess();
+      setRoomName(newRoom);
+      setIsRoomProtected(isProtected);
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.set('room', newRoom);
+        window.history.pushState({}, '', url.toString());
+      }
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `sys-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          system: true,
+          text: message || `Room details were updated to #${newRoom}`,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+      ]);
+    });
+
     // Fallback Encrypted Relay (in case direct WebRTC P2P channel is blocked)
     socket.on('e2ee-relay', async ({ from, payload, type }) => {
       if (type === 'chat') {
@@ -271,6 +293,16 @@ export default function Home() {
     }
   };
 
+  const handleOpenRoomModal = (tab = null) => {
+    setRoomModalInitialTab(tab || (roomName ? 'edit' : 'create'));
+    setIsRoomModalOpen(true);
+  };
+
+  const handleOpenEditRoom = () => {
+    setRoomModalInitialTab('edit');
+    setIsRoomModalOpen(true);
+  };
+
   // Handle Joining / Creating Room
   const handleCreateOrJoinRoom = (newRoom, password = '') => {
     const cleanRoom = (newRoom || '').trim().toLowerCase();
@@ -289,6 +321,70 @@ export default function Home() {
     }
     setMessages([]);
     sounds.playJoin();
+  };
+
+  // Handle Editing Room Details (Rename, Add Password, Change Password, or Remove Password)
+  const handleEditRoom = async ({ oldRoom, newRoom, currentPassword, newPassword, isRemovingPassword }) => {
+    if (!socketRef.current) throw new Error('Not connected to signaling server');
+
+    const effectiveOldPass = currentPassword || roomPassword || null;
+    let oldPasswordHash = null;
+    if (effectiveOldPass) {
+      oldPasswordHash = await hashPassword(effectiveOldPass);
+    }
+
+    const isProtected = Boolean(!isRemovingPassword && (newPassword || (isRoomProtected && !isRemovingPassword)));
+    let newPasswordHash = null;
+    if (newPassword && !isRemovingPassword) {
+      newPasswordHash = await hashPassword(newPassword);
+    } else if (isProtected && effectiveOldPass) {
+      newPasswordHash = oldPasswordHash;
+    }
+
+    return new Promise((resolve) => {
+      socketRef.current.emit(
+        'edit-room',
+        {
+          oldRoom,
+          newRoom,
+          oldPasswordHash,
+          newPasswordHash,
+          isProtected
+        },
+        (res) => {
+          if (res && res.success) {
+            const cleanNew = res.newRoom;
+            setRoomName(cleanNew);
+            setIsRoomProtected(res.isProtected);
+            if (isRemovingPassword) {
+              setRoomPassword('');
+            } else if (newPassword) {
+              setRoomPassword(newPassword);
+            }
+
+            if (typeof window !== 'undefined') {
+              const url = new URL(window.location.href);
+              url.searchParams.set('room', cleanNew);
+              window.history.pushState({}, '', url.toString());
+            }
+
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: `sys-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                system: true,
+                text: `Room details updated to #${cleanNew} (${res.isProtected ? 'Password Protected 🔒' : 'Open E2EE 🔓'})`,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              }
+            ]);
+            sounds.playSuccess();
+            resolve({ success: true, newRoom: cleanNew });
+          } else {
+            resolve({ success: false, error: res?.error || 'Failed to update room.' });
+          }
+        }
+      );
+    });
   };
 
   const handleLeaveRoom = () => {
@@ -478,7 +574,7 @@ export default function Home() {
         currentTheme={currentTheme}
         onSelectTheme={handleSelectTheme}
         isRoomProtected={isRoomProtected}
-        onOpenRoomModal={() => setIsRoomModalOpen(true)}
+        onOpenRoomModal={() => handleOpenRoomModal()}
       />
 
       {/* Main View Area */}
@@ -505,7 +601,8 @@ export default function Home() {
             userProfile={userProfile}
             onJoinRoom={handleCreateOrJoinRoom}
             isRoomProtected={isRoomProtected}
-            onOpenRoomModal={() => setIsRoomModalOpen(true)}
+            onOpenRoomModal={() => handleOpenRoomModal()}
+            onOpenEditRoom={handleOpenEditRoom}
           />
         )}
       </main>
@@ -531,7 +628,7 @@ export default function Home() {
         onClose={() => setReceivedFileModal(null)}
       />
 
-      {/* Room Manager Modal (Create Unique Room, Password Protection, Join & Leave) */}
+      {/* Room Manager Modal (Create Unique Room, Password Protection, Join, Edit & Leave) */}
       <RoomModal
         isOpen={isRoomModalOpen}
         onClose={() => setIsRoomModalOpen(false)}
@@ -540,6 +637,8 @@ export default function Home() {
         onCreateRoom={handleCreateOrJoinRoom}
         onJoinRoom={handleCreateOrJoinRoom}
         onLeaveRoom={handleLeaveRoom}
+        onEditRoom={handleEditRoom}
+        initialTab={roomModalInitialTab}
       />
 
       {/* Password Prompt Modal for Unlocking Protected Rooms */}

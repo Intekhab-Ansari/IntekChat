@@ -39,11 +39,14 @@ export default function Navbar({
   const avatarStyle = getAvatarColor(userProfile?.colorIndex || 0);
 
   const THEMES = [
+    { id: 'silk', name: 'Silk Daylight', color: '#7c3aed', desc: 'Executive Clean Light Mode' },
     { id: 'sapphire', name: 'Midnight Sapphire', color: '#3b82f6', desc: 'Deep Slate & Sapphire' },
-    { id: 'frost', name: 'Nordic Frost', color: '#38bdf8', desc: 'Deep Titanium & Arctic Ice' },
-    { id: 'obsidian', name: 'Obsidian Stealth', color: '#e4e4e7', desc: 'Pure Carbon & White' },
+    { id: 'cyberpunk', name: 'Neon Cyberpunk', color: '#f43f5e', desc: 'Electric Tokyo Synthwave' },
+    { id: 'amber', name: 'Sunset Amber', color: '#f59e0b', desc: 'Molten Ember & Terracotta' },
     { id: 'amethyst', name: 'Royal Amethyst', color: '#a855f7', desc: 'Midnight Indigo & Violet' },
-    { id: 'emerald', name: 'Cyber Jade', color: '#00f59b', desc: 'Onyx Carbon & Luminous Jade' }
+    { id: 'emerald', name: 'Cyber Jade', color: '#00f59b', desc: 'Luminous Matrix Obsidian' },
+    { id: 'obsidian', name: 'Obsidian Stealth', color: '#e4e4e7', desc: 'Pure Carbon & White' },
+    { id: 'frost', name: 'Nordic Frost', color: '#38bdf8', desc: 'Deep Titanium & Arctic Ice' }
   ];
 
   const handleCopyLink = () => {

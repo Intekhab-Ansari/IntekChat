@@ -32,7 +32,8 @@ import {
   Info,
   Key,
   DatabaseZap,
-  Paintbrush
+  Paintbrush,
+  Edit3
 } from 'lucide-react';
 import { formatBytes, getAvatarColor } from '@/lib/peer';
 import { sounds } from '@/lib/sound';
@@ -51,7 +52,8 @@ export default function ChatView({
   userProfile,
   onJoinRoom,
   isRoomProtected = false,
-  onOpenRoomModal
+  onOpenRoomModal,
+  onOpenEditRoom
 }) {
   const [inputText, setInputText] = useState('');
   const [imageMode, setImageMode] = useState('permanent');
@@ -479,6 +481,14 @@ export default function ChatView({
           </div>
           <button 
             type="button"
+            className="sidebar-edit-btn"
+            onClick={onOpenEditRoom || onOpenRoomModal}
+            title="Edit Room ID and Password Details"
+          >
+            <Edit3 size={14} />
+          </button>
+          <button 
+            type="button"
             className="sidebar-toggle-btn"
             onClick={() => setIsSidebarOpen(false)}
             title="Collapse Sidebar"
@@ -623,6 +633,17 @@ export default function ChatView({
               <span className="room-title">#{roomName}</span>
               {isRoomProtected && <span className="room-protected-pill">Protected</span>}
             </div>
+
+            <button 
+              type="button" 
+              className="btn-edit-room-quick"
+              onClick={onOpenEditRoom || onOpenRoomModal}
+              title="Edit Room ID and Password Protection"
+            >
+              <Edit3 size={13} />
+              <span>Edit Room</span>
+            </button>
+
             <span className="chat-peer-status">
               {peerCount} active {peerCount === 1 ? 'peer' : 'peers'} connected
             </span>
@@ -734,6 +755,18 @@ export default function ChatView({
           )}
 
           {messages.map((msg) => {
+            if (msg.system) {
+              return (
+                <div key={msg.id} className="message-system-row">
+                  <div className="message-system-pill">
+                    <Sparkles size={13} className="text-accent" />
+                    <span>{msg.text}</span>
+                    <span className="system-time">{msg.time}</span>
+                  </div>
+                </div>
+              );
+            }
+
             const isSelf = msg.senderId === userProfile?.id;
             const avatar = getAvatarColor(msg.senderColor || 0);
 

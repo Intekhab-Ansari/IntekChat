@@ -201,6 +201,93 @@ app.prepare().then(() => {
       }
     });
 
+    // Edit Room Details (Rename room, add/change/remove password)
+    socket.on('edit-room', ({ oldRoom, newRoom, oldPasswordHash, newPasswordHash, isProtected }, callback) => {
+      const cleanOld = (oldRoom || '').trim().toLowerCase();
+      const cleanNew = (newRoom || '').trim().toLowerCase();
+
+      if (!cleanOld || !cleanNew) {
+        if (typeof callback === 'function') {
+          callback({ success: false, error: 'Both current and new room names are required.' });
+        }
+        return;
+      }
+
+      const oldKey = `room:${cleanOld}`;
+      const newKey = `room:${cleanNew}`;
+      const existingMeta = roomsMeta.get(oldKey);
+
+      // Verify authorization if old room was password-protected
+      if (existingMeta && existingMeta.isProtected) {
+        if (!oldPasswordHash || oldPasswordHash !== existingMeta.passwordHash) {
+          if (typeof callback === 'function') {
+            callback({ success: false, error: 'Incorrect existing password. Authorization failed.' });
+          }
+          return;
+        }
+      }
+
+      // Check conflict if changing room name
+      if (cleanNew !== cleanOld && roomsMeta.has(newKey)) {
+        const targetMeta = roomsMeta.get(newKey);
+        const targetPeers = rooms.get(newKey);
+        if (targetMeta && targetPeers && targetPeers.size > 0) {
+          if (typeof callback === 'function') {
+            callback({ success: false, error: `Room #${cleanNew} is already occupied by other peers.` });
+          }
+          return;
+        }
+      }
+
+      // Build updated metadata
+      const updatedMeta = {
+        passwordHash: isProtected ? newPasswordHash : null,
+        isProtected: Boolean(isProtected && newPasswordHash),
+        roomName: cleanNew,
+        createdAt: existingMeta?.createdAt || Date.now(),
+        expiresAt: null
+      };
+
+      // Remove old meta, set new meta
+      roomsMeta.delete(oldKey);
+      roomsMeta.set(newKey, updatedMeta);
+
+      // Migrate active peers in socket room
+      const oldPeersMap = rooms.get(oldKey) || new Map();
+      rooms.delete(oldKey);
+      rooms.set(newKey, oldPeersMap);
+
+      // Move connected sockets from oldKey to newKey
+      for (const [peerSocketId] of oldPeersMap.entries()) {
+        const peerSocket = io.sockets.sockets.get(peerSocketId);
+        if (peerSocket) {
+          peerSocket.leave(oldKey);
+          peerSocket.join(newKey);
+        }
+      }
+
+      if (currentRoom === oldKey) {
+        currentRoom = newKey;
+      }
+
+      // Broadcast room update to all peers in the room
+      io.to(newKey).emit('room-details-updated', {
+        oldRoom: cleanOld,
+        newRoom: cleanNew,
+        isProtected: updatedMeta.isProtected,
+        message: `Room details updated: #${cleanOld} -> #${cleanNew}`
+      });
+
+      if (typeof callback === 'function') {
+        callback({
+          success: true,
+          oldRoom: cleanOld,
+          newRoom: cleanNew,
+          isProtected: updatedMeta.isProtected
+        });
+      }
+    });
+
     // Profile update (name, avatar)
     socket.on('update-profile', (updatedInfo) => {
       if (currentRoom && rooms.has(currentRoom)) {

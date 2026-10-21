@@ -1,6 +1,6 @@
 /* ==========================================================================
-   INTEKCHAT: Next-Gen Curated Theme System
-   Themes: Midnight Sapphire (Default) | Nordic Frost | Obsidian Stealth | Royal Amethyst | Cyber Jade
+   INTEKCHAT: Curated Theme System (Human-Crafted & Bespoke)
+   Themes: Silk Daylight (Light) | Neon Cyberpunk | Sunset Amber | Royal Amethyst | Cyber Jade | Midnight Sapphire | Obsidian Carbon
    ========================================================================== */
 
 :root,
@@ -14,9 +14,9 @@
   --bg-bubble-self: linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%);
   --bg-bubble-peer: rgba(16, 26, 48, 0.85);
 
-  --border-subtle: rgba(59, 130, 246, 0.12);
-  --border-bright: rgba(59, 130, 246, 0.25);
-  --border-accent: rgba(59, 130, 246, 0.48);
+  --border-subtle: rgba(59, 130, 246, 0.14);
+  --border-bright: rgba(59, 130, 246, 0.28);
+  --border-accent: rgba(59, 130, 246, 0.5);
 
   --text-main: #f8fafc;
   --text-muted: #94a3b8;
@@ -33,48 +33,170 @@
   --amber: #f59e0b;
 }
 
-[data-theme="frost"] {
-  --bg-page: #070c14;
-  --bg-sidebar: #0b1320;
-  --bg-surface: #101d30;
-  --bg-card: rgba(16, 29, 48, 0.75);
-  --bg-card-hover: rgba(24, 42, 68, 0.9);
-  --bg-input: rgba(8, 14, 24, 0.95);
-  --bg-bubble-self: linear-gradient(135deg, #0284c7 0%, #0ea5e9 50%, #38bdf8 100%);
-  --bg-bubble-peer: rgba(16, 29, 48, 0.85);
+/* 1. Silk Daylight - Executive Clean Modern Light Mode */
+[data-theme="silk"] {
+  --bg-page: #f8fafc;
+  --bg-sidebar: #ffffff;
+  --bg-surface: #f1f5f9;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f8fafc;
+  --bg-input: #ffffff;
+  --bg-bubble-self: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%);
+  --bg-bubble-peer: #ffffff;
 
-  --border-subtle: rgba(56, 189, 248, 0.12);
-  --border-bright: rgba(56, 189, 248, 0.28);
-  --border-accent: rgba(56, 189, 248, 0.5);
+  --border-subtle: rgba(148, 163, 184, 0.32);
+  --border-bright: rgba(124, 58, 237, 0.35);
+  --border-accent: rgba(124, 58, 237, 0.65);
 
-  --text-main: #f0f9ff;
-  --text-muted: #7dd3fc;
-  --text-dim: #0284c7;
+  --text-main: #0f172a;
+  --text-muted: #334155;
+  --text-dim: #64748b;
 
-  --accent-primary: #0ea5e9;
-  --accent-bright: #38bdf8;
-  --accent-glow: rgba(14, 165, 233, 0.4);
+  --accent-primary: #7c3aed;
+  --accent-bright: #6d28d9;
+  --accent-glow: rgba(124, 58, 237, 0.2);
+
+  --cyan: #0284c7;
+  --emerald: #059669;
+  --purple: #7c3aed;
+  --pink: #e11d48;
+  --amber: #d97706;
+}
+
+/* 2. Neon Cyberpunk - Electric Tokyo Synthwave */
+[data-theme="cyberpunk"] {
+  --bg-page: #0a0618;
+  --bg-sidebar: #120a28;
+  --bg-surface: #1a0f38;
+  --bg-card: rgba(26, 15, 56, 0.85);
+  --bg-card-hover: rgba(38, 22, 78, 0.95);
+  --bg-input: rgba(18, 10, 40, 0.95);
+  --bg-bubble-self: linear-gradient(135deg, #f43f5e 0%, #ec4899 50%, #a855f7 100%);
+  --bg-bubble-peer: rgba(26, 15, 56, 0.9);
+
+  --border-subtle: rgba(244, 63, 94, 0.18);
+  --border-bright: rgba(244, 63, 94, 0.38);
+  --border-accent: rgba(5, 217, 232, 0.65);
+
+  --text-main: #ffffff;
+  --text-muted: #f472b6;
+  --text-dim: #c084fc;
+
+  --accent-primary: #f43f5e;
+  --accent-bright: #05d9e8;
+  --accent-glow: rgba(244, 63, 94, 0.45);
+
+  --cyan: #05d9e8;
+  --emerald: #00f5d4;
+  --purple: #a855f7;
+  --pink: #f43f5e;
+  --amber: #facc15;
+}
+
+/* 3. Sunset Amber - Molten Ember & Terracotta Warmth */
+[data-theme="amber"] {
+  --bg-page: #0f0a06;
+  --bg-sidebar: #160f09;
+  --bg-surface: #22160d;
+  --bg-card: rgba(34, 22, 13, 0.85);
+  --bg-card-hover: rgba(48, 30, 18, 0.95);
+  --bg-input: rgba(22, 15, 9, 0.95);
+  --bg-bubble-self: linear-gradient(135deg, #ea580c 0%, #f59e0b 50%, #fbbf24 100%);
+  --bg-bubble-peer: rgba(34, 22, 13, 0.9);
+
+  --border-subtle: rgba(245, 158, 11, 0.18);
+  --border-bright: rgba(245, 158, 11, 0.38);
+  --border-accent: rgba(245, 158, 11, 0.65);
+
+  --text-main: #fffbeb;
+  --text-muted: #fcd34d;
+  --text-dim: #b45309;
+
+  --accent-primary: #f59e0b;
+  --accent-bright: #fbbf24;
+  --accent-glow: rgba(245, 158, 11, 0.45);
 
   --cyan: #38bdf8;
   --emerald: #10b981;
-  --purple: #818cf8;
+  --purple: #c084fc;
   --pink: #f43f5e;
   --amber: #f59e0b;
 }
 
+/* 4. Royal Amethyst - Imperial Velvet & Orchid Glow */
+[data-theme="amethyst"] {
+  --bg-page: #0a0714;
+  --bg-sidebar: #100b20;
+  --bg-surface: #17102e;
+  --bg-card: rgba(23, 16, 46, 0.85);
+  --bg-card-hover: rgba(35, 24, 70, 0.95);
+  --bg-input: rgba(12, 8, 24, 0.95);
+  --bg-bubble-self: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 50%, #c084fc 100%);
+  --bg-bubble-peer: rgba(23, 16, 46, 0.9);
+
+  --border-subtle: rgba(168, 85, 247, 0.18);
+  --border-bright: rgba(168, 85, 247, 0.35);
+  --border-accent: rgba(168, 85, 247, 0.58);
+
+  --text-main: #faf5ff;
+  --text-muted: #c084fc;
+  --text-dim: #7e22ce;
+
+  --accent-primary: #a855f7;
+  --accent-bright: #c084fc;
+  --accent-glow: rgba(168, 85, 247, 0.45);
+
+  --cyan: #22d3ee;
+  --emerald: #10b981;
+  --purple: #c084fc;
+  --pink: #f43f5e;
+  --amber: #f59e0b;
+}
+
+/* 5. Cyber Jade - Luminous Matrix Obsidian */
+[data-theme="emerald"] {
+  --bg-page: #050d08;
+  --bg-sidebar: #09160e;
+  --bg-surface: #0e2216;
+  --bg-card: rgba(14, 34, 22, 0.85);
+  --bg-card-hover: rgba(20, 48, 32, 0.95);
+  --bg-input: rgba(8, 18, 12, 0.95);
+  --bg-bubble-self: linear-gradient(135deg, #059669 0%, #10b981 50%, #00f59b 100%);
+  --bg-bubble-peer: rgba(14, 34, 22, 0.9);
+
+  --border-subtle: rgba(0, 245, 155, 0.16);
+  --border-bright: rgba(0, 245, 155, 0.32);
+  --border-accent: rgba(0, 245, 155, 0.55);
+
+  --text-main: #f0fdf4;
+  --text-muted: #99f6e4;
+  --text-dim: #34d399;
+
+  --accent-primary: #10b981;
+  --accent-bright: #00f59b;
+  --accent-glow: rgba(0, 245, 155, 0.45);
+
+  --cyan: #22d3ee;
+  --emerald: #00f59b;
+  --purple: #a855f7;
+  --pink: #f43f5e;
+  --amber: #fbbf24;
+}
+
+/* 6. Obsidian Stealth - Minimal Carbon Steel */
 [data-theme="obsidian"] {
   --bg-page: #08080a;
   --bg-sidebar: #0e0e12;
   --bg-surface: #141419;
-  --bg-card: rgba(20, 20, 25, 0.75);
-  --bg-card-hover: rgba(28, 28, 35, 0.9);
+  --bg-card: rgba(20, 20, 25, 0.85);
+  --bg-card-hover: rgba(28, 28, 35, 0.95);
   --bg-input: rgba(12, 12, 15, 0.95);
   --bg-bubble-self: linear-gradient(135deg, #27272a 0%, #3f3f46 100%);
-  --bg-bubble-peer: rgba(24, 24, 29, 0.85);
+  --bg-bubble-peer: rgba(24, 24, 29, 0.9);
 
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-bright: rgba(255, 255, 255, 0.2);
-  --border-accent: rgba(255, 255, 255, 0.35);
+  --border-subtle: rgba(255, 255, 255, 0.1);
+  --border-bright: rgba(255, 255, 255, 0.22);
+  --border-accent: rgba(255, 255, 255, 0.4);
 
   --text-main: #ffffff;
   --text-muted: #a1a1aa;
@@ -91,62 +213,34 @@
   --amber: #f59e0b;
 }
 
-[data-theme="amethyst"] {
-  --bg-page: #0a0714;
-  --bg-sidebar: #100b20;
-  --bg-surface: #17102e;
-  --bg-card: rgba(23, 16, 46, 0.75);
-  --bg-card-hover: rgba(35, 24, 70, 0.9);
-  --bg-input: rgba(12, 8, 24, 0.95);
-  --bg-bubble-self: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 50%, #c084fc 100%);
-  --bg-bubble-peer: rgba(23, 16, 46, 0.85);
+/* 7. Nordic Frost - Deep Titanium Ice */
+[data-theme="frost"] {
+  --bg-page: #070c14;
+  --bg-sidebar: #0b1320;
+  --bg-surface: #101d30;
+  --bg-card: rgba(16, 29, 48, 0.8);
+  --bg-card-hover: rgba(24, 42, 68, 0.92);
+  --bg-input: rgba(8, 14, 24, 0.95);
+  --bg-bubble-self: linear-gradient(135deg, #0284c7 0%, #0ea5e9 50%, #38bdf8 100%);
+  --bg-bubble-peer: rgba(16, 29, 48, 0.88);
 
-  --border-subtle: rgba(168, 85, 247, 0.14);
-  --border-bright: rgba(168, 85, 247, 0.3);
-  --border-accent: rgba(168, 85, 247, 0.52);
+  --border-subtle: rgba(56, 189, 248, 0.14);
+  --border-bright: rgba(56, 189, 248, 0.3);
+  --border-accent: rgba(56, 189, 248, 0.55);
 
-  --text-main: #faf5ff;
-  --text-muted: #c084fc;
-  --text-dim: #7e22ce;
+  --text-main: #f0f9ff;
+  --text-muted: #7dd3fc;
+  --text-dim: #0284c7;
 
-  --accent-primary: #a855f7;
-  --accent-bright: #c084fc;
-  --accent-glow: rgba(168, 85, 247, 0.42);
+  --accent-primary: #0ea5e9;
+  --accent-bright: #38bdf8;
+  --accent-glow: rgba(14, 165, 233, 0.42);
 
-  --cyan: #22d3ee;
+  --cyan: #38bdf8;
   --emerald: #10b981;
-  --purple: #c084fc;
+  --purple: #818cf8;
   --pink: #f43f5e;
   --amber: #f59e0b;
-}
-
-[data-theme="emerald"] {
-  --bg-page: #060c09;
-  --bg-sidebar: #0a1410;
-  --bg-surface: #0f1f18;
-  --bg-card: rgba(15, 31, 24, 0.75);
-  --bg-card-hover: rgba(22, 45, 35, 0.9);
-  --bg-input: rgba(8, 16, 12, 0.95);
-  --bg-bubble-self: linear-gradient(135deg, #059669 0%, #10b981 50%, #00f59b 100%);
-  --bg-bubble-peer: rgba(15, 31, 24, 0.85);
-
-  --border-subtle: rgba(0, 245, 155, 0.12);
-  --border-bright: rgba(0, 245, 155, 0.28);
-  --border-accent: rgba(0, 245, 155, 0.5);
-
-  --text-main: #f0fdf4;
-  --text-muted: #99f6e4;
-  --text-dim: #34d399;
-
-  --accent-primary: #10b981;
-  --accent-bright: #00f59b;
-  --accent-glow: rgba(0, 245, 155, 0.4);
-
-  --cyan: #22d3ee;
-  --emerald: #00f59b;
-  --purple: #a855f7;
-  --pink: #f43f5e;
-  --amber: #fbbf24;
 }
 
 /* Reset */
@@ -2453,6 +2547,15 @@ body {
   background: var(--bg-sidebar);
 }
 
+.room-modal-card {
+  max-width: 520px;
+  width: 100%;
+  max-height: 88vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  background: var(--bg-sidebar);
+}
+
 .modal-title-badge {
   display: inline-flex;
   align-items: center;
@@ -2682,14 +2785,14 @@ body {
 }
 
 .hero-tab:hover {
-  color: #fff;
+  color: var(--text-main);
 }
 
 .hero-tab.hero-tab-active {
   background: var(--bg-card);
-  color: #fff;
+  color: var(--accent-bright);
   border: 1px solid var(--border-bright);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
 .btn-hero-random {
@@ -2757,7 +2860,7 @@ body {
   gap: 0.45rem;
   font-size: 0.88rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-main);
 }
 
 .hero-checkbox-desc {
@@ -3423,5 +3526,365 @@ body {
   .chat-input-wrapper {
     padding: 0.75rem 1rem 1rem 1rem;
   }
+}
+
+/* ==========================================================================
+   EDIT ROOM DETAILS & ROOM MANAGEMENT STYLES
+   ========================================================================== */
+.btn-edit-room-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.8rem;
+  border-radius: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-bright);
+  color: var(--accent-bright);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-edit-room-toggle:hover,
+.btn-active-edit {
+  background: var(--accent-primary) !important;
+  color: #fff !important;
+  border-color: var(--accent-bright) !important;
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+
+.btn-edit-room-quick {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 6px;
+  background: rgba(124, 58, 237, 0.12);
+  border: 1px solid rgba(124, 58, 237, 0.35);
+  color: var(--accent-bright);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-edit-room-quick:hover {
+  background: var(--accent-primary);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.sidebar-edit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  color: var(--accent-bright);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sidebar-edit-btn:hover {
+  background: var(--accent-primary);
+  color: #fff;
+  border-color: var(--accent-bright);
+}
+
+.tab-chip-active {
+  font-size: 0.65rem;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  background: var(--accent-primary);
+  color: #fff;
+  font-weight: 800;
+  text-transform: uppercase;
+  margin-left: 0.35rem;
+  letter-spacing: 0.05em;
+}
+
+.room-form-alert {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.alert-error {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+  animation: modalShake 0.4s ease both;
+}
+
+.alert-success {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #6ee7b7;
+}
+
+.edit-protected-box {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-bright);
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.protected-banner-status {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  background: rgba(244, 63, 94, 0.08);
+  border: 1px solid rgba(244, 63, 94, 0.25);
+}
+
+.status-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.status-meta-title {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.status-meta-sub {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.edit-action-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.edit-action-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+@media (max-width: 600px) {
+  .edit-action-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.edit-action-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.6rem 0.5rem;
+  border-radius: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.edit-action-pill:hover {
+  background: var(--bg-surface);
+  border-color: var(--border-bright);
+  color: var(--text-main);
+}
+
+.edit-action-pill.pill-selected {
+  background: var(--accent-primary);
+  border-color: var(--accent-bright);
+  color: #fff;
+  box-shadow: 0 0 14px var(--accent-glow);
+}
+
+.password-warning-box {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.spin-animation {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+
+/* System Message in Chat */
+.message-system-row {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin: 0.75rem 0;
+}
+
+.message-system-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.95rem;
+  border-radius: 9999px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-bright);
+  color: var(--text-main);
+  font-size: 0.78rem;
+  font-weight: 700;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+}
+
+.system-time {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  margin-left: 0.25rem;
+  font-family: var(--font-mono);
+}
+
+/* ==========================================================================
+   SILK DAYLIGHT THEME: EXECUTIVE LIGHT MODE REFINEMENTS
+   ========================================================================== */
+[data-theme="silk"] {
+  color-scheme: light;
+}
+
+[data-theme="silk"] body {
+  background-image: linear-gradient(to bottom, #f8fafc 0%, #edf2f7 100%);
+}
+
+[data-theme="silk"] .navbar {
+  background: #ffffff;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.3);
+  box-shadow: 0 4px 25px rgba(15, 23, 42, 0.05);
+}
+
+[data-theme="silk"] .logo-title {
+  color: #0f172a !important;
+}
+
+[data-theme="silk"] .nav-tabs {
+  background: #f1f5f9;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+[data-theme="silk"] .nav-tab {
+  color: #475569;
+}
+
+[data-theme="silk"] .nav-tab.active {
+  background: #ffffff;
+  color: #7c3aed;
+  border-color: rgba(124, 58, 237, 0.3);
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.15);
+}
+
+[data-theme="silk"] .modal-backdrop {
+  background: rgba(15, 23, 42, 0.45);
+}
+
+[data-theme="silk"] .modal-card {
+  background: #ffffff;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  box-shadow: 0 25px 60px rgba(15, 23, 42, 0.15);
+  color: #0f172a;
+}
+
+[data-theme="silk"] .modal-title-group h3,
+[data-theme="silk"] .current-room-name,
+[data-theme="silk"] .file-name,
+[data-theme="silk"] .wallpaper-name,
+[data-theme="silk"] .profile-name {
+  color: #0f172a !important;
+}
+
+[data-theme="silk"] .modal-close-btn:hover {
+  color: #0f172a;
+}
+
+[data-theme="silk"] .modal-text-input,
+[data-theme="silk"] .room-input-row,
+[data-theme="silk"] .password-input-wrap,
+[data-theme="silk"] .chat-input-bar {
+  background: #ffffff;
+  border-color: rgba(148, 163, 184, 0.4);
+  color: #0f172a;
+}
+
+[data-theme="silk"] .room-name-input,
+[data-theme="silk"] .password-text-input {
+  color: #0f172a !important;
+}
+
+[data-theme="silk"] .message-peer .msg-bubble {
+  background: #ffffff;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  color: #0f172a;
+  box-shadow: 0 4px 15px rgba(15, 23, 42, 0.05);
+}
+
+[data-theme="silk"] .message-peer .msg-text {
+  color: #0f172a !important;
+}
+
+[data-theme="silk"] .chat-room-sidebar {
+  background: #ffffff;
+  border-right: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+[data-theme="silk"] .chat-header {
+  background: #ffffff;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+[data-theme="silk"] .security-specs-card,
+[data-theme="silk"] .current-room-banner,
+[data-theme="silk"] .wallpaper-controls-box {
+  background: #f8fafc;
+  border-color: rgba(148, 163, 184, 0.35);
+}
+
+[data-theme="silk"] .theme-dropdown-menu {
+  background: #ffffff;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  box-shadow: 0 15px 45px rgba(15, 23, 42, 0.15);
+}
+
+[data-theme="silk"] .theme-item-name {
+  color: #0f172a !important;
+}
+
+[data-theme="silk"] .btn-secondary {
+  background: #ffffff;
+  border-color: rgba(148, 163, 184, 0.4);
+  color: #0f172a;
+}
+
+[data-theme="silk"] .btn-secondary:hover {
+  background: #f1f5f9;
 }
 
