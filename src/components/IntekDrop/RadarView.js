@@ -224,6 +224,21 @@ export default function RadarView({
         );
       })}
 
+      {/* Quick Drop Action Bar when peers are detected */}
+      {peers.length > 0 && (
+        <div className="radar-quick-send-bar">
+          <button 
+            type="button" 
+            className="btn-radar-quick-send"
+            onClick={() => handlePeerClick(peers[0])}
+            title="Send files to discovered peers"
+          >
+            <UploadCloud size={17} />
+            <span>Drop File to {peers.length === 1 ? peers[0].name : `${peers.length} Devices`}</span>
+          </button>
+        </div>
+      )}
+
       {/* Empty State when no peers on radar */}
       {peers.length === 0 && (
         <div className="radar-empty-state">

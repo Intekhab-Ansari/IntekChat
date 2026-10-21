@@ -337,7 +337,8 @@ export default function RoomModal({
               }}
             >
               <Edit3 size={15} />
-              <span>Edit Room Details</span>
+              <span className="desktop-tab-label">Edit Room Details</span>
+              <span className="mobile-tab-label">Edit</span>
               <span className="tab-chip-active">Active</span>
             </button>
           )}
@@ -351,7 +352,8 @@ export default function RoomModal({
             }}
           >
             <Sparkles size={15} />
-            <span>Create New Room</span>
+            <span className="desktop-tab-label">Create New Room</span>
+            <span className="mobile-tab-label">Create</span>
           </button>
 
           <button
@@ -363,7 +365,8 @@ export default function RoomModal({
             }}
           >
             <ArrowRight size={15} />
-            <span>Join Existing Room</span>
+            <span className="desktop-tab-label">Join Existing Room</span>
+            <span className="mobile-tab-label">Join</span>
           </button>
         </div>
 

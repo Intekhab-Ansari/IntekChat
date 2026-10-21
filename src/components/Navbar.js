@@ -127,9 +127,14 @@ export default function Navbar({
           )}
           <span className="peer-badge" title="Active participants in real time">
             <span className="realtime-live-dot" />
-            {roomName 
-              ? (totalParticipants <= 1 ? '1 in room (You)' : `${totalParticipants} in room`) 
-              : `${peerCount} ${peerCount === 1 ? 'peer' : 'peers'}`}
+            <span className="desktop-peer-text">
+              {roomName 
+                ? (totalParticipants <= 1 ? '1 in room (You)' : `${totalParticipants} in room`) 
+                : `${peerCount} ${peerCount === 1 ? 'peer' : 'peers'}`}
+            </span>
+            <span className="mobile-peer-badge-count">
+              {roomName ? totalParticipants : peerCount}
+            </span>
           </span>
         </button>
 
@@ -155,7 +160,7 @@ export default function Navbar({
         </button>
 
         <button 
-          className="icon-btn" 
+          className="icon-btn mobile-hide-btn" 
           onClick={handleCopyLink} 
           title="Copy Invitation Link"
           aria-label="Copy Link"
@@ -164,7 +169,7 @@ export default function Navbar({
         </button>
 
         {/* Theme Selector Dropdown */}
-        <div className="theme-selector-wrap">
+        <div className="theme-selector-wrap mobile-hide-btn">
           <button 
             className="icon-btn" 
             onClick={() => setShowThemePicker(!showThemePicker)} 
@@ -200,7 +205,7 @@ export default function Navbar({
 
         {/* Sound Toggle */}
         <button 
-          className="icon-btn" 
+          className="icon-btn mobile-hide-btn" 
           onClick={onToggleSound} 
           title={soundMuted ? 'Unmute Audio Chimes' : 'Mute Audio Chimes'}
           aria-label="Toggle Sound"

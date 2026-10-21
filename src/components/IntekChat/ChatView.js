@@ -780,10 +780,10 @@ export default function ChatView({
           />
         )}
 
-        {/* Security Banner */}
         <div className="security-banner">
-          <ShieldCheck size={14} className="text-cyan" />
-          <span>End-to-End Encrypted (AES-256-GCM) • Direct P2P Channels • Zero Server Logs</span>
+          <ShieldCheck size={14} className="text-cyan flex-shrink-0" />
+          <span className="desktop-e2ee-text">End-to-End Encrypted (AES-256-GCM) • Direct P2P Channels • Zero Server Logs</span>
+          <span className="mobile-e2ee-text">End-to-End Encrypted (AES-256-GCM)</span>
         </div>
 
         {/* Messages Feed Container */}

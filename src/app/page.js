@@ -38,7 +38,12 @@ export default function Home() {
   const [soundMuted, setSoundMuted] = useState(false);
   const [currentTheme, setCurrentTheme] = useState('sapphire'); // 'sapphire' | 'silk' | 'cyberpunk' | 'amber' | 'amethyst' | 'emerald' | 'obsidian' | 'frost'
   const [signalingError, setSignalingError] = useState(false);
-  const [dismissSignalingBanner, setDismissSignalingBanner] = useState(false);
+  const [dismissSignalingBanner, setDismissSignalingBanner] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('intekchat_dismiss_signal') === 'true';
+    }
+    return false;
+  });
 
   const socketRef = useRef(null);
   const webrtcRef = useRef(null);
@@ -647,16 +652,19 @@ export default function Home() {
       {signalingError && !dismissSignalingBanner && (
         <div className="signaling-status-banner">
           <div className="signaling-banner-left">
-            <Radio size={15} className="text-amber animate-pulse" />
+            <Radio size={14} className="text-amber animate-pulse flex-shrink-0" />
             <span>
-              <strong>Signaling Server Offline:</strong> Vercel serverless mode does not run persistent WebSockets. To connect peers across the web, deploy the signaling server (e.g. Render/Railway) or test via local Wi-Fi: <code>http://192.168.1.132:3000</code>.
+              <strong>WebSockets Offline on Vercel:</strong> Test via local Wi-Fi: <code>http://192.168.1.132:3000</code> or deploy on Render.
             </span>
           </div>
           <div className="signaling-banner-actions">
             <button 
               type="button" 
               className="btn-close-signaling-banner"
-              onClick={() => setDismissSignalingBanner(true)}
+              onClick={() => {
+                setDismissSignalingBanner(true);
+                try { sessionStorage.setItem('intekchat_dismiss_signal', 'true'); } catch {}
+              }}
               aria-label="Dismiss banner"
             >
               <X size={15} />
