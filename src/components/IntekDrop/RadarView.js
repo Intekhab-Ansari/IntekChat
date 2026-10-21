@@ -14,7 +14,9 @@ import {
   FileText,
   Share2,
   QrCode,
-  Zap
+  Zap,
+  Radio,
+  Check
 } from 'lucide-react';
 import { getAvatarColor, formatBytes } from '@/lib/peer';
 import { sounds } from '@/lib/sound';
@@ -31,8 +33,21 @@ export default function RadarView({
   const [selectedPeer, setSelectedPeer] = useState(null);
   const [dragOverPeerId, setDragOverPeerId] = useState(null);
   const [isDraggingGlobal, setIsDraggingGlobal] = useState(false);
+  const [isTipDismissed, setIsTipDismissed] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
   const fileInputRef = useRef(null);
   const targetPeerRef = useRef(null);
+
+  const handleShareLink = () => {
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', 'drop');
+      navigator.clipboard.writeText(url.toString());
+      setCopiedLink(true);
+      sounds.playMessage();
+      setTimeout(() => setCopiedLink(false), 2500);
+    }
+  };
 
   const getDeviceIcon = (deviceType) => {
     switch (deviceType) {
@@ -145,7 +160,7 @@ export default function RadarView({
             <span className="self-name">{userProfile?.name}</span>
             <span className="self-status">
               <span className="pulse-dot" />
-              {roomName ? `Room #${roomName}` : 'Local Wi-Fi Network'}
+              <span>{peers.length > 0 ? `${peers.length} Device${peers.length > 1 ? 's' : ''} Nearby` : 'Radar Active • P2P Ready'}</span>
             </span>
           </div>
         </div>
@@ -239,36 +254,59 @@ export default function RadarView({
         </div>
       )}
 
-      {/* Empty State when no peers on radar */}
-      {peers.length === 0 && (
-        <div className="radar-empty-state">
-          <div className="empty-sonar-icon">
-            <div className="ping-ring" />
-            <Zap size={28} className="text-cyan" />
+      {/* Sleek Compact Side Helper when no peers on radar */}
+      {peers.length === 0 && !isTipDismissed && (
+        <aside className="radar-empty-state radar-side-card" aria-label="Nearby Device Discovery">
+          <button 
+            type="button" 
+            className="btn-dismiss-empty"
+            onClick={() => setIsTipDismissed(true)}
+            title="Hide helper"
+            aria-label="Dismiss helper"
+          >
+            <X size={14} />
+          </button>
+          <div className="empty-card-header">
+            <div className="empty-sonar-icon">
+              <div className="ping-ring" />
+              <Radio size={15} className="text-cyan animate-pulse" />
+            </div>
+            <div className="empty-title-group">
+              <span className="empty-title">Scanning for Devices</span>
+              <span className="empty-subtitle">Radar active & ready to pair</span>
+            </div>
           </div>
-          <h2 className="empty-title">Scanning for Devices Nearby</h2>
           <p className="empty-desc">
-            Open <strong>intekchat</strong> on your other phone, tablet, or PC on this Wi-Fi to send files instantly.
+            Open <strong>IntekDrop</strong> on your other phone or PC to transfer files instantly.
           </p>
           <div className="empty-actions">
-            <button className="btn-secondary" onClick={onOpenQr}>
-              <QrCode size={16} />
-              <span>Show QR Code</span>
+            <button type="button" className="btn-secondary btn-compact" onClick={onOpenQr}>
+              <QrCode size={14} />
+              <span>Show QR</span>
             </button>
             <button 
-              className="btn-primary" 
-              onClick={() => {
-                if (typeof window !== 'undefined') {
-                  navigator.clipboard.writeText(window.location.href);
-                  sounds.playMessage();
-                }
-              }}
+              type="button" 
+              className="btn-primary btn-compact" 
+              onClick={handleShareLink}
             >
-              <Share2 size={16} />
-              <span>Share Link</span>
+              {copiedLink ? <Check size={14} className="text-emerald" /> : <Share2 size={14} />}
+              <span>{copiedLink ? 'Copied!' : 'Share Link'}</span>
             </button>
           </div>
-        </div>
+        </aside>
+      )}
+
+      {/* If dismissed, subtle floating reopen pill in the corner */}
+      {peers.length === 0 && isTipDismissed && (
+        <button
+          type="button"
+          className="radar-restore-tip-btn"
+          onClick={() => setIsTipDismissed(false)}
+          title="Show device pairing guide"
+        >
+          <Radio size={14} className="text-cyan animate-pulse" />
+          <span>Nearby Helper</span>
+        </button>
       )}
 
       {/* Floating Active Transfers HUD */}

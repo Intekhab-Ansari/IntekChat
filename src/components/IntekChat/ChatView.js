@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Send, 
   Paperclip, 
@@ -171,14 +171,27 @@ export default function ChatView({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isStealthTextMode]);
 
+  const burnRef = useRef(null);
+
+  const handleCloseAndBurnViewOnce = useCallback(() => {
+    if (viewOnceModalData) {
+      sounds.playBurn();
+      onBurnViewOnce(viewOnceModalData.id, viewOnceModalData.senderId);
+      setViewOnceModalData(null);
+    }
+  }, [viewOnceModalData, onBurnViewOnce]);
+
+  useEffect(() => {
+    burnRef.current = handleCloseAndBurnViewOnce;
+  }, [handleCloseAndBurnViewOnce]);
+
   useEffect(() => {
     if (viewOnceModalData) {
-      setViewOnceTimer(10);
       timerRef.current = setInterval(() => {
         setViewOnceTimer((prev) => {
           if (prev <= 1) {
             clearInterval(timerRef.current);
-            handleCloseAndBurnViewOnce();
+            burnRef.current?.();
             return 0;
           }
           return prev - 1;
@@ -252,15 +265,8 @@ export default function ChatView({
 
   const handleOpenViewOnce = (msg) => {
     sounds.playClick();
+    setViewOnceTimer(10);
     setViewOnceModalData(msg);
-  };
-
-  const handleCloseAndBurnViewOnce = () => {
-    if (viewOnceModalData) {
-      sounds.playBurn();
-      onBurnViewOnce(viewOnceModalData.id, viewOnceModalData.senderId);
-      setViewOnceModalData(null);
-    }
   };
 
   const getFileIcon = (fileName = '') => {

@@ -329,11 +329,15 @@ export default function QrModal({
     sounds.playClick();
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
+        const title = targetTab === 'drop' ? 'Pair with IntekDrop' : `Join room #${roomName} on IntekChat`;
+        const text = targetTab === 'drop'
+          ? 'Connect with my device on IntekDrop to transfer files instantly!'
+          : (isRoomProtected && roomPassword
+              ? `Join my private room #${roomName} on IntekChat! Room Password: ${roomPassword}`
+              : `Join my private room #${roomName} on IntekChat!`);
         await navigator.share({
-          title: `Join room #${roomName} on IntekChat`,
-          text: isRoomProtected && roomPassword
-            ? `Join my private room #${roomName} on IntekChat! Room Password: ${roomPassword}`
-            : `Join my private room #${roomName} on IntekChat!`,
+          title,
+          text,
           url: shareUrl
         });
       } catch (err) {}
@@ -428,95 +432,112 @@ export default function QrModal({
               </div>
             </div>
 
-            {/* Room Credentials Summary Box (Room ID & Password) */}
-            <div className="room-credentials-card">
-              {/* Room ID row */}
-              <div className="credential-row">
-                <div className="credential-left">
-                  <div className="credential-icon-circle">
-                    <Hash size={14} className="text-cyan" />
-                  </div>
-                  <div className="credential-meta">
-                    <span className="credential-label">Room ID / Name</span>
-                    <span className="credential-value font-mono">#{roomName || 'local-wifi'}</span>
-                  </div>
+            {/* If IntekDrop mode: Clean AirDrop-style P2P Pair Card (No Room ID or Password!) */}
+            {targetTab === 'drop' ? (
+              <div className="intekdrop-pair-banner">
+                <div className="intekdrop-pair-icon">
+                  <Radio size={18} className="text-cyan animate-pulse" />
                 </div>
-                <button 
-                  type="button" 
-                  className="btn-credential-copy"
-                  onClick={handleCopyRoom}
-                  title="Copy Room ID"
-                >
-                  {copiedRoom ? <Check size={13} className="text-emerald" /> : <Copy size={13} />}
-                  <span>{copiedRoom ? 'Copied' : 'Copy'}</span>
-                </button>
+                <div className="intekdrop-pair-text">
+                  <span className="intekdrop-pair-title">IntekDrop Direct P2P Sync</span>
+                  <span className="intekdrop-pair-desc">
+                    Scan with another phone or PC to pair devices and drop files instantly.
+                  </span>
+                </div>
               </div>
-
-              {/* Password row */}
-              <div className="credential-row">
-                <div className="credential-left">
-                  <div className={`credential-icon-circle ${isRoomProtected ? 'icon-circle-locked' : ''}`}>
-                    {isRoomProtected ? <Lock size={14} className="text-pink" /> : <Unlock size={14} className="text-dim" />}
+            ) : (
+              /* If IntekChat mode: Show Room ID and Password credentials */
+              <>
+                <div className="room-credentials-card">
+                  {/* Room ID row */}
+                  <div className="credential-row">
+                    <div className="credential-left">
+                      <div className="credential-icon-circle">
+                        <Hash size={14} className="text-cyan" />
+                      </div>
+                      <div className="credential-meta">
+                        <span className="credential-label">Room ID / Name</span>
+                        <span className="credential-value font-mono">#{roomName || 'local-wifi'}</span>
+                      </div>
+                    </div>
+                    <button 
+                      type="button" 
+                      className="btn-credential-copy"
+                      onClick={handleCopyRoom}
+                      title="Copy Room ID"
+                    >
+                      {copiedRoom ? <Check size={13} className="text-emerald" /> : <Copy size={13} />}
+                      <span>{copiedRoom ? 'Copied' : 'Copy'}</span>
+                    </button>
                   </div>
-                  <div className="credential-meta">
-                    <span className="credential-label">Room Password</span>
-                    {isRoomProtected ? (
-                      <span className="credential-value font-mono text-accent">
-                        {showPassword ? roomPassword : '••••••••••••'}
-                      </span>
-                    ) : (
-                      <span className="credential-value text-dim text-sm">Open (No password required)</span>
+
+                  {/* Password row */}
+                  <div className="credential-row">
+                    <div className="credential-left">
+                      <div className={`credential-icon-circle ${isRoomProtected ? 'icon-circle-locked' : ''}`}>
+                        {isRoomProtected ? <Lock size={14} className="text-pink" /> : <Unlock size={14} className="text-dim" />}
+                      </div>
+                      <div className="credential-meta">
+                        <span className="credential-label">Room Password</span>
+                        {isRoomProtected ? (
+                          <span className="credential-value font-mono text-accent">
+                            {showPassword ? roomPassword : '••••••••••••'}
+                          </span>
+                        ) : (
+                          <span className="credential-value text-dim text-sm">Open (No password required)</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {isRoomProtected && (
+                      <div className="credential-btn-group">
+                        <button 
+                          type="button" 
+                          className="btn-credential-toggle"
+                          onClick={() => setShowPassword(!showPassword)}
+                          title={showPassword ? 'Hide password' : 'Show password'}
+                        >
+                          {showPassword ? <EyeOff size={13} /> : <Eye size={13} />}
+                        </button>
+                        <button 
+                          type="button" 
+                          className="btn-credential-copy"
+                          onClick={handleCopyPassword}
+                          title="Copy Password"
+                        >
+                          {copiedPassword ? <Check size={13} className="text-emerald" /> : <Copy size={13} />}
+                          <span>{copiedPassword ? 'Copied' : 'Copy'}</span>
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
 
+                {/* 1-Scan Auto Unlock Option (If Protected) */}
                 {isRoomProtected && (
-                  <div className="credential-btn-group">
-                    <button 
-                      type="button" 
-                      className="btn-credential-toggle"
-                      onClick={() => setShowPassword(!showPassword)}
-                      title={showPassword ? 'Hide password' : 'Show password'}
-                    >
-                      {showPassword ? <EyeOff size={13} /> : <Eye size={13} />}
-                    </button>
-                    <button 
-                      type="button" 
-                      className="btn-credential-copy"
-                      onClick={handleCopyPassword}
-                      title="Copy Password"
-                    >
-                      {copiedPassword ? <Check size={13} className="text-emerald" /> : <Copy size={13} />}
-                      <span>{copiedPassword ? 'Copied' : 'Copy'}</span>
-                    </button>
+                  <div className="qr-auto-unlock-toggle">
+                    <label className="auto-unlock-label">
+                      <input
+                        type="checkbox"
+                        checked={includePasswordInQr}
+                        onChange={(e) => setIncludePasswordInQr(e.target.checked)}
+                        className="auto-unlock-checkbox"
+                      />
+                      <div className="auto-unlock-text">
+                        <span className="auto-unlock-title">
+                          <Zap size={13} className="text-amber" />
+                          <span>1-Scan Auto Join (Embed Password in QR)</span>
+                        </span>
+                        <span className="auto-unlock-desc">
+                          {includePasswordInQr
+                            ? 'Scanner will unlock & connect instantly without asking for password.'
+                            : 'Scanner will prompt for password upon entry.'}
+                        </span>
+                      </div>
+                    </label>
                   </div>
                 )}
-              </div>
-            </div>
-
-            {/* 1-Scan Auto Unlock Option (If Protected) */}
-            {isRoomProtected && (
-              <div className="qr-auto-unlock-toggle">
-                <label className="auto-unlock-label">
-                  <input
-                    type="checkbox"
-                    checked={includePasswordInQr}
-                    onChange={(e) => setIncludePasswordInQr(e.target.checked)}
-                    className="auto-unlock-checkbox"
-                  />
-                  <div className="auto-unlock-text">
-                    <span className="auto-unlock-title">
-                      <Zap size={13} className="text-amber" />
-                      <span>1-Scan Auto Join (Embed Password in QR)</span>
-                    </span>
-                    <span className="auto-unlock-desc">
-                      {includePasswordInQr
-                        ? 'Scanner will unlock & connect instantly without asking for password.'
-                        : 'Scanner will prompt for password upon entry.'}
-                    </span>
-                  </div>
-                </label>
-              </div>
+              </>
             )}
 
             {/* QR Code Graphic Container */}
@@ -531,7 +552,7 @@ export default function QrModal({
               <div className="localhost-lan-tip">
                 <Info size={14} className="text-cyan flex-shrink-0" />
                 <div className="lan-tip-text">
-                  <span>Testing between PC & Phone on Wi-Fi? Replace <code>localhost</code> with your PC's IP (<code>http://192.168.1.132:3000</code>).</span>
+                  <span>Testing between PC &amp; Phone on Wi-Fi? Replace <code>localhost</code> with your PC&apos;s IP (<code>http://192.168.1.132:3000</code>).</span>
                   <div className="custom-host-input-wrap">
                     <input
                       type="text"
@@ -572,7 +593,7 @@ export default function QrModal({
             <div className="qr-modal-footer">
               <button type="button" className="btn-native-share" onClick={handleNativeShare}>
                 <Share2 size={15} />
-                <span>Share Room Link</span>
+                <span>{targetTab === 'drop' ? 'Share IntekDrop Link' : 'Share Room Link'}</span>
               </button>
             </div>
           </>

@@ -106,48 +106,69 @@ export default function Navbar({
       </div>
 
       <div className="nav-right">
-        {/* Network / Room Status Badge (Interactive Room Trigger) */}
-        <button 
-          type="button"
-          className="network-pill interactive-pill" 
-          onClick={onOpenRoomModal}
-          title={roomName ? `In room: #${roomName} (${isRoomProtected ? 'Password Protected' : 'Open E2EE'}). Click to manage.` : 'On Local Wi-Fi Network. Click to create or join a room.'}
-        >
-          {roomName ? (
-            <>
-              <Lock size={14} className={isRoomProtected ? 'text-pink' : 'text-accent'} />
-              <span className="room-label">#{roomName}</span>
-              {isRoomProtected && <span className="room-mini-badge">🔒</span>}
-            </>
-          ) : (
-            <>
-              <Wifi size={14} className="text-cyan" />
-              <span className="room-label">Local Wi-Fi</span>
-            </>
-          )}
-          <span className="peer-badge" title="Active participants in real time">
-            <span className="realtime-live-dot" />
-            <span className="desktop-peer-text">
-              {roomName 
-                ? (totalParticipants <= 1 ? '1 in room (You)' : `${totalParticipants} in room`) 
-                : `${peerCount} ${peerCount === 1 ? 'peer' : 'peers'}`}
+        {/* Network / Room Status Badge: Nearby Radar in IntekDrop vs Room Manager in IntekChat */}
+        {activeTab === 'drop' ? (
+          <div 
+            className="network-pill intekdrop-pill" 
+            title="IntekDrop Nearby Radar Active"
+          >
+            <Radio size={14} className="text-cyan animate-pulse" />
+            <span className="room-label">Nearby Radar</span>
+            <span className="peer-badge" title="Nearby devices discovered">
+              <span className="realtime-live-dot" />
+              <span className="desktop-peer-text">
+                {peerCount > 0 ? `${peerCount} nearby` : 'Searching'}
+              </span>
+              <span className="mobile-peer-badge-count">
+                {peerCount}
+              </span>
             </span>
-            <span className="mobile-peer-badge-count">
-              {roomName ? totalParticipants : peerCount}
+          </div>
+        ) : (
+          <button 
+            type="button"
+            className="network-pill interactive-pill" 
+            onClick={onOpenRoomModal}
+            title={roomName ? `In room: #${roomName} (${isRoomProtected ? 'Password Protected' : 'Open E2EE'}). Click to manage.` : 'On Local Wi-Fi Network. Click to create or join a room.'}
+          >
+            {roomName ? (
+              <>
+                <Lock size={14} className={isRoomProtected ? 'text-pink' : 'text-accent'} />
+                <span className="room-label">#{roomName}</span>
+                {isRoomProtected && <span className="room-mini-badge">🔒</span>}
+              </>
+            ) : (
+              <>
+                <Wifi size={14} className="text-cyan" />
+                <span className="room-label">Local Wi-Fi</span>
+              </>
+            )}
+            <span className="peer-badge" title="Active participants in real time">
+              <span className="realtime-live-dot" />
+              <span className="desktop-peer-text">
+                {roomName 
+                  ? (totalParticipants <= 1 ? '1 in room (You)' : `${totalParticipants} in room`) 
+                  : `${peerCount} ${peerCount === 1 ? 'peer' : 'peers'}`}
+              </span>
+              <span className="mobile-peer-badge-count">
+                {roomName ? totalParticipants : peerCount}
+              </span>
             </span>
-          </span>
-        </button>
+          </button>
+        )}
 
-        {/* Create / Join Room Dedicated Button */}
-        <button
-          type="button"
-          className="icon-btn btn-room-trigger"
-          onClick={onOpenRoomModal}
-          title="Create New Room or Join with Password"
-          aria-label="Room Manager"
-        >
-          <Plus size={18} />
-        </button>
+        {/* Create / Join Room Dedicated Button (Only displayed in IntekChat) */}
+        {activeTab === 'chat' && (
+          <button
+            type="button"
+            className="icon-btn btn-room-trigger"
+            onClick={onOpenRoomModal}
+            title="Create New Room or Join with Password"
+            aria-label="Room Manager"
+          >
+            <Plus size={18} />
+          </button>
+        )}
 
         {/* QR Code & Share link */}
         <button 
