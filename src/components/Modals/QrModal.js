@@ -266,18 +266,27 @@ export default function QrModal({
           <div className="localhost-lan-tip">
             <Info size={14} className="text-cyan flex-shrink-0" />
             <div className="lan-tip-text">
-              <span>Scanning from a phone on the same Wi-Fi? Replace <code>localhost</code> with your PC's Wi-Fi IP (e.g. <code>http://192.168.1.5:3000</code>) so your phone can reach this server.</span>
+              <span>Scanning from a phone on the same Wi-Fi? Replace <code>localhost</code> with your PC's Wi-Fi IP (e.g. <code>http://192.168.1.132:3000</code>) so your phone can reach this server.</span>
               <div className="custom-host-input-wrap">
                 <input
                   type="text"
-                  placeholder="e.g. http://192.168.1.15:3000"
+                  placeholder="e.g. http://192.168.1.132:3000"
                   value={customHost}
                   onChange={(e) => setCustomHost(e.target.value)}
                   className="custom-host-input"
                 />
-                {customHost && (
+                {customHost ? (
                   <button type="button" className="btn-clear-host" onClick={() => setCustomHost('')}>
                     Reset
+                  </button>
+                ) : (
+                  <button 
+                    type="button" 
+                    className="btn-credential-copy" 
+                    onClick={() => setCustomHost('http://192.168.1.132:3000')}
+                    style={{ whiteSpace: 'nowrap' }}
+                  >
+                    Set My Wi-Fi IP
                   </button>
                 )}
               </div>

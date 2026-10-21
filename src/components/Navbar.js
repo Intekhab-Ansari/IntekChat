@@ -60,8 +60,9 @@ export default function Navbar({
   };
 
   return (
-    <header className="navbar">
-      <div className="nav-left">
+    <header className="navbar-wrapper">
+      <div className="navbar">
+        <div className="nav-left">
         <div className="logo-container">
           <div className="logo-glow-ring">
             <img src="/favicon.svg" alt="intekchat logo" className="logo-img" width="28" height="28" />
@@ -72,8 +73,8 @@ export default function Navbar({
           </div>
         </div>
 
-        {/* Section Tabs - Prominently Highlighted Dual Flagship Tools */}
-        <div className="nav-tabs">
+        {/* Section Tabs - Prominently Highlighted Dual Flagship Tools (Desktop) */}
+        <div className="nav-tabs desktop-nav-tabs">
           <button
             id="tab-drop"
             className={`nav-tab nav-tab-drop ${activeTab === 'drop' ? 'active' : ''}`}
@@ -226,6 +227,40 @@ export default function Navbar({
           </div>
           <span className="profile-name">{userProfile?.name || 'Anonymous'}</span>
         </button>
+      </div>
+      </div>
+
+      {/* Mobile Sub-Navbar: Full-Width Dual Flagship Switcher (Mobile Only) */}
+      <div className="mobile-sub-navbar">
+        <div className="mobile-tabs-container">
+          <button
+            id="mobile-tab-drop"
+            type="button"
+            className={`mobile-tab-btn mobile-tab-drop ${activeTab === 'drop' ? 'active' : ''}`}
+            onClick={() => setActiveTab('drop')}
+          >
+            <div className="tab-icon-wrap icon-drop">
+              <Radio size={16} />
+              {activeTab === 'drop' && <span className="tab-pulse-ring-cyan" />}
+            </div>
+            <span className="mobile-tab-title">IntekDrop</span>
+            <span className="tab-pill pill-drop">Files</span>
+          </button>
+
+          <button
+            id="mobile-tab-chat"
+            type="button"
+            className={`mobile-tab-btn mobile-tab-chat ${activeTab === 'chat' ? 'active' : ''}`}
+            onClick={() => setActiveTab('chat')}
+          >
+            <div className="tab-icon-wrap icon-chat">
+              <MessageSquare size={16} />
+              {activeTab === 'chat' && <span className="tab-pulse-ring-purple" />}
+            </div>
+            <span className="mobile-tab-title">IntekChat</span>
+            <span className="tab-pill pill-chat">E2EE</span>
+          </button>
+        </div>
       </div>
     </header>
   );

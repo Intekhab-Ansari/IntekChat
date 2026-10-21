@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
+import { Radio, X, AlertTriangle } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import RadarView from '@/components/IntekDrop/RadarView';
 import ChatView from '@/components/IntekChat/ChatView';
@@ -36,6 +37,8 @@ export default function Home() {
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [soundMuted, setSoundMuted] = useState(false);
   const [currentTheme, setCurrentTheme] = useState('sapphire'); // 'sapphire' | 'silk' | 'cyberpunk' | 'amber' | 'amethyst' | 'emerald' | 'obsidian' | 'frost'
+  const [signalingError, setSignalingError] = useState(false);
+  const [dismissSignalingBanner, setDismissSignalingBanner] = useState(false);
 
   const socketRef = useRef(null);
   const webrtcRef = useRef(null);
@@ -76,6 +79,14 @@ export default function Home() {
           setIsRoomProtected(true);
         }
         setActiveTab('chat');
+        // Clean URL address bar if room name had spaces
+        if (roomParam !== cleanRoom) {
+          try {
+            const url = new URL(window.location.href);
+            url.searchParams.set('room', cleanRoom);
+            window.history.replaceState({}, '', url.toString());
+          } catch {}
+        }
       }
       const tabParam = params.get('tab');
       if (tabParam === 'chat' || tabParam === 'drop') {
@@ -114,13 +125,23 @@ export default function Home() {
   useEffect(() => {
     if (!userProfile) return;
 
-    // Connect to same origin
-    const socket = io({
-      transports: ['websocket', 'polling']
+    // Connect to signaling server (supports custom backend when deployed on serverless hosts like Vercel)
+    let customServerUrl = undefined;
+    if (typeof window !== 'undefined') {
+      const storedUrl = localStorage.getItem('intekchat_signaling_url');
+      if (storedUrl) customServerUrl = storedUrl;
+      else if (process.env.NEXT_PUBLIC_SIGNALING_SERVER) customServerUrl = process.env.NEXT_PUBLIC_SIGNALING_SERVER;
+    }
+
+    const socket = io(customServerUrl || undefined, {
+      transports: ['websocket', 'polling'],
+      reconnectionAttempts: 10,
+      timeout: 10000
     });
     socketRef.current = socket;
 
     socket.on('connect', async () => {
+      setSignalingError(false);
       // Join network / room with password hash if set
       let passwordHash = null;
       if (roomPassword) {
@@ -135,6 +156,14 @@ export default function Home() {
         passwordHash,
         peerInfo: userProfile
       });
+    });
+
+    socket.on('connect_error', (err) => {
+      setSignalingError(true);
+    });
+
+    socket.on('disconnect', () => {
+      setSignalingError(true);
     });
 
     // Handle room password protection required from server
@@ -614,6 +643,28 @@ export default function Home() {
         onOpenRoomModal={() => handleOpenRoomModal()}
       />
 
+      {/* Signaling Server Offline Banner for Vercel Serverless Hosting */}
+      {signalingError && !dismissSignalingBanner && (
+        <div className="signaling-status-banner">
+          <div className="signaling-banner-left">
+            <Radio size={15} className="text-amber animate-pulse" />
+            <span>
+              <strong>Signaling Server Offline:</strong> Vercel serverless mode does not run persistent WebSockets. To connect peers across the web, deploy the signaling server (e.g. Render/Railway) or test via local Wi-Fi: <code>http://192.168.1.132:3000</code>.
+            </span>
+          </div>
+          <div className="signaling-banner-actions">
+            <button 
+              type="button" 
+              className="btn-close-signaling-banner"
+              onClick={() => setDismissSignalingBanner(true)}
+              aria-label="Dismiss banner"
+            >
+              <X size={15} />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Main View Area */}
       <main className="main-content">
         {activeTab === 'drop' ? (
@@ -642,6 +693,7 @@ export default function Home() {
             isRoomProtected={isRoomProtected}
             onOpenRoomModal={() => handleOpenRoomModal()}
             onOpenEditRoom={handleOpenEditRoom}
+            onOpenProfile={() => setIsProfileModalOpen(true)}
           />
         )}
       </main>

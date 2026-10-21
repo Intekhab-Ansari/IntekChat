@@ -55,13 +55,20 @@ export default function ChatView({
   onJoinRoom,
   isRoomProtected = false,
   onOpenRoomModal,
-  onOpenEditRoom
+  onOpenEditRoom,
+  onOpenProfile
 }) {
+  const avatarStyle = getAvatarColor(userProfile?.colorIndex || 0);
   const [inputText, setInputText] = useState('');
   const [imageMode, setImageMode] = useState('permanent');
   const [showImageModePicker, setShowImageModePicker] = useState(false);
   const [isStealthTextMode, setIsStealthTextMode] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth > 768;
+    }
+    return true;
+  });
   const [showSidebarPassword, setShowSidebarPassword] = useState(false);
   const [viewOnceModalData, setViewOnceModalData] = useState(null);
   const [viewOnceTimer, setViewOnceTimer] = useState(10);
@@ -728,6 +735,37 @@ export default function ChatView({
               <span>Clear Chat</span>
             </button>
           </div>
+        </div>
+
+        {/* Mobile Identity & Presence Strip (Shown on mobile devices) */}
+        <div className="mobile-identity-strip">
+          <button 
+            type="button" 
+            className="mobile-id-tag user-tag"
+            onClick={onOpenProfile}
+            title="Click to view/change your Codename & Avatar"
+          >
+            <span 
+              className="id-dot-avatar" 
+              style={{ background: avatarStyle?.border || '#3b82f6' }} 
+            />
+            <span className="id-tag-label">You:</span>
+            <span className="id-tag-name">{userProfile?.name || 'Anonymous'}</span>
+            <span className="id-tag-os">({userProfile?.os?.toUpperCase() || 'HOST'})</span>
+          </button>
+
+          <button 
+            type="button" 
+            className="mobile-id-tag room-tag"
+            onClick={onOpenRoomModal}
+            title="Room Details & Participant Count"
+          >
+            <span className="realtime-live-dot" />
+            <span className="id-room-name">#{roomName}</span>
+            <span className="id-room-count">
+              {peerCount === 0 ? '1 online' : `${peerCount + 1} online`}
+            </span>
+          </button>
         </div>
 
         {/* Dynamic Wallpaper Background Canvas Layer */}
