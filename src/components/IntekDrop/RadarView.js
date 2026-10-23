@@ -28,7 +28,8 @@ export default function RadarView({
   activeTransfers,
   onCancelTransfer,
   onOpenQr,
-  roomName
+  roomName,
+  dropPairId = ''
 }) {
   const [selectedPeer, setSelectedPeer] = useState(null);
   const [dragOverPeerId, setDragOverPeerId] = useState(null);
@@ -42,6 +43,11 @@ export default function RadarView({
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
       url.searchParams.set('tab', 'drop');
+      if (dropPairId) {
+        url.searchParams.set('pair', dropPairId);
+      }
+      url.searchParams.delete('room');
+      url.searchParams.delete('pwd');
       navigator.clipboard.writeText(url.toString());
       setCopiedLink(true);
       sounds.playMessage();

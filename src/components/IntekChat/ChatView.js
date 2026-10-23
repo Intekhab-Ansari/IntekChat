@@ -33,7 +33,8 @@ import {
   Key,
   DatabaseZap,
   Paintbrush,
-  Edit3
+  Edit3,
+  QrCode
 } from 'lucide-react';
 import { formatBytes, getAvatarColor } from '@/lib/peer';
 import { sounds } from '@/lib/sound';
@@ -56,7 +57,8 @@ export default function ChatView({
   isRoomProtected = false,
   onOpenRoomModal,
   onOpenEditRoom,
-  onOpenProfile
+  onOpenProfile,
+  onOpenQr
 }) {
   const avatarStyle = getAvatarColor(userProfile?.colorIndex || 0);
   const [inputText, setInputText] = useState('');
@@ -723,6 +725,20 @@ export default function ChatView({
             >
               <Paintbrush size={15} />
               <span>Wallpaper</span>
+            </button>
+
+            {/* Share Room QR Code Button */}
+            <button
+              type="button"
+              className="btn-wallpaper"
+              onClick={() => {
+                sounds.playClick();
+                onOpenQr?.();
+              }}
+              title="Share Room QR Code & Credentials"
+            >
+              <QrCode size={15} />
+              <span>Room QR</span>
             </button>
 
             {/* Clear Chat Button */}

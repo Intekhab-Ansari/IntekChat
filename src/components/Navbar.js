@@ -174,8 +174,8 @@ export default function Navbar({
         <button 
           className="icon-btn" 
           onClick={onOpenQr} 
-          title="Show Room QR Code & Link"
-          aria-label="QR Code"
+          title={activeTab === 'drop' ? "IntekDrop Device Pairing QR" : "IntekChat Room QR & Link"}
+          aria-label={activeTab === 'drop' ? "IntekDrop Pairing QR" : "IntekChat Room QR"}
         >
           <QrCode size={18} />
         </button>

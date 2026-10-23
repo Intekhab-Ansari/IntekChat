@@ -12,7 +12,9 @@ const PUBLIC_BROKERS = [
 export class CloudSignalingAdapter {
   constructor(roomName, userProfile, options = {}) {
     this.roomName = (roomName || 'default-room').trim().toLowerCase().replace(/\s+/g, '-');
-    this.userProfile = userProfile;
+    const safeId = userProfile?.id || `peer_${Math.random().toString(36).substring(2, 9)}_${Date.now().toString(36)}`;
+    this.selfId = safeId;
+    this.userProfile = { ...(userProfile || {}), id: safeId };
     this.options = options;
     this.client = null;
     this.listeners = new Map();
@@ -20,7 +22,6 @@ export class CloudSignalingAdapter {
     this.heartbeatInterval = null;
     this.cleanupInterval = null;
     this.connected = false;
-    this.selfId = userProfile.id;
 
     this.baseTopic = `intekchat/v3/rooms/${this.roomName}`;
     this.presenceTopic = `${this.baseTopic}/presence`;
@@ -74,11 +75,18 @@ export class CloudSignalingAdapter {
         this.connected = true;
         this.emitLocal('connect');
 
-        // Subscribe to room presence and direct peer messages
-        this.client.subscribe([this.presenceTopic, this.myDirectTopic], (err) => {
+        // Subscribe to room presence, direct peer messages, and encrypted relay with QoS 1
+        this.relayTopic = `${this.baseTopic}/relay`;
+        this.client.subscribe([this.presenceTopic, this.myDirectTopic, this.relayTopic], { qos: 1 }, (err) => {
           if (!err) {
-            // Announce presence to other peers in room
+            // Announce presence immediately
             this.broadcastPresence('announce');
+            // Re-announce 800ms later to guarantee arrival across mobile networks
+            setTimeout(() => {
+              if (this.connected) {
+                this.broadcastPresence('announce');
+              }
+            }, 800);
             this.startHeartbeat();
           }
         });
@@ -144,10 +152,14 @@ export class CloudSignalingAdapter {
     const msg = {
       action,
       senderId: this.selfId,
-      peerInfo: this.userProfile,
+      peerInfo: { ...this.userProfile, id: this.selfId },
       timestamp: Date.now()
     };
-    this.client.publish(this.presenceTopic, JSON.stringify(msg));
+    try {
+      this.client.publish(this.presenceTopic, JSON.stringify(msg), { qos: 1 });
+    } catch (e) {
+      console.warn('Presence publish error:', e);
+    }
   }
 
   broadcastCount() {
@@ -157,12 +169,12 @@ export class CloudSignalingAdapter {
 
   handleIncomingMessage(topic, data) {
     const senderId = data.senderId || data.from;
-    if (senderId === this.selfId) return; // Ignore own messages
+    if (!senderId || senderId === this.selfId) return; // Ignore own messages
 
     if (topic === this.presenceTopic) {
       if (data.action === 'announce') {
         // A new peer joined the room
-        if (data.peerInfo) {
+        if (data.peerInfo && data.peerInfo.id) {
           const isNew = !this.knownPeers.has(data.peerInfo.id);
           this.knownPeers.set(data.peerInfo.id, {
             ...data.peerInfo,
@@ -178,11 +190,11 @@ export class CloudSignalingAdapter {
           this.sendDirect(data.peerInfo.id, {
             type: 'welcome',
             senderId: this.selfId,
-            peerInfo: this.userProfile
+            peerInfo: { ...this.userProfile, id: this.selfId }
           });
         }
       } else if (data.action === 'heartbeat') {
-        if (data.peerInfo) {
+        if (data.peerInfo && data.peerInfo.id) {
           const isNew = !this.knownPeers.has(data.peerInfo.id);
           this.knownPeers.set(data.peerInfo.id, {
             ...data.peerInfo,
@@ -203,7 +215,7 @@ export class CloudSignalingAdapter {
     } else if (topic === this.myDirectTopic) {
       // Direct message sent to this specific peer
       if (data.type === 'welcome') {
-        if (data.peerInfo) {
+        if (data.peerInfo && data.peerInfo.id) {
           const isNew = !this.knownPeers.has(data.peerInfo.id);
           this.knownPeers.set(data.peerInfo.id, {
             ...data.peerInfo,
@@ -230,14 +242,32 @@ export class CloudSignalingAdapter {
           from: data.from,
           candidate: data.candidate
         });
+      } else if (data.type === 'e2ee-relay') {
+        this.emitLocal('e2ee-relay', {
+          from: data.from,
+          type: data.relayType,
+          payload: data.payload
+        });
+      }
+    } else if (topic === this.relayTopic) {
+      if (data.type === 'e2ee-relay') {
+        this.emitLocal('e2ee-relay', {
+          from: data.from,
+          type: data.relayType,
+          payload: data.payload
+        });
       }
     }
   }
 
   sendDirect(targetPeerId, messageObj) {
-    if (!this.client || !this.connected) return;
+    if (!this.client || !this.connected || !targetPeerId) return;
     const targetTopic = `${this.baseTopic}/peer/${targetPeerId}`;
-    this.client.publish(targetTopic, JSON.stringify(messageObj));
+    try {
+      this.client.publish(targetTopic, JSON.stringify(messageObj), { qos: 1 });
+    } catch (e) {
+      console.warn('Direct publish error:', e);
+    }
   }
 
   // Socket.IO compatible emit method
@@ -249,7 +279,8 @@ export class CloudSignalingAdapter {
     }
 
     if (event === 'signal-offer') {
-      this.sendDirect(data.target, {
+      const targetId = data.to || data.target;
+      this.sendDirect(targetId, {
         type: 'signal-offer',
         from: this.selfId,
         offer: data.offer,
@@ -259,7 +290,8 @@ export class CloudSignalingAdapter {
     }
 
     if (event === 'signal-answer') {
-      this.sendDirect(data.target, {
+      const targetId = data.to || data.target;
+      this.sendDirect(targetId, {
         type: 'signal-answer',
         from: this.selfId,
         answer: data.answer
@@ -268,11 +300,25 @@ export class CloudSignalingAdapter {
     }
 
     if (event === 'signal-ice-candidate') {
-      this.sendDirect(data.target, {
+      const targetId = data.to || data.target;
+      this.sendDirect(targetId, {
         type: 'signal-ice-candidate',
         from: this.selfId,
         candidate: data.candidate
       });
+      return;
+    }
+
+    if (event === 'e2ee-relay') {
+      const targetTopic = data.to ? `${this.baseTopic}/peer/${data.to}` : `${this.baseTopic}/relay`;
+      try {
+        this.client?.publish(targetTopic, JSON.stringify({
+          type: 'e2ee-relay',
+          from: this.selfId,
+          relayType: data.type,
+          payload: data.payload
+        }), { qos: 1 });
+      } catch {}
       return;
     }
 

@@ -33,7 +33,8 @@ export default function QrModal({
   roomPassword = '', 
   isRoomProtected = false,
   activeTab = 'drop',
-  onJoinScannedRoom
+  onJoinScannedRoom,
+  dropPairId = ''
 }) {
   const canvasRef = useRef(null);
   const videoRef = useRef(null);
@@ -81,12 +82,19 @@ export default function QrModal({
       const origin = customHost.trim() ? customHost.trim() : window.location.origin;
       const cleanRoom = (roomName || '').trim().toLowerCase().replace(/\s+/g, '-');
       
-      // Preserve chosen tab (drop or chat)
-      let target = `${origin}/?tab=${targetTab}`;
-      if (cleanRoom) {
-        target += `&room=${encodeURIComponent(cleanRoom)}`;
-        if (isRoomProtected && roomPassword && includePasswordInQr) {
-          target += `&pwd=${encodeURIComponent(roomPassword)}`;
+      let target = '';
+      if (targetTab === 'drop') {
+        // Pure IntekDrop P2P pairing link - NEVER injects IntekChat room or password!
+        const pairId = dropPairId || '';
+        target = `${origin}/?tab=drop${pairId ? `&pair=${encodeURIComponent(pairId)}` : ''}`;
+      } else {
+        // IntekChat Room share link
+        target = `${origin}/?tab=chat`;
+        if (cleanRoom) {
+          target += `&room=${encodeURIComponent(cleanRoom)}`;
+          if (isRoomProtected && roomPassword && includePasswordInQr) {
+            target += `&pwd=${encodeURIComponent(roomPassword)}`;
+          }
         }
       }
 
@@ -110,7 +118,7 @@ export default function QrModal({
         );
       }
     }
-  }, [isOpen, modalMode, targetTab, roomName, roomPassword, isRoomProtected, includePasswordInQr, customHost]);
+  }, [isOpen, modalMode, targetTab, roomName, roomPassword, isRoomProtected, includePasswordInQr, customHost, dropPairId]);
 
   // Stop camera stream utility
   const stopCamera = useCallback(() => {
@@ -134,29 +142,32 @@ export default function QrModal({
 
     let room = '';
     let pwd = '';
+    let pair = '';
     let tab = targetTab || 'drop';
 
     // Parse potential URL
     try {
       if (data.startsWith('http://') || data.startsWith('https://') || data.startsWith('/')) {
         const url = new URL(data, window.location.origin);
+        pair = url.searchParams.get('pair') || '';
         room = url.searchParams.get('room') || '';
         pwd = url.searchParams.get('pwd') || url.searchParams.get('pass') || url.searchParams.get('password') || '';
-        tab = url.searchParams.get('tab') || tab;
+        tab = url.searchParams.get('tab') || (pair ? 'drop' : (room ? 'chat' : targetTab));
       } else {
         // Plain text room code
         room = data.trim();
+        tab = 'chat';
       }
     } catch {
       room = data.trim();
     }
 
-    setScannedResult({ room, tab, pwd });
+    setScannedResult({ room, tab, pwd, pair });
     stopCamera();
 
     // Call join callback
     if (onJoinScannedRoom) {
-      onJoinScannedRoom({ room, pwd, tab });
+      onJoinScannedRoom({ room, pwd, tab, pair });
     }
 
     // Auto-close modal after brief confirmation
@@ -353,14 +364,29 @@ export default function QrModal({
         <div className="modal-header">
           <div className="modal-title-group">
             <div className="modal-title-badge">
-              <Smartphone size={15} className="text-accent" />
-              <span>Mobile QR Scanner & Share</span>
+              {targetTab === 'drop' ? (
+                <>
+                  <Radio size={15} className="text-cyan animate-pulse" />
+                  <span>IntekDrop P2P Device Pairing</span>
+                </>
+              ) : (
+                <>
+                  <MessageSquare size={15} className="text-accent" />
+                  <span>IntekChat Private Room Share</span>
+                </>
+              )}
             </div>
-            <h3>{modalMode === 'show' ? 'Share & Connect Devices' : 'Live Camera QR Scanner'}</h3>
+            <h3>
+              {modalMode === 'scan' 
+                ? 'Live Camera QR Scanner'
+                : (targetTab === 'drop' ? 'Pair Devices & Drop Files' : (roomName ? `Share Room #${roomName}` : 'Share Chat Room'))}
+            </h3>
             <p>
-              {modalMode === 'show' 
-                ? 'Scan to open directly in IntekDrop or IntekChat' 
-                : 'Point your camera at another device to sync instantly'}
+              {modalMode === 'scan'
+                ? 'Point your camera at another device to sync instantly'
+                : (targetTab === 'drop'
+                    ? 'Scan with another phone or PC to pair devices on IntekDrop Radar and drop files instantly'
+                    : 'Scan to open and join this end-to-end encrypted room directly in IntekChat')}
             </p>
           </div>
           <button 
@@ -405,7 +431,7 @@ export default function QrModal({
           <>
             {/* Target Tab Picker: IntekDrop vs IntekChat */}
             <div className="qr-tab-target-selector">
-              <span className="qr-target-label">Open Scanned Device in:</span>
+              <span className="qr-target-label">Barcode Option:</span>
               <div className="qr-target-btn-group">
                 <button
                   type="button"
@@ -585,7 +611,7 @@ export default function QrModal({
               <input type="text" readOnly value={shareUrl} className="share-url-input" />
               <button type="button" className="btn-copy-link" onClick={handleCopyLink}>
                 {copiedLink ? <Check size={16} className="text-emerald" /> : <Copy size={16} />}
-                <span>{copiedLink ? 'Copied' : 'Copy Link'}</span>
+                <span>{copiedLink ? 'Copied' : (targetTab === 'drop' ? 'Copy Pairing Link' : 'Copy Room Link')}</span>
               </button>
             </div>
 
@@ -608,7 +634,11 @@ export default function QrModal({
                   <Check size={32} className="text-emerald" />
                 </div>
                 <h4>QR Code Recognized!</h4>
-                <p>Joining room <strong>#{scannedResult.room}</strong> in <strong>{scannedResult.tab === 'chat' ? 'IntekChat' : 'IntekDrop'}</strong> mode...</p>
+                {scannedResult.tab === 'drop' ? (
+                  <p>Pairing with <strong>IntekDrop</strong> Radar to transfer files...</p>
+                ) : (
+                  <p>Joining room <strong>#{scannedResult.room}</strong> in <strong>IntekChat</strong>...</p>
+                )}
               </div>
             ) : (
               <>

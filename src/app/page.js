@@ -21,6 +21,7 @@ export default function Home() {
   const [roomPassword, setRoomPassword] = useState('');
   const [isRoomProtected, setIsRoomProtected] = useState(false);
   const [totalParticipants, setTotalParticipants] = useState(1);
+  const [dropPairId, setDropPairId] = useState('');
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
   const [roomModalInitialTab, setRoomModalInitialTab] = useState('create');
   const [isPasswordPromptOpen, setIsPasswordPromptOpen] = useState(false);
@@ -60,6 +61,7 @@ export default function Home() {
 
       const params = new URLSearchParams(window.location.search);
       const roomParam = params.get('room');
+      const pairParam = params.get('pair');
       const pwdParam = params.get('pwd') || params.get('pass') || params.get('password');
       let hashPwd = '';
       if (window.location.hash) {
@@ -67,6 +69,14 @@ export default function Home() {
         if (hashMatch) hashPwd = decodeURIComponent(hashMatch[1]);
       }
       const initialPwd = (pwdParam || hashPwd || '').trim();
+
+      if (pairParam) {
+        const cleanPair = pairParam.trim().toLowerCase();
+        setDropPairId(cleanPair);
+        setActiveTab('drop');
+      } else {
+        setDropPairId(profile.id);
+      }
 
       if (roomParam) {
         const cleanRoom = roomParam.trim().toLowerCase().replace(/\s+/g, '-');
@@ -87,6 +97,10 @@ export default function Home() {
       const tabParam = params.get('tab');
       if (tabParam === 'chat' || tabParam === 'drop') {
         setActiveTab(tabParam);
+      } else if (pairParam) {
+        setActiveTab('drop');
+      } else if (roomParam) {
+        setActiveTab('chat');
       } else if (window.location.hash === '#chat') {
         setActiveTab('chat');
       }
@@ -154,8 +168,13 @@ export default function Home() {
         const filtered = (initialPeers || []).filter((p) => p.id !== selfId);
         setPeers(filtered);
         setTotalParticipants(typeof totalCount === 'number' ? totalCount : filtered.length + 1);
+
+        // Deterministic initiator: only peer with lexicographically lower ID initiates offer
+        const myId = userProfile?.id || selfId;
         filtered.forEach((p) => {
-          webrtcRef.current?.connectToPeer(p.id);
+          if (!myId || !p.id || myId < p.id) {
+            webrtcRef.current?.connectToPeer(p.id);
+          }
         });
       });
 
@@ -173,7 +192,12 @@ export default function Home() {
           setTotalParticipants(next.length + 1);
           return next;
         });
-        webrtcRef.current?.connectToPeer(newPeer.id);
+
+        // Deterministic initiator: only peer with lexicographically lower ID initiates offer
+        const myId = userProfile?.id || socketRef.current?.id || socketRef.current?.selfId;
+        if (!myId || !newPeer.id || myId < newPeer.id) {
+          webrtcRef.current?.connectToPeer(newPeer.id);
+        }
       });
 
       signaling.on('peer-updated', (updatedPeer) => {
@@ -305,10 +329,16 @@ export default function Home() {
       webrtcRef.current = webrtc;
     };
 
+    // Isolate signaling rooms between IntekDrop (P2P pairing) and IntekChat (Rooms)
+    const isDrop = activeTab === 'drop';
+    const effectiveRoom = isDrop
+      ? (dropPairId ? `drop-${dropPairId}` : (userProfile?.id ? `drop-${userProfile.id}` : 'intekdrop-nearby'))
+      : (roomName || '');
+
     // If on Vercel and no custom server URL configured, use CloudSignalingAdapter directly
     if (isVercel && !customServerUrl) {
       usingCloudFallback = true;
-      activeSignaling = new CloudSignalingAdapter(roomName, userProfile);
+      activeSignaling = new CloudSignalingAdapter(effectiveRoom, userProfile);
       initWebRTC(activeSignaling);
       setupSignalingListeners(activeSignaling);
     } else {
@@ -324,7 +354,7 @@ export default function Home() {
 
       socket.on('connect', async () => {
         let passwordHash = null;
-        if (roomPassword) {
+        if (roomPassword && !isDrop) {
           try {
             passwordHash = await hashPassword(roomPassword);
           } catch (err) {
@@ -332,7 +362,7 @@ export default function Home() {
           }
         }
         socket.emit('join-network', {
-          room: roomName,
+          room: effectiveRoom,
           passwordHash,
           peerInfo: userProfile
         });
@@ -343,7 +373,7 @@ export default function Home() {
         if (!socket.connected && !usingCloudFallback) {
           usingCloudFallback = true;
           try { socket.disconnect(); } catch {}
-          activeSignaling = new CloudSignalingAdapter(roomName, userProfile);
+          activeSignaling = new CloudSignalingAdapter(effectiveRoom, userProfile);
           initWebRTC(activeSignaling);
           setupSignalingListeners(activeSignaling);
         }
@@ -354,7 +384,7 @@ export default function Home() {
           usingCloudFallback = true;
           clearTimeout(fallbackTimer);
           try { socket.disconnect(); } catch {}
-          activeSignaling = new CloudSignalingAdapter(roomName, userProfile);
+          activeSignaling = new CloudSignalingAdapter(effectiveRoom, userProfile);
           initWebRTC(activeSignaling);
           setupSignalingListeners(activeSignaling);
         }
@@ -365,7 +395,7 @@ export default function Home() {
       webrtcRef.current?.destroy();
       activeSignaling?.disconnect?.();
     };
-  }, [userProfile, roomName, roomPassword]);
+  }, [userProfile, activeTab, dropPairId, roomName, roomPassword]);
 
   // Handle Profile Update
   const handleUpdateProfile = (updatedProfile) => {
@@ -416,27 +446,44 @@ export default function Home() {
   };
 
   // Handle Joining from in-app Camera QR Scanner
-  const handleJoinScannedRoom = ({ room, pwd, tab }) => {
+  const handleJoinScannedRoom = ({ room, pwd, tab, pair }) => {
+    if (pair || tab === 'drop') {
+      setActiveTab('drop');
+      if (pair) {
+        const cleanPair = pair.trim().toLowerCase();
+        setDropPairId(cleanPair);
+        if (typeof window !== 'undefined') {
+          const url = new URL(window.location.href);
+          url.searchParams.set('tab', 'drop');
+          url.searchParams.set('pair', cleanPair);
+          url.searchParams.delete('room');
+          url.searchParams.delete('pwd');
+          window.history.pushState({}, '', url.toString());
+        }
+      }
+      sounds.playJoin();
+      return;
+    }
+
     if (room) {
       const cleanRoom = room.trim().toLowerCase().replace(/\s+/g, '-');
       setRoomName(cleanRoom);
       setRoomPassword(pwd || '');
       setIsRoomProtected(!!pwd);
       setTotalParticipants(1);
+      setActiveTab('chat');
       if (typeof window !== 'undefined') {
         const url = new URL(window.location.href);
         url.searchParams.set('room', cleanRoom);
+        url.searchParams.set('tab', 'chat');
         if (pwd) url.searchParams.set('pwd', pwd);
         else url.searchParams.delete('pwd');
-        if (tab) url.searchParams.set('tab', tab);
+        url.searchParams.delete('pair');
         window.history.pushState({}, '', url.toString());
       }
       setMessages([]);
+      sounds.playJoin();
     }
-    if (tab === 'chat' || tab === 'drop') {
-      setActiveTab(tab);
-    }
-    sounds.playJoin();
   };
 
   // Handle Editing Room Details (Rename, Add Password, Change Password, or Remove Password)
@@ -707,6 +754,7 @@ export default function Home() {
             onCancelTransfer={handleCancelTransfer}
             onOpenQr={() => setIsQrModalOpen(true)}
             roomName={roomName}
+            dropPairId={dropPairId || userProfile?.id || ''}
           />
         ) : (
           <ChatView
@@ -725,6 +773,7 @@ export default function Home() {
             onOpenRoomModal={() => handleOpenRoomModal()}
             onOpenEditRoom={handleOpenEditRoom}
             onOpenProfile={() => setIsProfileModalOpen(true)}
+            onOpenQr={() => setIsQrModalOpen(true)}
           />
         )}
       </main>
@@ -745,6 +794,7 @@ export default function Home() {
         roomPassword={roomPassword}
         isRoomProtected={isRoomProtected}
         activeTab={activeTab}
+        dropPairId={dropPairId || userProfile?.id || ''}
         onJoinScannedRoom={handleJoinScannedRoom}
       />
 

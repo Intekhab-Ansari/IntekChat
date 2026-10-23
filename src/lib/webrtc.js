@@ -29,6 +29,8 @@ export class WebRTCManager {
     this.channels = new Map();
     // fileTransferId -> { meta, chunks: [], receivedBytes: 0, startTime: number }
     this.incomingFiles = new Map();
+    // remoteSocketId -> [RTCIceCandidateInit]
+    this.pendingIceCandidates = new Map();
 
     this.setupSignaling();
   }
@@ -136,7 +138,22 @@ export class WebRTCManager {
   async handleOffer(from, offer, fromPeer) {
     try {
       const pc = this.getOrCreatePeer(from);
+
+      // WebRTC Perfect Negotiation / Glare handling
+      const isPolite = (this.selfPeer?.id || '') > from;
+      const isOfferCollision = pc.signalingState !== 'stable';
+
+      if (isOfferCollision) {
+        if (!isPolite) {
+          // Impolite peer: ignore incoming collision offer, let our offer stand
+          return;
+        }
+        // Polite peer: rollback local offer to accept incoming remote offer
+        await pc.setLocalDescription({ type: 'rollback' });
+      }
+
       await pc.setRemoteDescription(new RTCSessionDescription(offer));
+      await this.drainPendingIceCandidates(from);
 
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
@@ -153,8 +170,9 @@ export class WebRTCManager {
   async handleAnswer(from, answer) {
     try {
       const pc = this.peers.get(from);
-      if (pc) {
+      if (pc && pc.signalingState === 'have-local-offer') {
         await pc.setRemoteDescription(new RTCSessionDescription(answer));
+        await this.drainPendingIceCandidates(from);
       }
     } catch (err) {
       console.error('Failed to handle answer from:', from, err);
@@ -164,11 +182,34 @@ export class WebRTCManager {
   async handleIceCandidate(from, candidate) {
     try {
       const pc = this.peers.get(from);
-      if (pc && pc.remoteDescription) {
+      if (!pc) return;
+
+      if (pc.remoteDescription && pc.remoteDescription.type) {
         await pc.addIceCandidate(new RTCIceCandidate(candidate));
+      } else {
+        if (!this.pendingIceCandidates.has(from)) {
+          this.pendingIceCandidates.set(from, []);
+        }
+        this.pendingIceCandidates.get(from).push(candidate);
       }
     } catch (err) {
       console.error('Failed to add ICE candidate:', err);
+    }
+  }
+
+  async drainPendingIceCandidates(peerId) {
+    if (!this.pendingIceCandidates || !this.pendingIceCandidates.has(peerId)) return;
+    const queued = this.pendingIceCandidates.get(peerId) || [];
+    this.pendingIceCandidates.delete(peerId);
+    const pc = this.peers.get(peerId);
+    if (!pc) return;
+
+    for (const cand of queued) {
+      try {
+        await pc.addIceCandidate(new RTCIceCandidate(cand));
+      } catch (err) {
+        console.warn('Error applying queued ICE candidate:', err);
+      }
     }
   }
 
@@ -472,6 +513,9 @@ export class WebRTCManager {
   }
 
   closePeer(remoteId) {
+    if (this.pendingIceCandidates) {
+      this.pendingIceCandidates.delete(remoteId);
+    }
     if (this.channels.has(remoteId)) {
       try {
         this.channels.get(remoteId).close();

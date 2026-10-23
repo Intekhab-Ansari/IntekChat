@@ -53,9 +53,14 @@ export function detectDevice() {
   return { deviceType, os };
 }
 
+export function generatePeerId() {
+  return 'peer_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
+}
+
 export function getOrCreatePeerProfile() {
   if (typeof window === 'undefined') {
     return {
+      id: 'peer_ssr',
       name: 'Cyber Falcon',
       deviceType: 'desktop',
       os: 'windows',
@@ -68,12 +73,20 @@ export function getOrCreatePeerProfile() {
     if (saved) {
       const parsed = JSON.parse(saved);
       const { deviceType, os } = detectDevice();
-      return { ...parsed, deviceType, os };
+      const id = parsed.id || generatePeerId();
+      const updated = { ...parsed, id, deviceType, os };
+      if (!parsed.id) {
+        try {
+          localStorage.setItem('intekchat_profile', JSON.stringify(updated));
+        } catch {}
+      }
+      return updated;
     }
   } catch {}
 
   const { deviceType, os } = detectDevice();
   const profile = {
+    id: generatePeerId(),
     name: generateRandomName(),
     deviceType,
     os,
