@@ -22,7 +22,8 @@ import {
   Radio,
   MessageSquare,
   FileUp,
-  AlertCircle
+  AlertCircle,
+  VideoOff
 } from 'lucide-react';
 import { sounds } from '@/lib/sound';
 
@@ -59,6 +60,7 @@ export default function QrModal({
   // Camera Scanner States
   const [cameraFacing, setCameraFacing] = useState('environment'); // 'environment' (back) | 'user' (front)
   const [cameraError, setCameraError] = useState('');
+  const [isPermissionDenied, setIsPermissionDenied] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [scannedResult, setScannedResult] = useState(null);
 
@@ -67,6 +69,7 @@ export default function QrModal({
     if (isOpen) {
       setScannedResult(null);
       setCameraError('');
+      setIsPermissionDenied(false);
     }
   }, [isOpen]);
 
@@ -213,6 +216,8 @@ export default function QrModal({
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
+      setIsPermissionDenied(false);
+      setCameraError('');
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -255,13 +260,46 @@ export default function QrModal({
     } catch (err) {
       console.error('Camera access error:', err);
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        setCameraError('Camera permission denied. Allow camera permissions or upload a QR image.');
+        setIsPermissionDenied(true);
+        setCameraError('Camera permission denied.');
       } else {
-        setCameraError('Unable to access camera. You can upload a QR image below.');
+        setIsPermissionDenied(false);
+        setCameraError(err.message || 'Unable to access camera.');
       }
       setIsCameraActive(false);
     }
   }, [cameraFacing, stopCamera, handleScannedData]);
+
+  // Listen to browser camera permission changes dynamically
+  useEffect(() => {
+    let permStatus = null;
+    if (typeof navigator !== 'undefined' && navigator.permissions?.query) {
+      try {
+        navigator.permissions.query({ name: 'camera' }).then((status) => {
+          permStatus = status;
+          if (status.state === 'denied') {
+            setIsPermissionDenied(true);
+          } else if (status.state === 'granted') {
+            setIsPermissionDenied(false);
+          }
+          status.onchange = () => {
+            if (status.state === 'granted') {
+              setIsPermissionDenied(false);
+              setCameraError('');
+              if (isOpen && modalMode === 'scan') {
+                startCamera();
+              }
+            } else if (status.state === 'denied') {
+              setIsPermissionDenied(true);
+            }
+          };
+        }).catch(() => {});
+      } catch {}
+    }
+    return () => {
+      if (permStatus) permStatus.onchange = null;
+    };
+  }, [isOpen, modalMode, startCamera]);
 
   // Manage camera on modal open/mode change
   useEffect(() => {
@@ -657,43 +695,94 @@ export default function QrModal({
                   </div>
                 </div>
 
-                {cameraError && (
-                  <div className="camera-error-message">
-                    <AlertCircle size={15} className="text-pink flex-shrink-0" />
-                    <span>{cameraError}</span>
+                {cameraError ? (
+                  <div className="camera-permission-card">
+                    <div className="permission-card-header">
+                      <div className="permission-icon-badge">
+                        <VideoOff size={20} className="text-pink" />
+                      </div>
+                      <div className="permission-text-wrap">
+                        <h4>Camera Permission Denied</h4>
+                        <p>
+                          Your browser has blocked camera access for this site. 
+                          Browsers remember this block even after refreshing the page.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="permission-guide-steps">
+                      <span className="guide-steps-title">To grant camera permission:</span>
+                      <ol className="permission-steps-list">
+                        <li>
+                          <span className="step-num">1</span>
+                          <span>Click the <strong>camera icon (🎥⃠)</strong> or <strong>padlock (🔒)</strong> in your browser address bar above.</span>
+                        </li>
+                        <li>
+                          <span className="step-num">2</span>
+                          <span>Select <strong>&quot;Always allow&quot;</strong> or switch Camera permission to <strong>Allow</strong>.</span>
+                        </li>
+                        <li>
+                          <span className="step-num">3</span>
+                          <span>Click the <strong>&quot;Try Again / Request Permission&quot;</strong> button below.</span>
+                        </li>
+                      </ol>
+                    </div>
+
+                    <div className="permission-actions-group">
+                      <button
+                        type="button"
+                        className="btn-permission-primary"
+                        onClick={() => {
+                          sounds.playClick();
+                          startCamera();
+                        }}
+                      >
+                        <RefreshCw size={15} />
+                        <span>Try Again / Request Permission</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        className="btn-permission-secondary"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        <Upload size={15} />
+                        <span>Upload QR Code Image</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  /* Scanner Controls */
+                  <div className="qr-scanner-controls">
+                    <button
+                      type="button"
+                      className="btn-camera-toggle"
+                      onClick={() => {
+                        sounds.playClick();
+                        setCameraFacing((prev) => (prev === 'environment' ? 'user' : 'environment'));
+                      }}
+                    >
+                      <RefreshCw size={15} />
+                      <span>Flip Camera</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="btn-camera-upload"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <Upload size={15} />
+                      <span>Upload QR Image</span>
+                    </button>
                   </div>
                 )}
-
-                {/* Scanner Controls */}
-                <div className="qr-scanner-controls">
-                  <button
-                    type="button"
-                    className="btn-camera-toggle"
-                    onClick={() => {
-                      sounds.playClick();
-                      setCameraFacing((prev) => (prev === 'environment' ? 'user' : 'environment'));
-                    }}
-                  >
-                    <RefreshCw size={15} />
-                    <span>Flip Camera</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className="btn-camera-upload"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <Upload size={15} />
-                    <span>Upload QR Image</span>
-                  </button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    style={{ display: 'none' }}
-                    onChange={handleFileUpload}
-                  />
-                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={handleFileUpload}
+                />
               </>
             )}
           </div>
