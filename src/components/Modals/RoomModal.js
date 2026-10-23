@@ -281,8 +281,8 @@ export default function RoomModal({
                 }}
                 title="Edit Room ID and Password"
               >
-                <Edit3 size={14} />
-                <span>Edit Room</span>
+                <Edit3 size={13} />
+                <span>Edit</span>
               </button>
 
               <button 
@@ -291,8 +291,8 @@ export default function RoomModal({
                 onClick={handleCopyLink}
                 title="Copy Room Invitation Link"
               >
-                {copied ? <Check size={14} className="text-emerald" /> : <Copy size={14} />}
-                <span>{copied ? 'Copied' : 'Share Link'}</span>
+                {copied ? <Check size={13} className="text-emerald" /> : <Copy size={13} />}
+                <span>{copied ? 'Copied' : 'Share'}</span>
               </button>
 
               <button 
@@ -305,7 +305,7 @@ export default function RoomModal({
                 }}
                 title="Leave room and return to local Wi-Fi network"
               >
-                <LogOut size={14} />
+                <LogOut size={13} />
                 <span>Leave</span>
               </button>
             </div>
@@ -336,9 +336,8 @@ export default function RoomModal({
                 setModalTab('edit');
               }}
             >
-              <Edit3 size={15} />
-              <span className="desktop-tab-label">Edit Room Details</span>
-              <span className="mobile-tab-label">Edit</span>
+              <Edit3 size={14} />
+              <span>Edit Room</span>
               <span className="tab-chip-active">Active</span>
             </button>
           )}
@@ -351,9 +350,8 @@ export default function RoomModal({
               setModalTab('create');
             }}
           >
-            <Sparkles size={15} />
-            <span className="desktop-tab-label">Create New Room</span>
-            <span className="mobile-tab-label">Create</span>
+            <Sparkles size={14} />
+            <span>Create Room</span>
           </button>
 
           <button
@@ -364,9 +362,8 @@ export default function RoomModal({
               setModalTab('join');
             }}
           >
-            <ArrowRight size={15} />
-            <span className="desktop-tab-label">Join Existing Room</span>
-            <span className="mobile-tab-label">Join</span>
+            <ArrowRight size={14} />
+            <span>Join Room</span>
           </button>
         </div>
 
@@ -581,18 +578,62 @@ export default function RoomModal({
               </div>
             )}
 
-            <div className="modal-footer">
-              <button type="button" className="btn-secondary" onClick={onClose} disabled={isSubmittingEdit}>
-                <span>Cancel</span>
-              </button>
-              <button 
-                type="submit" 
-                className="btn-primary"
-                disabled={isSubmittingEdit || !editRoomName.trim()}
+            {/* Leave Room Option in Room Details Section */}
+            <div className="leave-room-section-card">
+              <div className="leave-room-section-info">
+                <div className="leave-room-icon-wrap">
+                  <LogOut size={16} className="text-pink" />
+                </div>
+                <div className="leave-room-text">
+                  <span className="leave-room-title">Leave This Room</span>
+                  <span className="leave-room-desc">Disconnect from #{currentRoom} and return to Local Wi-Fi network</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn-leave-room-action"
+                onClick={() => {
+                  sounds.playClick();
+                  onLeaveRoom();
+                  onClose();
+                }}
+                disabled={isSubmittingEdit}
+                title="Leave room and return to default network"
               >
-                {isSubmittingEdit ? <RefreshCw size={16} className="spin-animation" /> : <Check size={16} />}
-                <span>{isSubmittingEdit ? 'Saving Changes...' : 'Save & Update Room'}</span>
+                <LogOut size={13} />
+                <span>Leave Room</span>
               </button>
+            </div>
+
+            <div className="modal-footer modal-footer-spaced">
+              <button 
+                type="button" 
+                className="btn-leave-room-form" 
+                onClick={() => {
+                  sounds.playClick();
+                  onLeaveRoom();
+                  onClose();
+                }}
+                disabled={isSubmittingEdit}
+                title="Leave this room"
+              >
+                <LogOut size={14} />
+                <span>Leave Room</span>
+              </button>
+
+              <div className="modal-footer-right">
+                <button type="button" className="btn-secondary" onClick={onClose} disabled={isSubmittingEdit}>
+                  <span>Cancel</span>
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn-primary"
+                  disabled={isSubmittingEdit || !editRoomName.trim()}
+                >
+                  {isSubmittingEdit ? <RefreshCw size={15} className="spin-animation" /> : <Check size={15} />}
+                  <span>{isSubmittingEdit ? 'Saving...' : 'Save & Update Room'}</span>
+                </button>
+              </div>
             </div>
           </form>
         )}

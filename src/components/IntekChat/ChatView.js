@@ -491,28 +491,32 @@ export default function ChatView({
           <div 
             className="sidebar-room-pill clickable-room-pill" 
             onClick={onOpenRoomModal}
-            title="Click to manage or switch rooms"
+            title={`Room: #${roomName}. Click to manage.`}
           >
-            {isRoomProtected ? <Lock size={15} className="text-pink" /> : <Lock size={15} className="text-accent" />}
-            <span className="sidebar-room-name">#{roomName}</span>
-            {isRoomProtected && <span className="room-mini-lock">🔒</span>}
+            {isRoomProtected ? <Lock size={14} className="text-pink flex-shrink-0" /> : <Lock size={14} className="text-accent flex-shrink-0" />}
+            <span className="sidebar-room-name" title={`#${roomName}`}>#{roomName}</span>
+            {isRoomProtected && <span className="room-mini-lock flex-shrink-0">🔒</span>}
           </div>
-          <button 
-            type="button"
-            className="sidebar-edit-btn"
-            onClick={onOpenEditRoom || onOpenRoomModal}
-            title="Edit Room ID and Password Details"
-          >
-            <Edit3 size={14} />
-          </button>
-          <button 
-            type="button"
-            className="sidebar-toggle-btn"
-            onClick={() => setIsSidebarOpen(false)}
-            title="Collapse Sidebar"
-          >
-            <ChevronLeft size={16} />
-          </button>
+          <div className="sidebar-header-actions">
+            <button 
+              type="button"
+              className="sidebar-edit-btn"
+              onClick={onOpenEditRoom || onOpenRoomModal}
+              title="Edit Room ID and Password Details"
+              aria-label="Edit Room"
+            >
+              <Edit3 size={13} />
+            </button>
+            <button 
+              type="button"
+              className="sidebar-toggle-btn"
+              onClick={() => setIsSidebarOpen(false)}
+              title="Collapse Sidebar"
+              aria-label="Collapse Sidebar"
+            >
+              <ChevronLeft size={15} />
+            </button>
+          </div>
         </div>
 
         {/* Security Specs Card */}
