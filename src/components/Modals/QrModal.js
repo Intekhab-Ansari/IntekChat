@@ -37,6 +37,7 @@ export default function QrModal({
   activeTab = 'drop',
   onJoinScannedRoom,
   dropPairId = '',
+  userProfile = null,
   peers = [],
   initialMode = 'show'
 }) {
@@ -107,13 +108,17 @@ export default function QrModal({
       
       let target = '';
       if (isDrop) {
-        // Pure IntekDrop P2P pairing link - NEVER injects IntekChat room or password!
-        let pairId = (dropPairId || '').trim();
+        // Pure IntekDrop P2P pairing link - Each device has its OWN unique barcode based on userProfile.id!
+        const myDeviceId = (userProfile?.id || '').trim();
+        let pairId = myDeviceId;
         if (!pairId) {
           try {
             const saved = localStorage.getItem('intekchat_profile');
             if (saved) pairId = JSON.parse(saved).id || '';
           } catch {}
+        }
+        if (!pairId) {
+          pairId = (dropPairId || '').trim();
         }
         target = `${origin}/?tab=drop${pairId ? `&pair=${encodeURIComponent(pairId)}` : ''}`;
       } else {
@@ -147,7 +152,7 @@ export default function QrModal({
         );
       }
     }
-  }, [isOpen, modalMode, isDrop, roomName, roomPassword, isRoomProtected, includePasswordInQr, customHost, dropPairId]);
+  }, [isOpen, modalMode, isDrop, roomName, roomPassword, isRoomProtected, includePasswordInQr, customHost, dropPairId, userProfile]);
 
   // Stop camera stream utility
   const stopCamera = useCallback(() => {
@@ -539,9 +544,9 @@ export default function QrModal({
                     <Radio size={18} className="text-cyan animate-pulse" />
                   </div>
                   <div className="intekdrop-pair-text">
-                    <span className="intekdrop-pair-title">IntekDrop Direct P2P Sync</span>
+                    <span className="intekdrop-pair-title">Device Barcode: {userProfile?.name || 'This Device'}</span>
                     <span className="intekdrop-pair-desc">
-                      Scan with another phone or PC to pair devices and drop files instantly.
+                      Scan with another phone or PC to pair directly with {userProfile?.name || 'this device'}.
                     </span>
                   </div>
                 </div>

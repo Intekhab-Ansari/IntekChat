@@ -42,15 +42,12 @@ export default function RadarView({
 
   const handleShareLink = () => {
     if (typeof window !== 'undefined') {
-      const pair = dropPairId || userProfile?.id || '';
-      const url = new URL(window.location.href);
+      const myId = userProfile?.id || '';
+      const url = new URL(window.location.origin);
       url.searchParams.set('tab', 'drop');
-      if (pair) {
-        url.searchParams.set('pair', pair);
-        window.history.replaceState({}, '', url.toString());
+      if (myId) {
+        url.searchParams.set('pair', myId);
       }
-      url.searchParams.delete('room');
-      url.searchParams.delete('pwd');
       navigator.clipboard.writeText(url.toString());
       setCopiedLink(true);
       sounds.playMessage();
@@ -169,7 +166,12 @@ export default function RadarView({
             <span className="self-name">{userProfile?.name}</span>
             <span className="self-status">
               <span className="pulse-dot" />
-              <span>{peers.length > 0 ? `${peers.length} Device${peers.length > 1 ? 's' : ''} Nearby` : 'Radar Active • P2P Ready'}</span>
+              <span className="desktop-radar-status">
+                {peers.length > 0 ? `${peers.length} Device${peers.length > 1 ? 's' : ''} Nearby` : 'Radar Active • P2P Ready'}
+              </span>
+              <span className="mobile-radar-status">
+                {peers.length > 0 ? `${peers.length} Nearby` : 'Radar Active • Ready'}
+              </span>
             </span>
           </div>
         </div>
@@ -179,7 +181,8 @@ export default function RadarView({
       {peers.map((peer, idx) => {
         const peerStyle = getAvatarColor(idx + 1);
         const position = getPeerPosition(idx, peers.length);
-        const isHoveredOrDragged = dragOverPeerId === peer.id;
+        const isScannedPair = !!(dropPairId && (peer.id === dropPairId || peer.name?.toLowerCase() === dropPairId.toLowerCase()));
+        const isHoveredOrDragged = dragOverPeerId === peer.id || isScannedPair;
 
         // Check if there is an active transfer with this peer
         const currentTransfer = Object.values(activeTransfers).find(
@@ -226,7 +229,9 @@ export default function RadarView({
 
             <div className="peer-meta">
               <span className="peer-name">{peer.name}</span>
-              <span className="peer-os">{peer.os?.toUpperCase() || 'DEVICE'}</span>
+              <span className={`peer-os ${isScannedPair ? 'peer-os-paired' : ''}`}>
+                {isScannedPair ? 'PAIRED DEVICE' : (peer.os?.toUpperCase() || 'DEVICE')}
+              </span>
             </div>
 
             {/* Live Speed / Progress Tag */}

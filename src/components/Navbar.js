@@ -113,7 +113,8 @@ export default function Navbar({
             title="IntekDrop Nearby Radar Active"
           >
             <Radio size={14} className="text-cyan animate-pulse" />
-            <span className="room-label">Nearby Radar</span>
+            <span className="room-label desktop-radar-label">Nearby Radar</span>
+            <span className="room-label mobile-radar-label">Radar</span>
             <span className="peer-badge" title="Nearby devices discovered">
               <span className="realtime-live-dot" />
               <span className="desktop-peer-text">

@@ -461,10 +461,10 @@ export default function Home() {
       webrtcRef.current = webrtc;
     };
 
-    // Unified signaling network: IntekDrop and IntekChat share the P2P connection!
+    // Unified signaling network: IntekDrop uses shared radar mesh room so all devices discover each other!
     const effectiveRoom = (activeTab === 'chat'
       ? (roomName ? roomName.trim().toLowerCase().replace(/\s+/g, '-') : 'intekchat-lobby')
-      : (dropPairId ? `drop-${dropPairId.trim().toLowerCase()}` : (roomName ? roomName.trim().toLowerCase().replace(/\s+/g, '-') : 'intekdrop-network'))
+      : 'intekdrop-network'
     );
 
     // If on Vercel and no custom server URL configured, use CloudSignalingAdapter directly
@@ -1008,16 +1008,6 @@ export default function Home() {
             activeTransfers={activeTransfers}
             onCancelTransfer={handleCancelTransfer}
             onOpenQr={(mode = 'show') => {
-              if (activeTab === 'drop' && !dropPairId && userProfile?.id) {
-                setDropPairId(userProfile.id);
-                setRoomName(userProfile.id);
-                try {
-                  const url = new URL(window.location.href);
-                  url.searchParams.set('tab', 'drop');
-                  url.searchParams.set('pair', userProfile.id);
-                  window.history.replaceState({}, '', url.toString());
-                } catch {}
-              }
               setQrModalMode(mode);
               setIsQrModalOpen(true);
             }}
@@ -1067,6 +1057,7 @@ export default function Home() {
         isRoomProtected={isRoomProtected}
         activeTab={activeTab}
         dropPairId={dropPairId || userProfile?.id || ''}
+        userProfile={userProfile}
         peers={peers}
         initialMode={qrModalMode}
         onJoinScannedRoom={handleJoinScannedRoom}
