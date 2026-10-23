@@ -43,8 +43,332 @@ import {
 import { formatBytes, getAvatarColor } from '@/lib/peer';
 import { sounds } from '@/lib/sound';
 import WallpaperModal from '@/components/Modals/WallpaperModal';
-import CameraModal from '@/components/Modals/CameraModal';
-import { getWallpaperCss } from '@/lib/wallpapers';
+// Interactive Swipe-to-Reply Message Item with Rubber-Band Resistance & Haptic Feedback
+function SwipeableMessageRow({
+  msg,
+  isSelf,
+  avatar,
+  isStealthTextMode,
+  onStartReply,
+  scrollToMessage,
+  handleOpenViewOnce,
+  setViewOnceModalData,
+  getFileIcon
+}) {
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const touchStartRef = useRef(null);
+
+  const handleTouchStart = (e) => {
+    const touch = e.touches[0];
+    touchStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+      isHorizontal: null
+    };
+    setIsDragging(true);
+  };
+
+  const handleTouchMove = (e) => {
+    if (!touchStartRef.current) return;
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - touchStartRef.current.x;
+    const deltaY = touch.clientY - touchStartRef.current.y;
+
+    if (touchStartRef.current.isHorizontal === null) {
+      if (Math.abs(deltaY) > 8 && Math.abs(deltaY) > Math.abs(deltaX)) {
+        touchStartRef.current.isHorizontal = false;
+        return;
+      } else if (Math.abs(deltaX) > 8) {
+        touchStartRef.current.isHorizontal = true;
+      } else {
+        return;
+      }
+    }
+
+    if (touchStartRef.current.isHorizontal === false) return;
+
+    if (e.cancelable) e.preventDefault();
+
+    if (deltaX > 0) {
+      const damped = Math.min(80, Math.pow(deltaX, 0.88) * 1.5);
+      setSwipeOffset(damped);
+      if (damped >= 50 && swipeOffset < 50) {
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          try { navigator.vibrate(12); } catch {}
+        }
+      }
+    } else {
+      setSwipeOffset(0);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+    if (swipeOffset >= 48) {
+      sounds.playClick();
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        try { navigator.vibrate([15, 25]); } catch {}
+      }
+      onStartReply(msg);
+    }
+    setSwipeOffset(0);
+    touchStartRef.current = null;
+  };
+
+  const handleMouseDown = (e) => {
+    if (e.button !== 0 || e.target.closest('button, a, input')) return;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    let isSwiping = false;
+
+    const onMouseMove = (moveEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      const deltaY = moveEvent.clientY - startY;
+
+      if (!isSwiping) {
+        if (Math.abs(deltaY) > 8) {
+          cleanup();
+          return;
+        }
+        if (deltaX > 8) {
+          isSwiping = true;
+          setIsDragging(true);
+        }
+      }
+
+      if (isSwiping && deltaX > 0) {
+        const damped = Math.min(80, Math.pow(deltaX, 0.88) * 1.5);
+        setSwipeOffset(damped);
+      }
+    };
+
+    const onMouseUp = () => {
+      cleanup();
+      setIsDragging(false);
+      setSwipeOffset((cur) => {
+        if (cur >= 48) {
+          sounds.playClick();
+          onStartReply(msg);
+        }
+        return 0;
+      });
+    };
+
+    const cleanup = () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
+
+  return (
+    <div 
+      id={`msg-${msg.id}`}
+      className={`message-row ${isSelf ? 'message-self' : 'message-peer'}`}
+    >
+      {/* Swipe-to-reply Track Indicator */}
+      <div 
+        className="swipe-reply-track"
+        style={{
+          opacity: swipeOffset > 6 ? Math.min(1, (swipeOffset - 6) / 36) : 0,
+          transform: `translateX(${Math.min(swipeOffset * 0.45, 28)}px) scale(${swipeOffset >= 48 ? 1.15 : 0.85 + (swipeOffset / 48) * 0.15})`
+        }}
+      >
+        <div className={`swipe-reply-icon-bubble ${swipeOffset >= 48 ? 'swipe-reply-active' : ''}`}>
+          <Reply size={15} />
+        </div>
+      </div>
+
+      {!isSelf && (
+        <div 
+          className="msg-avatar" 
+          style={{ 
+            borderColor: avatar.border, 
+            color: avatar.text, 
+            background: avatar.bg 
+          }}
+        >
+          {msg.senderName?.charAt(0) || 'P'}
+        </div>
+      )}
+
+      <div 
+        className="msg-bubble-wrap"
+        style={{
+          transform: swipeOffset > 0 ? `translateX(${swipeOffset}px)` : undefined,
+          transition: isDragging ? 'none' : 'transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.2)'
+        }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
+        onMouseDown={handleMouseDown}
+      >
+        <div className="msg-sender-info">
+          <span className="msg-sender-name">{isSelf ? 'You' : msg.senderName}</span>
+          <span className="msg-time">{msg.time}</span>
+          {isSelf && (
+            <span 
+              className="msg-seen-status" 
+              title={msg.seen 
+                ? `Seen by ${msg.seenBy && msg.seenBy.length > 0 ? msg.seenBy.join(', ') : 'peer'}` 
+                : 'Sent (Encrypted)'}
+            >
+              {msg.seen ? (
+                <CheckCheck size={14} className="seen-check-icon seen-active" />
+              ) : (
+                <Check size={13} className="seen-check-icon sent-active" />
+              )}
+            </span>
+          )}
+          <button
+            type="button"
+            className="msg-reply-btn"
+            onClick={() => onStartReply(msg)}
+            title="Reply to this message"
+          >
+            <Reply size={12} />
+            <span>Reply</span>
+          </button>
+        </div>
+
+        <div 
+          className="msg-bubble"
+          onMouseDown={handleMouseDown}
+          onDoubleClick={() => onStartReply(msg)}
+          title="Swipe or double-click to reply"
+        >
+          {/* QUOTED REPLY BLOCK */}
+          {msg.replyTo && (
+            <div 
+              className="msg-quote-card"
+              onClick={(e) => {
+                e.stopPropagation();
+                scrollToMessage(msg.replyTo.id);
+              }}
+              title="Click to jump to quoted message"
+            >
+              <div className="quote-accent-line" />
+              <div className="quote-body">
+                <div className="quote-header">
+                  <Reply size={11} className="quote-icon" />
+                  <span className="quote-author">{msg.replyTo.senderName}</span>
+                </div>
+                <p className="quote-text">{msg.replyTo.text}</p>
+              </div>
+            </div>
+          )}
+          {/* TEXT MESSAGE */}
+          {msg.type === 'text' && (
+            <p className="msg-text">{msg.text}</p>
+          )}
+
+          {/* IMAGE MESSAGE */}
+          {msg.type === 'image' && (
+            <div className="msg-media-block">
+              {isStealthTextMode ? (
+                <div className="stealth-tag">
+                  <ImageIcon size={14} />
+                  <span>[Photo: {msg.imageMode?.toUpperCase() || 'NORMAL'}]</span>
+                  {!msg.isBurned && (
+                    <button 
+                      type="button" 
+                      className="stealth-reveal-btn"
+                      onClick={() => {
+                        if (msg.imageMode === 'once') handleOpenViewOnce(msg);
+                        else setViewOnceModalData(msg);
+                      }}
+                    >
+                      View
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {msg.isBurned ? (
+                    <div className="burned-badge">
+                      <Flame size={16} className="text-pink animate-pulse" />
+                      <span>Photo Burned (Self-Destructed)</span>
+                    </div>
+                  ) : msg.imageMode === 'once' ? (
+                    <div 
+                      className="view-once-card"
+                      onClick={() => handleOpenViewOnce(msg)}
+                    >
+                      <div className="view-once-blur-bg" style={{ backgroundImage: `url(${msg.dataUrl})` }} />
+                      <div className="view-once-overlay">
+                        <EyeOff size={22} className="text-pink animate-pulse" />
+                        <span className="view-once-title">⚡ View Once Photo</span>
+                        <span className="view-once-hint">Tap to view (Burns forever)</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="image-preview-card">
+                      <img src={msg.dataUrl} alt={msg.name || 'Shared Image'} className="chat-img" />
+                      <div className="image-mode-tag">
+                        {msg.imageMode === 'repeat' ? (
+                          <>
+                            <Repeat size={12} />
+                            <span>Repeatable</span>
+                          </>
+                        ) : (
+                          <>
+                            <InfinityIcon size={12} />
+                            <span>Permanent</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
+          {/* GENERIC FILE MESSAGE */}
+          {msg.type === 'file' && (
+            <div className="msg-file-block">
+              {isStealthTextMode ? (
+                <div className="stealth-tag">
+                  {getFileIcon(msg.name)}
+                  <span>[{msg.name} • {formatBytes(msg.size)}]</span>
+                  <a 
+                    href={msg.dataUrl} 
+                    download={msg.name} 
+                    className="stealth-download-link"
+                  >
+                    Save
+                  </a>
+                </div>
+              ) : (
+                <div className="chat-file-card">
+                  <div className="file-icon-wrap">
+                    {getFileIcon(msg.name)}
+                  </div>
+                  <div className="file-details">
+                    <span className="file-name" title={msg.name}>{msg.name}</span>
+                    <span className="file-size">{formatBytes(msg.size)}</span>
+                  </div>
+                  <a 
+                    href={msg.dataUrl} 
+                    download={msg.name} 
+                    className="file-download-btn"
+                    title="Download File"
+                  >
+                    <Download size={16} />
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function ChatView({
   messages,
@@ -309,7 +633,9 @@ export default function ChatView({
   };
 
   const handleSendText = (e) => {
-    e.preventDefault();
+    if (e && typeof e.preventDefault === 'function') {
+      e.preventDefault();
+    }
     if (!inputText.trim()) return;
 
     if (typingTimeoutRef.current) {
@@ -339,6 +665,16 @@ export default function ChatView({
 
     onSendMessage(payload);
     setInputText('');
+
+    // Crucial: keep virtual keyboard open continuously on mobile & desktop!
+    if (textInputRef.current) {
+      textInputRef.current.focus({ preventScroll: true });
+    }
+    setTimeout(() => {
+      if (textInputRef.current) {
+        textInputRef.current.focus({ preventScroll: true });
+      }
+    }, 10);
   };
 
   const handleCameraCaptureAndSend = ({ dataUrl, imageMode: captureMode, name, size }) => {
@@ -1097,184 +1433,18 @@ export default function ChatView({
             const avatar = getAvatarColor(msg.senderColor || 0);
 
             return (
-              <div 
-                key={msg.id} 
-                id={`msg-${msg.id}`}
-                className={`message-row ${isSelf ? 'message-self' : 'message-peer'}`}
-              >
-                {!isSelf && (
-                  <div 
-                    className="msg-avatar" 
-                    style={{ 
-                      borderColor: avatar.border, 
-                      color: avatar.text, 
-                      background: avatar.bg 
-                    }}
-                  >
-                    {msg.senderName?.charAt(0) || 'P'}
-                  </div>
-                )}
-
-                <div className="msg-bubble-wrap">
-                  <div className="msg-sender-info">
-                    <span className="msg-sender-name">{isSelf ? 'You' : msg.senderName}</span>
-                    <span className="msg-time">{msg.time}</span>
-                    {isSelf && (
-                      <span 
-                        className="msg-seen-status" 
-                        title={msg.seen 
-                          ? `Seen by ${msg.seenBy && msg.seenBy.length > 0 ? msg.seenBy.join(', ') : 'peer'}` 
-                          : 'Sent (Encrypted)'}
-                      >
-                        {msg.seen ? (
-                          <CheckCheck size={14} className="seen-check-icon seen-active" />
-                        ) : (
-                          <Check size={13} className="seen-check-icon sent-active" />
-                        )}
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      className="msg-reply-btn"
-                      onClick={() => handleStartReply(msg)}
-                      title="Reply to this message"
-                    >
-                      <Reply size={12} />
-                      <span>Reply</span>
-                    </button>
-                  </div>
-
-                  <div 
-                    className="msg-bubble"
-                    onDoubleClick={() => handleStartReply(msg)}
-                    title="Double-click to reply"
-                  >
-                    {/* QUOTED REPLY BLOCK */}
-                    {msg.replyTo && (
-                      <div 
-                        className="msg-quote-card"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          scrollToMessage(msg.replyTo.id);
-                        }}
-                        title="Click to jump to quoted message"
-                      >
-                        <div className="quote-accent-line" />
-                        <div className="quote-body">
-                          <div className="quote-header">
-                            <Reply size={11} className="quote-icon" />
-                            <span className="quote-author">{msg.replyTo.senderName}</span>
-                          </div>
-                          <p className="quote-text">{msg.replyTo.text}</p>
-                        </div>
-                      </div>
-                    )}
-                    {/* TEXT MESSAGE */}
-                    {msg.type === 'text' && (
-                      <p className="msg-text">{msg.text}</p>
-                    )}
-
-                    {/* IMAGE MESSAGE */}
-                    {msg.type === 'image' && (
-                      <div className="msg-media-block">
-                        {isStealthTextMode ? (
-                          <div className="stealth-tag">
-                            <ImageIcon size={14} />
-                            <span>[Photo: {msg.imageMode?.toUpperCase() || 'NORMAL'}]</span>
-                            {!msg.isBurned && (
-                              <button 
-                                type="button"
-                                className="stealth-reveal-btn"
-                                onClick={() => {
-                                  if (msg.imageMode === 'once') handleOpenViewOnce(msg);
-                                  else setViewOnceModalData(msg);
-                                }}
-                              >
-                                View
-                              </button>
-                            )}
-                          </div>
-                        ) : (
-                          <>
-                            {msg.isBurned ? (
-                              <div className="burned-badge">
-                                <Flame size={16} className="text-pink animate-pulse" />
-                                <span>Photo Burned (Self-Destructed)</span>
-                              </div>
-                            ) : msg.imageMode === 'once' ? (
-                              <div 
-                                className="view-once-card"
-                                onClick={() => handleOpenViewOnce(msg)}
-                              >
-                                <div className="view-once-blur-bg" style={{ backgroundImage: `url(${msg.dataUrl})` }} />
-                                <div className="view-once-overlay">
-                                  <EyeOff size={22} className="text-pink animate-pulse" />
-                                  <span className="view-once-title">⚡ View Once Photo</span>
-                                  <span className="view-once-hint">Tap to view (Burns forever)</span>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="image-preview-card">
-                                <img src={msg.dataUrl} alt={msg.name || 'Shared Image'} className="chat-img" />
-                                <div className="image-mode-tag">
-                                  {msg.imageMode === 'repeat' ? (
-                                    <>
-                                      <Repeat size={12} />
-                                      <span>Repeatable</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <InfinityIcon size={12} />
-                                      <span>Permanent</span>
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    )}
-
-                    {/* GENERIC FILE MESSAGE */}
-                    {msg.type === 'file' && (
-                      <div className="msg-file-block">
-                        {isStealthTextMode ? (
-                          <div className="stealth-tag">
-                            {getFileIcon(msg.name)}
-                            <span>[{msg.name} • {formatBytes(msg.size)}]</span>
-                            <a 
-                              href={msg.dataUrl} 
-                              download={msg.name} 
-                              className="stealth-download-link"
-                            >
-                              Save
-                            </a>
-                          </div>
-                        ) : (
-                          <div className="chat-file-card">
-                            <div className="file-icon-wrap">
-                              {getFileIcon(msg.name)}
-                            </div>
-                            <div className="file-details">
-                              <span className="file-name" title={msg.name}>{msg.name}</span>
-                              <span className="file-size">{formatBytes(msg.size)}</span>
-                            </div>
-                            <a 
-                              href={msg.dataUrl} 
-                              download={msg.name} 
-                              className="file-download-btn"
-                              title="Download File"
-                            >
-                              <Download size={16} />
-                            </a>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+              <SwipeableMessageRow
+                key={msg.id}
+                msg={msg}
+                isSelf={isSelf}
+                avatar={avatar}
+                isStealthTextMode={isStealthTextMode}
+                onStartReply={handleStartReply}
+                scrollToMessage={scrollToMessage}
+                handleOpenViewOnce={handleOpenViewOnce}
+                setViewOnceModalData={setViewOnceModalData}
+                getFileIcon={getFileIcon}
+              />
             );
           })}
           {/* Real-time Typing Indicator with 3 Bouncing Dots */}
@@ -1438,7 +1608,20 @@ export default function ChatView({
             <button 
               type="submit" 
               className="chat-send-btn" 
-              disabled={!inputText.trim()}
+              aria-disabled={!inputText.trim()}
+              onMouseDown={(e) => {
+                // Prevent mouse click from stealing focus from text input on desktop
+                e.preventDefault();
+              }}
+              onTouchStart={(e) => {
+                // Prevent mobile browser from blurring the text input when tapping send
+                if (!inputText.trim()) {
+                  e.preventDefault();
+                  return;
+                }
+                e.preventDefault();
+                handleSendText(e);
+              }}
               title="Send Encrypted Message"
             >
               <Send size={18} />
