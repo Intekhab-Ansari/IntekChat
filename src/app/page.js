@@ -1038,6 +1038,7 @@ export default function Home() {
               setQrModalMode(mode);
               setIsQrModalOpen(true);
             }}
+            onLeaveRoom={handleLeaveRoom}
           />
         )}
       </main>

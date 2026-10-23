@@ -1615,8 +1615,11 @@ body {
 }
 
 .sidebar-footer {
-  padding: 1rem 1.25rem;
+  padding: 0.85rem 1.15rem;
   border-top: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .sidebar-action-btn {
@@ -1643,6 +1646,20 @@ body {
 .wipe-btn:hover {
   background: rgba(244, 63, 94, 0.25);
   color: #fff;
+}
+
+.sidebar-action-btn.leave-btn {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.28);
+}
+
+.sidebar-action-btn.leave-btn:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: #ef4444;
+  color: #fff;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.25);
+  transform: translateY(-1px);
 }
 
 /* Main Conversation Column */
@@ -1758,6 +1775,28 @@ body {
   color: #fff;
 }
 
+.btn-leave-chat {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.85rem;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.28);
+  border-radius: 9999px;
+  color: #f87171;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-leave-chat:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: #ef4444;
+  color: #fff;
+  transform: translateY(-1px);
+}
+
 /* Chat Wallpaper Button in Header */
 .btn-wallpaper {
   display: flex;
@@ -1785,7 +1824,7 @@ body {
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   color: var(--text-main);
-  margin-bottom: 0.5rem;
+  margin-bottom: 0;
 }
 
 .wallpaper-btn:hover {
@@ -5036,7 +5075,8 @@ body {
 
   .btn-stealth,
   .btn-wallpaper,
-  .btn-clear-chat {
+  .btn-clear-chat,
+  .btn-leave-chat {
     width: 28px;
     height: 28px;
     padding: 0;
@@ -5048,7 +5088,8 @@ body {
 
   .btn-stealth span,
   .btn-wallpaper span,
-  .btn-clear-chat span {
+  .btn-clear-chat span,
+  .btn-leave-chat span {
     display: none;
   }
 

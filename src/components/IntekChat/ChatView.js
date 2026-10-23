@@ -34,7 +34,8 @@ import {
   DatabaseZap,
   Paintbrush,
   Edit3,
-  QrCode
+  QrCode,
+  LogOut
 } from 'lucide-react';
 import { formatBytes, getAvatarColor } from '@/lib/peer';
 import { sounds } from '@/lib/sound';
@@ -58,7 +59,8 @@ export default function ChatView({
   onOpenRoomModal,
   onOpenEditRoom,
   onOpenProfile,
-  onOpenQr
+  onOpenQr,
+  onLeaveRoom
 }) {
   const avatarStyle = getAvatarColor(userProfile?.colorIndex || 0);
   const [inputText, setInputText] = useState('');
@@ -644,10 +646,28 @@ export default function ChatView({
                 onClearChat();
               }
             }}
+            title="Clear all chat messages from this session"
           >
             <Trash2 size={14} />
             <span>Clear Chat History</span>
           </button>
+
+          {roomName && (
+            <button 
+              type="button" 
+              className="sidebar-action-btn leave-btn"
+              onClick={() => {
+                sounds.playClick();
+                if (window.confirm(`Leave room #${roomName} and return to Local Wi-Fi?`)) {
+                  onLeaveRoom?.();
+                }
+              }}
+              title="Leave room and return to local network"
+            >
+              <LogOut size={14} />
+              <span>Leave Room</span>
+            </button>
+          )}
         </div>
       </aside>
 
@@ -760,6 +780,24 @@ export default function ChatView({
               <Trash2 size={15} />
               <span>Clear Chat</span>
             </button>
+
+            {/* Quick Leave Room Button */}
+            {roomName && (
+              <button 
+                type="button"
+                className="btn-leave-chat" 
+                onClick={() => {
+                  sounds.playClick();
+                  if (window.confirm(`Leave room #${roomName} and return to Local Wi-Fi?`)) {
+                    onLeaveRoom?.();
+                  }
+                }}
+                title="Leave room and return to local network"
+              >
+                <LogOut size={14} />
+                <span>Leave</span>
+              </button>
+            )}
           </div>
         </div>
 
