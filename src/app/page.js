@@ -75,28 +75,17 @@ export default function Home() {
       if (pairParam) {
         const cleanPair = pairParam.trim().toLowerCase();
         setDropPairId(cleanPair);
-        if (!roomParam) {
-          setRoomName(cleanPair);
-        }
+        setRoomName(cleanPair);
         setActiveTab('drop');
-      } else {
-        setDropPairId(profile.id);
-        if (!roomParam) {
-          setRoomName(profile.id);
-        }
-      }
-
-      if (roomParam) {
+      } else if (roomParam) {
         const cleanRoom = roomParam.trim().toLowerCase().replace(/\s+/g, '-');
         setRoomName(cleanRoom);
-        if (!pairParam) {
-          setDropPairId(cleanRoom);
-        }
+        setDropPairId(cleanRoom);
         if (initialPwd) {
           setRoomPassword(initialPwd);
           setIsRoomProtected(true);
         }
-        // Clean URL address bar if room name had spaces
+        setActiveTab('chat');
         if (roomParam !== cleanRoom) {
           try {
             const url = new URL(window.location.href);
@@ -104,7 +93,11 @@ export default function Home() {
             window.history.replaceState({}, '', url.toString());
           } catch {}
         }
+      } else {
+        setDropPairId('');
+        setRoomName('');
       }
+
       const tabParam = params.get('tab');
       if (tabParam === 'chat' || tabParam === 'drop') {
         setActiveTab(tabParam);
@@ -137,19 +130,22 @@ export default function Home() {
           // When switching to IntekDrop, clean room/pwd so address bar shows clean P2P pairing
           url.searchParams.delete('room');
           url.searchParams.delete('pwd');
-          const pair = dropPairId || roomName || userProfile?.id;
-          if (pair) {
-            url.searchParams.set('pair', pair);
+          if (dropPairId) {
+            url.searchParams.set('pair', dropPairId);
+          } else {
+            url.searchParams.delete('pair');
           }
         } else {
           // When switching to IntekChat, clean pair so address bar reflects chat room
           url.searchParams.delete('pair');
-          const room = roomName || dropPairId;
-          if (room) {
-            url.searchParams.set('room', room);
+          if (roomName) {
+            url.searchParams.set('room', roomName);
             if (isRoomProtected && roomPassword) {
               url.searchParams.set('pwd', roomPassword);
             }
+          } else {
+            url.searchParams.delete('room');
+            url.searchParams.delete('pwd');
           }
         }
         window.history.replaceState({}, '', url.toString());
@@ -466,10 +462,10 @@ export default function Home() {
     };
 
     // Unified signaling network: IntekDrop and IntekChat share the P2P connection!
-    const effectiveRoom = (roomName || (dropPairId ? `drop-${dropPairId}` : 'intekdrop-network'))
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, '-');
+    const effectiveRoom = (activeTab === 'chat'
+      ? (roomName ? roomName.trim().toLowerCase().replace(/\s+/g, '-') : 'intekchat-lobby')
+      : (dropPairId ? `drop-${dropPairId.trim().toLowerCase()}` : (roomName ? roomName.trim().toLowerCase().replace(/\s+/g, '-') : 'intekdrop-network'))
+    );
 
     // If on Vercel and no custom server URL configured, use CloudSignalingAdapter directly
     if (isVercel && !customServerUrl) {
@@ -531,7 +527,7 @@ export default function Home() {
       webrtcRef.current?.destroy();
       activeSignaling?.disconnect?.();
     };
-  }, [userProfile, dropPairId, roomName, roomPassword]);
+  }, [userProfile, dropPairId, roomName, roomPassword, activeTab]);
 
   // Handle Profile Update
   const handleUpdateProfile = (updatedProfile) => {
@@ -588,6 +584,7 @@ export default function Home() {
       if (pair) {
         const cleanPair = pair.trim().toLowerCase();
         setDropPairId(cleanPair);
+        setRoomName(cleanPair);
         if (typeof window !== 'undefined') {
           const url = new URL(window.location.href);
           url.searchParams.set('tab', 'drop');
@@ -1011,11 +1008,21 @@ export default function Home() {
             activeTransfers={activeTransfers}
             onCancelTransfer={handleCancelTransfer}
             onOpenQr={(mode = 'show') => {
+              if (activeTab === 'drop' && !dropPairId && userProfile?.id) {
+                setDropPairId(userProfile.id);
+                setRoomName(userProfile.id);
+                try {
+                  const url = new URL(window.location.href);
+                  url.searchParams.set('tab', 'drop');
+                  url.searchParams.set('pair', userProfile.id);
+                  window.history.replaceState({}, '', url.toString());
+                } catch {}
+              }
               setQrModalMode(mode);
               setIsQrModalOpen(true);
             }}
             roomName={roomName}
-            dropPairId={dropPairId || userProfile?.id || ''}
+            dropPairId={dropPairId || ''}
           />
         ) : (
           <ChatView

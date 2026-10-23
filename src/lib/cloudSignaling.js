@@ -1,12 +1,12 @@
 // Automatic Cloud Signaling Fallback for Serverless Environments (Vercel)
-// Connects peer-to-peer via free, reliable public WebSockets MQTT broker (EMQX / HiveMQ)
+// Connects peer-to-peer via free, reliable public WebSockets MQTT broker (EMQX / Mosquitto)
 // Zero server setup required — devices discover each other instantly across the internet.
 
 import mqtt from 'mqtt';
 
 const PUBLIC_BROKERS = [
   'wss://broker.emqx.io:8084/mqtt',
-  'wss://broker.hivemq.com:8884/mqtt'
+  'wss://test.mosquitto.org:8081/mqtt'
 ];
 
 export class CloudSignalingAdapter {
@@ -22,10 +22,12 @@ export class CloudSignalingAdapter {
     this.heartbeatInterval = null;
     this.cleanupInterval = null;
     this.connected = false;
+    this.destroyed = false;
 
-    this.baseTopic = `intekchat/v3/rooms/${this.roomName}`;
+    this.baseTopic = `intekchat/v4/rooms/${this.roomName}`;
     this.presenceTopic = `${this.baseTopic}/presence`;
     this.myDirectTopic = `${this.baseTopic}/peer/${this.selfId}`;
+    this.relayTopic = `${this.baseTopic}/relay`;
 
     this.init();
   }
@@ -67,19 +69,19 @@ export class CloudSignalingAdapter {
       this.client = mqtt.connect(brokerUrl, {
         clientId,
         clean: true,
-        connectTimeout: 5000,
-        reconnectPeriod: 4000,
+        connectTimeout: 10000,
+        reconnectPeriod: 3000,
         keepalive: 30
       });
 
-      // Failover timer: if broker fails to connect within 4 seconds, try next fallback broker
+      // Failover timer: if broker fails to connect within 12 seconds, try secondary broker
       if (this.failoverTimer) clearTimeout(this.failoverTimer);
       this.failoverTimer = setTimeout(() => {
         if (!this.connected && !this.destroyed) {
           console.warn(`Signaling broker ${brokerUrl} timeout. Switching to next broker...`);
           this.switchBroker();
         }
-      }, 4000);
+      }, 12000);
 
       this.client.on('connect', () => {
         if (this.failoverTimer) clearTimeout(this.failoverTimer);
@@ -87,17 +89,24 @@ export class CloudSignalingAdapter {
         this.emitLocal('connect');
 
         // Subscribe to room presence, direct peer messages, and encrypted relay with QoS 1
-        this.relayTopic = `${this.baseTopic}/relay`;
         this.client.subscribe([this.presenceTopic, this.myDirectTopic, this.relayTopic], { qos: 1 }, (err) => {
           if (!err) {
-            // Triple-burst presence announcement to overcome mobile network latency
+            // Immediate announcement and presence query to discover peers already in the room
             this.broadcastPresence('announce');
+            this.broadcastPresence('query');
+
             setTimeout(() => {
-              if (this.connected && !this.destroyed) this.broadcastPresence('announce');
-            }, 400);
+              if (this.connected && !this.destroyed) {
+                this.broadcastPresence('announce');
+                this.broadcastPresence('query');
+              }
+            }, 600);
+
             setTimeout(() => {
-              if (this.connected && !this.destroyed) this.broadcastPresence('announce');
-            }, 1200);
+              if (this.connected && !this.destroyed) {
+                this.broadcastPresence('announce');
+              }
+            }, 1800);
 
             this.startHeartbeat();
           }
@@ -125,18 +134,30 @@ export class CloudSignalingAdapter {
         this.connected = false;
       });
 
-      // Cleanup stale peers that stopped heartbeating
+      // Cleanup stale peers that stopped heartbeating (> 25s inactivity)
       if (!this.cleanupInterval) {
         this.cleanupInterval = setInterval(() => {
           const now = Date.now();
           for (const [peerId, peerData] of this.knownPeers.entries()) {
-            if (now - peerData.lastSeen > 35000) {
+            if (now - peerData.lastSeen > 25000) {
               this.knownPeers.delete(peerId);
               this.emitLocal('peer-left', { id: peerId });
               this.broadcastCount();
             }
           }
-        }, 10000);
+        }, 5000);
+      }
+
+      // Handle window focus & mobile screen unlock (resumes discovery if suspended in background)
+      if (typeof window !== 'undefined' && !this._visibilityHandler) {
+        this._visibilityHandler = () => {
+          if (document.visibilityState === 'visible' && this.connected && !this.destroyed) {
+            this.broadcastPresence('announce');
+            this.broadcastPresence('query');
+          }
+        };
+        document.addEventListener('visibilitychange', this._visibilityHandler);
+        window.addEventListener('focus', this._visibilityHandler);
       }
 
       // Handle window unload / leave
@@ -165,10 +186,10 @@ export class CloudSignalingAdapter {
   startHeartbeat() {
     this.stopHeartbeat();
     this.heartbeatInterval = setInterval(() => {
-      if (this.connected) {
+      if (this.connected && !this.destroyed) {
         this.broadcastPresence('heartbeat');
       }
-    }, 12000);
+    }, 4000); // 4-second liveness heartbeat for rapid sync
   }
 
   stopHeartbeat() {
@@ -178,13 +199,14 @@ export class CloudSignalingAdapter {
     }
   }
 
-  broadcastPresence(action) {
+  broadcastPresence(action, extra = {}) {
     if (!this.client || !this.connected) return;
     const msg = {
       action,
       senderId: this.selfId,
       peerInfo: { ...this.userProfile, id: this.selfId },
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      ...extra
     };
     try {
       this.client.publish(this.presenceTopic, JSON.stringify(msg), { qos: 1 });
@@ -203,8 +225,7 @@ export class CloudSignalingAdapter {
     if (!senderId || senderId === this.selfId) return; // Ignore own messages
 
     if (topic === this.presenceTopic) {
-      if (data.action === 'announce') {
-        // A new peer joined the room
+      if (data.action === 'announce' || data.action === 'welcome' || data.action === 'heartbeat') {
         if (data.peerInfo && data.peerInfo.id) {
           const isNew = !this.knownPeers.has(data.peerInfo.id);
           this.knownPeers.set(data.peerInfo.id, {
@@ -217,25 +238,19 @@ export class CloudSignalingAdapter {
             this.broadcastCount();
           }
 
-          // Welcome them and send back our peer info directly
-          this.sendDirect(data.peerInfo.id, {
-            type: 'welcome',
-            senderId: this.selfId,
-            peerInfo: { ...this.userProfile, id: this.selfId }
-          });
-        }
-      } else if (data.action === 'heartbeat') {
-        if (data.peerInfo && data.peerInfo.id) {
-          const isNew = !this.knownPeers.has(data.peerInfo.id);
-          this.knownPeers.set(data.peerInfo.id, {
-            ...data.peerInfo,
-            lastSeen: Date.now()
-          });
-          if (isNew) {
-            this.emitLocal('peer-joined', data.peerInfo);
-            this.broadcastCount();
+          if (data.action === 'announce') {
+            // Reply with welcome so the joining peer immediately learns about us
+            this.broadcastPresence('welcome', { targetId: data.peerInfo.id });
+            this.sendDirect(data.peerInfo.id, {
+              type: 'welcome',
+              senderId: this.selfId,
+              peerInfo: { ...this.userProfile, id: this.selfId }
+            });
           }
         }
+      } else if (data.action === 'query') {
+        // A peer is asking who is active in this room: immediately announce ourselves
+        this.broadcastPresence('announce');
       } else if (data.action === 'bye') {
         if (this.knownPeers.has(senderId)) {
           this.knownPeers.delete(senderId);
@@ -306,6 +321,7 @@ export class CloudSignalingAdapter {
     if (event === 'join-network') {
       // Re-announce presence
       this.broadcastPresence('announce');
+      this.broadcastPresence('query');
       return;
     }
 
@@ -364,8 +380,12 @@ export class CloudSignalingAdapter {
     if (this.failoverTimer) clearTimeout(this.failoverTimer);
     this.stopHeartbeat();
     if (this.cleanupInterval) clearInterval(this.cleanupInterval);
-    if (typeof window !== 'undefined' && this._unloadHandler) {
-      window.removeEventListener('beforeunload', this._unloadHandler);
+    if (typeof window !== 'undefined') {
+      if (this._unloadHandler) window.removeEventListener('beforeunload', this._unloadHandler);
+      if (this._visibilityHandler) {
+        document.removeEventListener('visibilitychange', this._visibilityHandler);
+        window.removeEventListener('focus', this._visibilityHandler);
+      }
     }
     if (this.client) {
       try {

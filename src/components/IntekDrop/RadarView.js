@@ -42,10 +42,12 @@ export default function RadarView({
 
   const handleShareLink = () => {
     if (typeof window !== 'undefined') {
+      const pair = dropPairId || userProfile?.id || '';
       const url = new URL(window.location.href);
       url.searchParams.set('tab', 'drop');
-      if (dropPairId) {
-        url.searchParams.set('pair', dropPairId);
+      if (pair) {
+        url.searchParams.set('pair', pair);
+        window.history.replaceState({}, '', url.toString());
       }
       url.searchParams.delete('room');
       url.searchParams.delete('pwd');
