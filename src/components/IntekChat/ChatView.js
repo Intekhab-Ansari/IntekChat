@@ -43,6 +43,8 @@ import {
 import { formatBytes, getAvatarColor } from '@/lib/peer';
 import { sounds } from '@/lib/sound';
 import WallpaperModal from '@/components/Modals/WallpaperModal';
+import CameraModal from '@/components/Modals/CameraModal';
+
 // Interactive Swipe-to-Reply Message Item with Rubber-Band Resistance & Haptic Feedback
 function SwipeableMessageRow({
   msg,
