@@ -1403,6 +1403,27 @@ body {
     font-size: 0.68rem;
     white-space: nowrap !important;
   }
+
+  .peer-avatar-wrap {
+    width: 48px;
+    height: 48px;
+  }
+
+  .peer-name {
+    font-size: 0.75rem;
+    white-space: nowrap;
+  }
+
+  .peer-os {
+    font-size: 0.58rem;
+    white-space: nowrap;
+  }
+
+  .peer-tap-hint {
+    padding: 1px 6px;
+    font-size: 0.62rem;
+    white-space: nowrap;
+  }
 }
 
 /* Transfers HUD */

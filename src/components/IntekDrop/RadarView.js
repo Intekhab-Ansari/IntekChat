@@ -110,15 +110,39 @@ export default function RadarView({
     }
   };
 
-  // Radial positioning math for discovered peers
+  // Upper-hemisphere positioning: Top -> Right-Top -> Left-Top -> Mid-Right -> Mid-Left (never downside)
   const getPeerPosition = (index, total) => {
-    if (total === 1) {
-      return { top: '24%', left: '50%', transform: 'translate(-50%, -50%)' };
+    const UPPER_SLOTS = [
+      { x: 0, y: -160 },    // 0: Top (Center-Top)
+      { x: 110, y: -120 },  // 1: Right-Top
+      { x: -110, y: -120 }, // 2: Left-Top
+      { x: 140, y: -45 },   // 3: Mid-Right
+      { x: -140, y: -45 },  // 4: Mid-Left
+      { x: 65, y: -205 },   // 5: Outer Right-Top
+      { x: -65, y: -205 },  // 6: Outer Left-Top
+      { x: 165, y: -110 },  // 7: Far Right-Top
+      { x: -165, y: -110 }, // 8: Far Left-Top
+    ];
+
+    if (index < UPPER_SLOTS.length) {
+      const slot = UPPER_SLOTS[index];
+      return {
+        top: `calc(50% + ${slot.y}px)`,
+        left: `calc(50% + ${slot.x}px)`,
+        transform: 'translate(-50%, -50%)'
+      };
     }
-    const radius = 170; // px distance from radar center
-    const angle = (index / total) * 2 * Math.PI - Math.PI / 2;
-    const x = Math.round(radius * Math.cos(angle));
-    const y = Math.round(radius * Math.sin(angle));
+
+    // Procedural upper hemisphere distribution for 9+ devices (strictly y < 0)
+    const extra = index - UPPER_SLOTS.length;
+    const sign = extra % 2 === 0 ? 1 : -1;
+    const step = Math.floor(extra / 2) + 1;
+    const angleStep = 0.22;
+    const angle = -Math.PI / 2 + sign * (step * angleStep);
+    const r = 210;
+    const x = Math.round(r * Math.cos(angle));
+    const y = -Math.abs(Math.round(r * Math.sin(angle)));
+
     return {
       top: `calc(50% + ${y}px)`,
       left: `calc(50% + ${x}px)`,
