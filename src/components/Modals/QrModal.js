@@ -23,7 +23,8 @@ import {
   MessageSquare,
   FileUp,
   AlertCircle,
-  VideoOff
+  VideoOff,
+  ArrowRight
 } from 'lucide-react';
 import { sounds } from '@/lib/sound';
 
@@ -36,16 +37,18 @@ export default function QrModal({
   activeTab = 'drop',
   onJoinScannedRoom,
   dropPairId = '',
-  peers = []
+  peers = [],
+  initialMode = 'show'
 }) {
   const canvasRef = useRef(null);
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
   const scanAnimFrameRef = useRef(null);
   const streamRef = useRef(null);
+  const peerCountOnOpenRef = useRef(0);
 
   // Modal display mode: 'show' (displaying QR) or 'scan' (camera scanner)
-  const [modalMode, setModalMode] = useState('show'); // 'show' | 'scan'
+  const [modalMode, setModalMode] = useState(initialMode || 'show'); // 'show' | 'scan'
   const isDrop = activeTab === 'drop';
 
   const [copiedLink, setCopiedLink] = useState(false);
@@ -63,25 +66,33 @@ export default function QrModal({
   const [isPermissionDenied, setIsPermissionDenied] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [scannedResult, setScannedResult] = useState(null);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [retryFailedBanner, setRetryFailedBanner] = useState(false);
+  const [manualCodeInput, setManualCodeInput] = useState('');
 
   // Reset scanner state when modal opens
   useEffect(() => {
     if (isOpen) {
+      setModalMode(initialMode || 'show');
       setScannedResult(null);
       setCameraError('');
       setIsPermissionDenied(false);
+      setIsRetrying(false);
+      setRetryFailedBanner(false);
+      setManualCodeInput('');
+      peerCountOnOpenRef.current = (peers || []).length;
     }
-  }, [isOpen]);
+  }, [isOpen, initialMode, peers]);
 
-  // Auto-dismiss modal after showing success alert when a peer joins in IntekDrop
+  // Auto-dismiss modal ONLY when a NEW peer joins while in Show QR mode
   useEffect(() => {
-    if (isOpen && isDrop && peers && peers.length > 0) {
+    if (isOpen && isDrop && modalMode === 'show' && peers && peers.length > peerCountOnOpenRef.current) {
       const timer = setTimeout(() => {
         onClose();
-      }, 1200);
+      }, 1400);
       return () => clearTimeout(timer);
     }
-  }, [isOpen, isDrop, peers, onClose]);
+  }, [isOpen, isDrop, modalMode, peers, onClose]);
 
   // Generate QR Code URL
   useEffect(() => {
@@ -172,12 +183,23 @@ export default function QrModal({
         pwd = url.searchParams.get('pwd') || url.searchParams.get('pass') || url.searchParams.get('password') || '';
         tab = url.searchParams.get('tab') || (pair ? 'drop' : (room ? 'chat' : (isDrop ? 'drop' : 'chat')));
       } else {
-        // Plain text room code
+        // Plain text room code or pair ID
+        if (isDrop) {
+          pair = data.trim();
+          tab = 'drop';
+        } else {
+          room = data.trim();
+          tab = 'chat';
+        }
+      }
+    } catch {
+      if (isDrop) {
+        pair = data.trim();
+        tab = 'drop';
+      } else {
         room = data.trim();
         tab = 'chat';
       }
-    } catch {
-      room = data.trim();
     }
 
     setScannedResult({ room, tab, pwd, pair });
@@ -218,6 +240,7 @@ export default function QrModal({
       streamRef.current = stream;
       setIsPermissionDenied(false);
       setCameraError('');
+      setRetryFailedBanner(false);
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -262,6 +285,7 @@ export default function QrModal({
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
         setIsPermissionDenied(true);
         setCameraError('Camera permission denied.');
+        setRetryFailedBanner(true);
       } else {
         setIsPermissionDenied(false);
         setCameraError(err.message || 'Unable to access camera.');
@@ -269,6 +293,25 @@ export default function QrModal({
       setIsCameraActive(false);
     }
   }, [cameraFacing, stopCamera, handleScannedData]);
+
+  const handleRetryCamera = async () => {
+    sounds.playClick();
+    setIsRetrying(true);
+    try {
+      await startCamera();
+    } catch (err) {
+      console.warn('Retry failed:', err);
+    } finally {
+      setIsRetrying(false);
+    }
+  };
+
+  const handleManualPairSubmit = (e) => {
+    e.preventDefault();
+    if (!manualCodeInput.trim()) return;
+    sounds.playClick();
+    handleScannedData(manualCodeInput.trim());
+  };
 
   // Listen to browser camera permission changes dynamically
   useEffect(() => {
@@ -697,6 +740,21 @@ export default function QrModal({
 
                 {cameraError ? (
                   <div className="camera-permission-card">
+                    {retryFailedBanner && (
+                      <div className="camera-blocked-callout animate-shake">
+                        <div className="callout-header">
+                          <span className="callout-arrow">▲</span>
+                          <strong>Chrome is still blocking camera access!</strong>
+                        </div>
+                        <p className="callout-text">
+                          Browser security prevents websites from re-opening permission automatically once blocked.
+                        </p>
+                        <div className="callout-solution">
+                          Look at your top browser address bar ➔ Click <strong>camera (🎥⃠)</strong> or <strong>padlock (🔒)</strong> ➔ Change Camera to <strong>Allow</strong> ➔ Click &quot;Try Again&quot;.
+                        </div>
+                      </div>
+                    )}
+
                     <div className="permission-card-header">
                       <div className="permission-icon-badge">
                         <VideoOff size={20} className="text-pink" />
@@ -732,13 +790,11 @@ export default function QrModal({
                       <button
                         type="button"
                         className="btn-permission-primary"
-                        onClick={() => {
-                          sounds.playClick();
-                          startCamera();
-                        }}
+                        onClick={handleRetryCamera}
+                        disabled={isRetrying}
                       >
-                        <RefreshCw size={15} />
-                        <span>Try Again / Request Permission</span>
+                        <RefreshCw size={15} className={isRetrying ? 'animate-spin' : ''} />
+                        <span>{isRetrying ? 'Checking Permission...' : 'Try Again / Request Permission'}</span>
                       </button>
 
                       <button
@@ -750,31 +806,75 @@ export default function QrModal({
                         <span>Upload QR Code Image</span>
                       </button>
                     </div>
+
+                    {/* Manual Code / Link Input Fallback (Works 100% Without Camera) */}
+                    <div className="manual-pair-box">
+                      <div className="manual-pair-divider">
+                        <span>OR CONNECT DIRECTLY</span>
+                      </div>
+                      <p className="manual-pair-desc">
+                        {isDrop 
+                          ? 'Paste the other device\'s Pair Code or Link to connect instantly:' 
+                          : 'Paste the Room Name or Link to join instantly:'}
+                      </p>
+                      <form onSubmit={handleManualPairSubmit} className="manual-pair-form">
+                        <input
+                          type="text"
+                          placeholder={isDrop ? 'Paste pair code or link (e.g. shadow-sanctum-983)' : 'Paste room link or name'}
+                          value={manualCodeInput}
+                          onChange={(e) => setManualCodeInput(e.target.value)}
+                          className="manual-pair-input"
+                        />
+                        <button type="submit" className="btn-manual-pair-submit">
+                          <span>Connect</span>
+                          <ArrowRight size={14} />
+                        </button>
+                      </form>
+                    </div>
                   </div>
                 ) : (
                   /* Scanner Controls */
-                  <div className="qr-scanner-controls">
-                    <button
-                      type="button"
-                      className="btn-camera-toggle"
-                      onClick={() => {
-                        sounds.playClick();
-                        setCameraFacing((prev) => (prev === 'environment' ? 'user' : 'environment'));
-                      }}
-                    >
-                      <RefreshCw size={15} />
-                      <span>Flip Camera</span>
-                    </button>
+                  <>
+                    <div className="qr-scanner-controls">
+                      <button
+                        type="button"
+                        className="btn-camera-toggle"
+                        onClick={() => {
+                          sounds.playClick();
+                          setCameraFacing((prev) => (prev === 'environment' ? 'user' : 'environment'));
+                        }}
+                      >
+                        <RefreshCw size={15} />
+                        <span>Flip Camera</span>
+                      </button>
 
-                    <button
-                      type="button"
-                      className="btn-camera-upload"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      <Upload size={15} />
-                      <span>Upload QR Image</span>
-                    </button>
-                  </div>
+                      <button
+                        type="button"
+                        className="btn-camera-upload"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        <Upload size={15} />
+                        <span>Upload QR Image</span>
+                      </button>
+                    </div>
+
+                    {/* Quick Manual Code Input */}
+                    <div className="manual-pair-box manual-pair-compact">
+                      <form onSubmit={handleManualPairSubmit} className="manual-pair-form">
+                        <input
+                          type="text"
+                          placeholder={isDrop ? 'Or paste pair code / link directly' : 'Or paste room name / link directly'}
+                          value={manualCodeInput}
+                          onChange={(e) => setManualCodeInput(e.target.value)}
+                          className="manual-pair-input"
+                        />
+                        <button type="submit" className="btn-manual-pair-submit">
+                          <span>Connect</span>
+                          <ArrowRight size={14} />
+                        </button>
+                      </form>
+                    </div>
+                  </>
                 )}
                 <input
                   ref={fileInputRef}

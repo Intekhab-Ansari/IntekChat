@@ -35,6 +35,7 @@ export default function Home() {
   const [receivedFileModal, setReceivedFileModal] = useState(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [qrModalMode, setQrModalMode] = useState('show');
   const [soundMuted, setSoundMuted] = useState(false);
   const [currentTheme, setCurrentTheme] = useState('sapphire'); // 'sapphire' | 'silk' | 'cyberpunk' | 'amber' | 'amethyst' | 'emerald' | 'obsidian' | 'frost'
 
@@ -42,6 +43,7 @@ export default function Home() {
   const webrtcRef = useRef(null);
   const cryptoKeyRef = useRef(null);
   const cancelTokensRef = useRef(new Set());
+  const relayIncomingFilesRef = useRef(new Map());
 
   // 1. Initialize Profile, Theme & URL Room Params (including 1-scan QR auto join)
   useEffect(() => {
@@ -211,10 +213,9 @@ export default function Home() {
         setPeers(filtered);
         setTotalParticipants(typeof totalCount === 'number' ? totalCount : filtered.length + 1);
 
-        // Deterministic initiator: only peer with lexicographically lower ID initiates offer
-        const myId = userProfile?.id || selfId;
+        // Connect to peers (polite peer rollback handles glare automatically)
         filtered.forEach((p) => {
-          if (!myId || !p.id || myId < p.id) {
+          if (p.id) {
             webrtcRef.current?.connectToPeer(p.id);
           }
         });
@@ -235,9 +236,8 @@ export default function Home() {
           return next;
         });
 
-        // Deterministic initiator: only peer with lexicographically lower ID initiates offer
-        const myId = userProfile?.id || socketRef.current?.id || socketRef.current?.selfId;
-        if (!myId || !newPeer.id || myId < newPeer.id) {
+        // Connect to newly joined peer
+        if (newPeer.id) {
           webrtcRef.current?.connectToPeer(newPeer.id);
         }
       });
@@ -300,6 +300,100 @@ export default function Home() {
           setMessages((prev) =>
             prev.map((m) => (m.id === payload.messageId ? { ...m, isBurned: true } : m))
           );
+        } else if (type === 'file-relay-start') {
+          // Initialize incoming relay transfer
+          relayIncomingFilesRef.current.set(payload.id, {
+            id: payload.id,
+            name: payload.name,
+            size: payload.size,
+            mimeType: payload.mimeType,
+            totalChunks: payload.totalChunks,
+            senderId: from,
+            senderName: payload.senderName || 'Peer',
+            chunks: [],
+            receivedBytes: 0,
+            startTime: Date.now(),
+            lastTelemetryTime: Date.now(),
+            lastTelemetryBytes: 0
+          });
+          sounds.playTransferStart();
+          setActiveTransfers((prev) => ({
+            ...prev,
+            [payload.id]: {
+              id: payload.id,
+              direction: 'receive',
+              fileName: payload.name,
+              totalBytes: payload.size,
+              receivedBytes: 0,
+              progress: 0,
+              speed: 0,
+              senderId: from
+            }
+          }));
+        } else if (type === 'file-relay-chunk') {
+          const record = relayIncomingFilesRef.current.get(payload.id);
+          if (record) {
+            try {
+              const binaryStr = atob(payload.chunk);
+              const len = binaryStr.length;
+              const bytes = new Uint8Array(len);
+              for (let i = 0; i < len; i++) {
+                bytes[i] = binaryStr.charCodeAt(i);
+              }
+              record.chunks[payload.index] = bytes.buffer;
+              record.receivedBytes += len;
+
+              const now = Date.now();
+              if (now - record.lastTelemetryTime > 150 || record.receivedBytes >= record.size) {
+                const timeDelta = (now - record.lastTelemetryTime) / 1000;
+                const bytesDelta = record.receivedBytes - record.lastTelemetryBytes;
+                const speed = timeDelta > 0 ? bytesDelta / timeDelta : 0;
+                record.lastTelemetryTime = now;
+                record.lastTelemetryBytes = record.receivedBytes;
+                const progress = Math.min(100, Math.round((record.receivedBytes / record.size) * 100));
+
+                setActiveTransfers((prev) => {
+                  if (!prev[record.id]) return prev;
+                  return {
+                    ...prev,
+                    [record.id]: {
+                      ...prev[record.id],
+                      receivedBytes: record.receivedBytes,
+                      progress,
+                      speed
+                    }
+                  };
+                });
+              }
+            } catch (err) {
+              console.warn('Error processing relay chunk:', err);
+            }
+          }
+        } else if (type === 'file-relay-done') {
+          const record = relayIncomingFilesRef.current.get(payload.id);
+          if (record) {
+            const blob = new Blob(record.chunks, {
+              type: record.mimeType || 'application/octet-stream'
+            });
+            const url = URL.createObjectURL(blob);
+            sounds.playTransferComplete();
+            setActiveTransfers((prev) => {
+              const next = { ...prev };
+              delete next[record.id];
+              return next;
+            });
+            setReceivedFileModal({
+              id: record.id,
+              name: record.name,
+              size: record.size,
+              mimeType: record.mimeType,
+              blob,
+              url,
+              senderId: from,
+              senderName: record.senderName
+            });
+            relayIncomingFilesRef.current.delete(payload.id);
+          }
         }
       });
     };
@@ -623,9 +717,97 @@ export default function Home() {
     handleLeaveRoom();
   };
 
-  // Send File in IntekDrop Tab
+  // Encrypted Relay File Transfer Fallback (Direct P2P DataChannel Bypass)
+  const sendFileViaRelay = async (peerId, file, onProgress, transferId) => {
+    if (!socketRef.current) throw new Error('Signaling connection is closed');
+
+    const RELAY_CHUNK_SIZE = 32 * 1024; // 32KB chunking
+    const totalChunks = Math.ceil(file.size / RELAY_CHUNK_SIZE);
+
+    // 1. Send file metadata header via encrypted relay
+    socketRef.current.emit('e2ee-relay', {
+      to: peerId,
+      type: 'file-relay-start',
+      payload: {
+        id: transferId,
+        name: file.name,
+        size: file.size,
+        mimeType: file.type,
+        totalChunks,
+        senderName: userProfile?.name || 'Peer'
+      }
+    });
+
+    sounds.playTransferStart();
+
+    // 2. Stream binary slices
+    let offset = 0;
+    let sentBytes = 0;
+    let lastTime = Date.now();
+    let lastBytes = 0;
+
+    for (let index = 0; index < totalChunks; index++) {
+      if (cancelTokensRef.current.has(transferId)) {
+        throw new Error('Transfer cancelled by user');
+      }
+
+      const slice = file.slice(offset, offset + RELAY_CHUNK_SIZE);
+      const buffer = await slice.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      const chunkLen = bytes.byteLength;
+      for (let b = 0; b < chunkLen; b++) {
+        binary += String.fromCharCode(bytes[b]);
+      }
+      const base64Chunk = btoa(binary);
+
+      socketRef.current.emit('e2ee-relay', {
+        to: peerId,
+        type: 'file-relay-chunk',
+        payload: {
+          id: transferId,
+          index,
+          totalChunks,
+          chunk: base64Chunk
+        }
+      });
+
+      offset += chunkLen;
+      sentBytes += chunkLen;
+
+      const now = Date.now();
+      if (now - lastTime > 150 || sentBytes >= file.size) {
+        const timeDelta = (now - lastTime) / 1000;
+        const bytesDelta = sentBytes - lastBytes;
+        const speed = timeDelta > 0 ? bytesDelta / timeDelta : 0;
+        lastTime = now;
+        lastBytes = sentBytes;
+        const progress = Math.min(100, Math.round((sentBytes / file.size) * 100));
+
+        if (onProgress) {
+          onProgress({ sentBytes, progress, speed });
+        }
+      }
+
+      // Small yield to prevent socket overflow and keep UI smooth
+      if (index % 4 === 0) {
+        await new Promise((r) => setTimeout(r, 10));
+      }
+    }
+
+    // 3. Send transfer complete
+    socketRef.current.emit('e2ee-relay', {
+      to: peerId,
+      type: 'file-relay-done',
+      payload: { id: transferId }
+    });
+
+    sounds.playTransferComplete();
+  };
+
+  // Send File in IntekDrop Tab (Hybrid: WebRTC P2P Direct + Automatic Encrypted Relay Fallback)
   const handleSendFile = async (peerId, file) => {
-    if (!webrtcRef.current) return;
+    if (!webrtcRef.current && !socketRef.current) return;
 
     const transferId = `send-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     setActiveTransfers((prev) => ({
@@ -643,6 +825,7 @@ export default function Home() {
     }));
 
     try {
+      // 1. First attempt ultra-fast direct WebRTC DataChannel transfer
       await webrtcRef.current.sendFile(
         peerId,
         file,
@@ -669,14 +852,44 @@ export default function Home() {
           return next;
         });
       }, 1500);
-    } catch (err) {
-      console.error('File send error:', err);
-      alert(`Could not send file: ${err.message}. Ensure peer connection is open.`);
-      setActiveTransfers((prev) => {
-        const next = { ...prev };
-        delete next[transferId];
-        return next;
-      });
+    } catch (webrtcErr) {
+      console.warn('Direct WebRTC transfer unavailable, falling back to seamless encrypted cloud relay...', webrtcErr);
+      try {
+        // 2. Seamless fallback: Transfer over encrypted cloud relay (works across strict firewalls / mobile data)
+        await sendFileViaRelay(
+          peerId,
+          file,
+          (progressData) => {
+            setActiveTransfers((prev) => {
+              if (!prev[transferId]) return prev;
+              return {
+                ...prev,
+                [transferId]: {
+                  ...prev[transferId],
+                  ...progressData
+                }
+              };
+            });
+          },
+          transferId
+        );
+
+        setTimeout(() => {
+          setActiveTransfers((prev) => {
+            const next = { ...prev };
+            delete next[transferId];
+            return next;
+          });
+        }, 1500);
+      } catch (relayErr) {
+        console.error('All send mechanisms failed:', relayErr);
+        alert(`Could not send file: ${relayErr.message}`);
+        setActiveTransfers((prev) => {
+          const next = { ...prev };
+          delete next[transferId];
+          return next;
+        });
+      }
     }
   };
 
@@ -776,7 +989,10 @@ export default function Home() {
         totalParticipants={totalParticipants}
         userProfile={userProfile}
         onOpenProfile={() => setIsProfileModalOpen(true)}
-        onOpenQr={() => setIsQrModalOpen(true)}
+        onOpenQr={(mode = 'show') => {
+          setQrModalMode(mode);
+          setIsQrModalOpen(true);
+        }}
         soundMuted={soundMuted}
         onToggleSound={handleToggleSound}
         currentTheme={currentTheme}
@@ -794,7 +1010,10 @@ export default function Home() {
             onSendFile={handleSendFile}
             activeTransfers={activeTransfers}
             onCancelTransfer={handleCancelTransfer}
-            onOpenQr={() => setIsQrModalOpen(true)}
+            onOpenQr={(mode = 'show') => {
+              setQrModalMode(mode);
+              setIsQrModalOpen(true);
+            }}
             roomName={roomName}
             dropPairId={dropPairId || userProfile?.id || ''}
           />
@@ -815,7 +1034,10 @@ export default function Home() {
             onOpenRoomModal={() => handleOpenRoomModal()}
             onOpenEditRoom={handleOpenEditRoom}
             onOpenProfile={() => setIsProfileModalOpen(true)}
-            onOpenQr={() => setIsQrModalOpen(true)}
+            onOpenQr={(mode = 'show') => {
+              setQrModalMode(mode);
+              setIsQrModalOpen(true);
+            }}
           />
         )}
       </main>
@@ -838,6 +1060,7 @@ export default function Home() {
         activeTab={activeTab}
         dropPairId={dropPairId || userProfile?.id || ''}
         peers={peers}
+        initialMode={qrModalMode}
         onJoinScannedRoom={handleJoinScannedRoom}
       />
 

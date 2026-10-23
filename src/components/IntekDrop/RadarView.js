@@ -14,6 +14,7 @@ import {
   FileText,
   Share2,
   QrCode,
+  Camera,
   Zap,
   Radio,
   Check
@@ -245,6 +246,17 @@ export default function RadarView({
         );
       })}
 
+      {/* Persistent floating scan/pair button always available on radar */}
+      <button
+        type="button"
+        className="radar-floating-pair-btn"
+        onClick={() => onOpenQr?.('scan')}
+        title="Scan QR Code to pair another device"
+      >
+        <Camera size={15} />
+        <span>+ Pair / Scan QR</span>
+      </button>
+
       {/* Quick Drop Action Bar when peers are detected */}
       {peers.length > 0 && (
         <div className="radar-quick-send-bar">
@@ -256,6 +268,24 @@ export default function RadarView({
           >
             <UploadCloud size={17} />
             <span>Drop File to {peers.length === 1 ? peers[0].name : `${peers.length} Devices`}</span>
+          </button>
+          <button
+            type="button"
+            className="btn-radar-scan-more"
+            onClick={() => onOpenQr?.('scan')}
+            title="Open scanner to pair another person"
+          >
+            <Camera size={16} />
+            <span>Scan QR / Pair Another</span>
+          </button>
+          <button
+            type="button"
+            className="btn-radar-qr-show"
+            onClick={() => onOpenQr?.('show')}
+            title="Show my QR Code"
+          >
+            <QrCode size={16} />
+            <span>My QR</span>
           </button>
         </div>
       )}

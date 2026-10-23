@@ -7,18 +7,7 @@ const ICE_SERVERS = {
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
     { urls: 'stun:stun3.l.google.com:19302' },
-    { urls: 'stun:stun4.l.google.com:19302' },
-    { urls: 'stun:global.stun.twilio.com:3478' },
-    // Free open TURN relay for mobile data & strict symmetric NAT traversal
-    {
-      urls: [
-        'turn:openrelay.metered.ca:80',
-        'turn:openrelay.metered.ca:443',
-        'turn:openrelay.metered.ca:443?transport=tcp'
-      ],
-      username: 'openrelay',
-      credential: 'openrelay'
-    }
+    { urls: 'stun:stun4.l.google.com:19302' }
   ]
 };
 
@@ -191,9 +180,7 @@ export class WebRTCManager {
 
   async handleIceCandidate(from, candidate) {
     try {
-      const pc = this.peers.get(from);
-      if (!pc) return;
-
+      const pc = this.getOrCreatePeer(from);
       if (pc.remoteDescription && pc.remoteDescription.type) {
         await pc.addIceCandidate(new RTCIceCandidate(candidate));
       } else {
@@ -203,7 +190,7 @@ export class WebRTCManager {
         this.pendingIceCandidates.get(from).push(candidate);
       }
     } catch (err) {
-      console.error('Failed to add ICE candidate:', err);
+      console.warn('Failed to add ICE candidate:', err);
     }
   }
 
@@ -369,11 +356,45 @@ export class WebRTCManager {
     }
   }
 
+  // Ensure data channel is ready before transfer, auto-initiating peer connection if needed
+  async ensureChannelReady(remoteId, timeoutMs = 3500) {
+    const existing = this.channels.get(remoteId);
+    if (existing && existing.readyState === 'open') {
+      return existing;
+    }
+
+    // If channel doesn't exist or is closed/closing, initiate peer offer
+    if (!existing || existing.readyState === 'closed') {
+      try {
+        await this.connectToPeer(remoteId);
+      } catch (err) {
+        console.warn('Auto-initiate connectToPeer error:', err);
+      }
+    }
+
+    return new Promise((resolve, reject) => {
+      const startTime = Date.now();
+      const checkInterval = setInterval(() => {
+        const ch = this.channels.get(remoteId);
+        if (ch && ch.readyState === 'open') {
+          clearInterval(checkInterval);
+          resolve(ch);
+          return;
+        }
+
+        if (Date.now() - startTime > timeoutMs) {
+          clearInterval(checkInterval);
+          reject(new Error('Peer connection data channel is not open'));
+        }
+      }, 100);
+    });
+  }
+
   // Ultra-Fast File Sending with Adaptive Backpressure & Buffer Monitoring
   async sendFile(remoteId, file, onProgress, onCancelCheck) {
-    const channel = this.channels.get(remoteId);
+    let channel = this.channels.get(remoteId);
     if (!channel || channel.readyState !== 'open') {
-      throw new Error('Peer connection data channel is not open');
+      channel = await this.ensureChannelReady(remoteId, 3500);
     }
 
     const transferId = `file-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
