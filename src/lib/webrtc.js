@@ -321,6 +321,27 @@ export class WebRTCManager {
         break;
       }
 
+      case 'chat-typing': {
+        if (this.callbacks.onTyping) {
+          this.callbacks.onTyping(msg);
+        }
+        break;
+      }
+
+      case 'message-seen': {
+        if (this.callbacks.onMessageSeen) {
+          this.callbacks.onMessageSeen(msg);
+        }
+        break;
+      }
+
+      case 'room-wallpaper': {
+        if (this.callbacks.onRoomWallpaper) {
+          this.callbacks.onRoomWallpaper(msg.payload, fromPeerId);
+        }
+        break;
+      }
+
       default:
         break;
     }
@@ -567,6 +588,56 @@ export class WebRTCManager {
       } catch (e) {}
     }
     return false;
+  }
+
+  // Broadcast typing status to peers
+  broadcastTyping(isTyping, senderName) {
+    const packet = JSON.stringify({
+      type: 'chat-typing',
+      isTyping,
+      senderId: this.selfPeer?.id,
+      senderName: senderName || this.selfPeer?.name || 'Peer'
+    });
+    for (const channel of this.channels.values()) {
+      if (channel && channel.readyState === 'open') {
+        try {
+          channel.send(packet);
+        } catch (e) {}
+      }
+    }
+  }
+
+  // Broadcast message seen receipts
+  broadcastMessageSeen(receipt) {
+    const packet = JSON.stringify({
+      type: 'message-seen',
+      ...receipt
+    });
+    for (const channel of this.channels.values()) {
+      if (channel && channel.readyState === 'open') {
+        try {
+          channel.send(packet);
+        } catch (e) {}
+      }
+    }
+  }
+
+  // Broadcast room wallpaper sync
+  broadcastRoomWallpaper(payload) {
+    const sentPeerIds = [];
+    const packet = JSON.stringify({
+      type: 'room-wallpaper',
+      payload
+    });
+    for (const [peerId, channel] of this.channels.entries()) {
+      if (channel && channel.readyState === 'open') {
+        try {
+          channel.send(packet);
+          sentPeerIds.push(peerId);
+        } catch (e) {}
+      }
+    }
+    return sentPeerIds;
   }
 
   closePeer(remoteId) {

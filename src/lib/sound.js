@@ -247,6 +247,37 @@ class SoundEngine {
       osc.stop(t + 0.35);
     } catch {}
   }
+
+  // Realistic shutter snap click for camera capture
+  playCameraSnap() {
+    if (this.muted) return;
+    try {
+      this.init();
+      if (!this.ctx) return;
+      const t = this.ctx.currentTime;
+
+      // Quick dual mechanical click (shutter opening & closing)
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(1400, t);
+      osc.frequency.exponentialRampToValueAtTime(300, t + 0.03);
+      osc.frequency.setValueAtTime(1200, t + 0.04);
+      osc.frequency.exponentialRampToValueAtTime(200, t + 0.08);
+
+      gain.gain.setValueAtTime(0.09, t);
+      gain.gain.exponentialRampToValueAtTime(0.01, t + 0.035);
+      gain.gain.setValueAtTime(0.07, t + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(t);
+      osc.stop(t + 0.09);
+    } catch {}
+  }
 }
 
 export const sounds = new SoundEngine();

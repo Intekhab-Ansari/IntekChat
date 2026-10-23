@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   X, 
   Image as ImageIcon, 
@@ -9,7 +9,9 @@ import {
   Check, 
   RotateCcw,
   Sliders,
-  Eye
+  Eye,
+  User,
+  Users
 } from 'lucide-react';
 import { WALLPAPER_PRESETS, getWallpaperCss } from '@/lib/wallpapers';
 import { sounds } from '@/lib/sound';
@@ -21,12 +23,16 @@ export default function WallpaperModal({
   customImage = null,
   opacity = 18,
   blur = false,
+  isRoomActive = false,
+  roomName = '',
   onSelectWallpaper,
   onUploadCustom,
   onClearCustom,
   onChangeOpacity,
-  onToggleBlur
+  onToggleBlur,
+  onBroadcastWallpaper
 }) {
+  const [applyScope, setApplyScope] = useState('local'); // 'local' (just for you) | 'room' (set for everyone)
   const fileInputRef = useRef(null);
 
   if (!isOpen) return null;
@@ -47,6 +53,34 @@ export default function WallpaperModal({
       onSelectWallpaper('custom');
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleApplyDone = () => {
+    sounds.playClick();
+    if (applyScope === 'room' && isRoomActive && onBroadcastWallpaper) {
+      sounds.playSuccess();
+      onBroadcastWallpaper({
+        wallpaperType: currentWallpaper,
+        customImage,
+        opacity,
+        blur
+      });
+    }
+    onClose();
+  };
+
+  const handleResetSolid = () => {
+    sounds.playClick();
+    onSelectWallpaper('none');
+    onClearCustom?.();
+    if (applyScope === 'room' && isRoomActive && onBroadcastWallpaper) {
+      onBroadcastWallpaper({
+        wallpaperType: 'none',
+        customImage: null,
+        opacity: 18,
+        blur: false
+      });
+    }
   };
 
   return (
@@ -71,6 +105,44 @@ export default function WallpaperModal({
             <X size={18} />
           </button>
         </div>
+
+        {/* Wallpaper Scope Selector (Set for Everyone or Just for You) */}
+        {isRoomActive && (
+          <div className="wallpaper-scope-card">
+            <div className="scope-header">
+              <span className="scope-title">Wallpaper Scope in #{roomName}:</span>
+            </div>
+            <div className="scope-toggle-tabs">
+              <button
+                type="button"
+                className={`scope-tab ${applyScope === 'local' ? 'scope-tab-active' : ''}`}
+                onClick={() => {
+                  sounds.playClick();
+                  setApplyScope('local');
+                }}
+              >
+                <User size={13} />
+                <span>👤 Just for You</span>
+              </button>
+              <button
+                type="button"
+                className={`scope-tab ${applyScope === 'room' ? 'scope-tab-active' : ''}`}
+                onClick={() => {
+                  sounds.playClick();
+                  setApplyScope('room');
+                }}
+              >
+                <Users size={13} />
+                <span>🌐 Set for Everyone in Room</span>
+              </button>
+            </div>
+            <p className="scope-hint">
+              {applyScope === 'room' 
+                ? `Applying will broadcast and update this wallpaper for all active peers in #${roomName}.` 
+                : 'Applying will only customize your personal chat view.'}
+            </p>
+          </div>
+        )}
 
         {/* Preset Cards Grid */}
         <div className="wallpaper-presets-scroll">
@@ -210,11 +282,7 @@ export default function WallpaperModal({
           <button 
             type="button" 
             className="btn-secondary" 
-            onClick={() => {
-              sounds.playClick();
-              onSelectWallpaper('none');
-              onClearCustom?.();
-            }}
+            onClick={handleResetSolid}
           >
             <RotateCcw size={14} />
             <span>Reset to Solid</span>
@@ -222,10 +290,20 @@ export default function WallpaperModal({
 
           <button 
             type="button" 
-            className="btn-primary" 
-            onClick={onClose}
+            className="btn-primary btn-apply-wallpaper" 
+            onClick={handleApplyDone}
           >
-            <span>Done</span>
+            {applyScope === 'room' && isRoomActive ? (
+              <>
+                <Users size={14} />
+                <span>Apply to Everyone</span>
+              </>
+            ) : (
+              <>
+                <Check size={14} />
+                <span>Apply for You</span>
+              </>
+            )}
           </button>
         </div>
       </div>

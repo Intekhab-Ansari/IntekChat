@@ -5,6 +5,7 @@ import {
   Send, 
   Paperclip, 
   Image as ImageIcon, 
+  Camera,
   Trash2, 
   Eye, 
   Repeat, 
@@ -42,6 +43,7 @@ import {
 import { formatBytes, getAvatarColor } from '@/lib/peer';
 import { sounds } from '@/lib/sound';
 import WallpaperModal from '@/components/Modals/WallpaperModal';
+import CameraModal from '@/components/Modals/CameraModal';
 import { getWallpaperCss } from '@/lib/wallpapers';
 
 export default function ChatView({
@@ -62,12 +64,18 @@ export default function ChatView({
   onOpenEditRoom,
   onOpenProfile,
   onOpenQr,
-  onLeaveRoom
+  onLeaveRoom,
+  typingUsers = [],
+  onTypingChange,
+  syncedWallpaper,
+  onBroadcastWallpaper,
+  onMarkMessagesSeen
 }) {
   const avatarStyle = getAvatarColor(userProfile?.colorIndex || 0);
   const [inputText, setInputText] = useState('');
   const [imageMode, setImageMode] = useState('permanent');
   const [showImageModePicker, setShowImageModePicker] = useState(false);
+  const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
   const [isStealthTextMode, setIsStealthTextMode] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -97,8 +105,11 @@ export default function ChatView({
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const imageInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
   const textInputRef = useRef(null);
   const timerRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
+  const isCurrentlyTypingRef = useRef(false);
 
   const generateHeroRandomRoom = () => {
     sounds.playClick();
@@ -244,9 +255,68 @@ export default function ChatView({
     }
   };
 
+  // Sync room wallpaper when received from another peer in the room
+  useEffect(() => {
+    if (syncedWallpaper && syncedWallpaper.wallpaperType) {
+      setWallpaperType(syncedWallpaper.wallpaperType);
+      if (syncedWallpaper.customImage !== undefined) {
+        setCustomWallpaper(syncedWallpaper.customImage);
+      }
+      if (typeof syncedWallpaper.opacity === 'number') {
+        setWallpaperOpacity(syncedWallpaper.opacity);
+      }
+      if (typeof syncedWallpaper.blur === 'boolean') {
+        setWallpaperBlur(syncedWallpaper.blur);
+      }
+    }
+  }, [syncedWallpaper]);
+
+  // Real-time Seen Receipts: Detect incoming messages viewed by the current user
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const checkAndMarkSeen = () => {
+      if (document.visibilityState !== 'visible') return;
+      const unseen = (messages || [])
+        .filter((m) => !m.system && m.senderId !== userProfile?.id && !m.seen)
+        .map((m) => m.id);
+      if (unseen.length > 0) {
+        onMarkMessagesSeen?.(unseen);
+      }
+    };
+
+    checkAndMarkSeen();
+    document.addEventListener('visibilitychange', checkAndMarkSeen);
+    window.addEventListener('focus', checkAndMarkSeen);
+    return () => {
+      document.removeEventListener('visibilitychange', checkAndMarkSeen);
+      window.removeEventListener('focus', checkAndMarkSeen);
+    };
+  }, [messages, userProfile?.id, onMarkMessagesSeen]);
+
+  const handleInputChange = (e) => {
+    setInputText(e.target.value);
+    if (!isCurrentlyTypingRef.current) {
+      isCurrentlyTypingRef.current = true;
+      onTypingChange?.(true);
+    }
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    typingTimeoutRef.current = setTimeout(() => {
+      isCurrentlyTypingRef.current = false;
+      onTypingChange?.(false);
+    }, 2200);
+  };
+
   const handleSendText = (e) => {
     e.preventDefault();
     if (!inputText.trim()) return;
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    isCurrentlyTypingRef.current = false;
+    onTypingChange?.(false);
 
     sounds.playMessage();
     const payload = {
@@ -269,6 +339,32 @@ export default function ChatView({
 
     onSendMessage(payload);
     setInputText('');
+  };
+
+  const handleCameraCaptureAndSend = ({ dataUrl, imageMode: captureMode, name, size }) => {
+    sounds.playTransferStart();
+    const payload = {
+      type: 'image',
+      dataUrl,
+      imageMode: captureMode,
+      name: name || `camera_${Date.now()}.jpg`,
+      size: size || 60000
+    };
+
+    if (replyingTo) {
+      payload.replyTo = {
+        id: replyingTo.id,
+        senderName: replyingTo.senderId === userProfile?.id ? 'You' : replyingTo.senderName,
+        senderColor: replyingTo.senderColor || 0,
+        text: replyingTo.type === 'text' 
+          ? (replyingTo.text.length > 80 ? replyingTo.text.slice(0, 80) + '...' : replyingTo.text)
+          : replyingTo.type === 'image' ? '📷 Photo' : `📎 ${replyingTo.name || 'File'}`,
+        type: replyingTo.type
+      };
+      setReplyingTo(null);
+    }
+
+    onSendMessage(payload);
   };
 
   const handleTriggerImageUpload = (mode) => {
@@ -952,6 +1048,17 @@ export default function ChatView({
                 <div className="empty-quick-prompts">
                   <button 
                     type="button" 
+                    className="prompt-chip prompt-chip-emerald"
+                    onClick={() => {
+                      sounds.playClick();
+                      setIsCameraModalOpen(true);
+                    }}
+                  >
+                    <Camera size={14} />
+                    <span>Take Camera Photo</span>
+                  </button>
+                  <button 
+                    type="button" 
                     className="prompt-chip prompt-chip-pink"
                     onClick={() => handleTriggerImageUpload('once')}
                   >
@@ -1012,6 +1119,20 @@ export default function ChatView({
                   <div className="msg-sender-info">
                     <span className="msg-sender-name">{isSelf ? 'You' : msg.senderName}</span>
                     <span className="msg-time">{msg.time}</span>
+                    {isSelf && (
+                      <span 
+                        className="msg-seen-status" 
+                        title={msg.seen 
+                          ? `Seen by ${msg.seenBy && msg.seenBy.length > 0 ? msg.seenBy.join(', ') : 'peer'}` 
+                          : 'Sent (Encrypted)'}
+                      >
+                        {msg.seen ? (
+                          <CheckCheck size={14} className="seen-check-icon seen-active" />
+                        ) : (
+                          <Check size={13} className="seen-check-icon sent-active" />
+                        )}
+                      </span>
+                    )}
                     <button
                       type="button"
                       className="msg-reply-btn"
@@ -1156,6 +1277,22 @@ export default function ChatView({
               </div>
             );
           })}
+          {/* Real-time Typing Indicator with 3 Bouncing Dots */}
+          {typingUsers && typingUsers.filter((u) => u.id !== userProfile?.id).length > 0 && (
+            <div className="typing-indicator-row">
+              <div className="typing-bubble">
+                <span className="typing-sender-name">
+                  {typingUsers.filter((u) => u.id !== userProfile?.id).map((u) => u.name).join(', ')}
+                </span>
+                <span className="typing-status-text">is typing</span>
+                <div className="typing-dots">
+                  <span className="typing-dot" />
+                  <span className="typing-dot" />
+                  <span className="typing-dot" />
+                </div>
+              </div>
+            </div>
+          )}
           <div ref={messagesEndRef} />
         </div>
 
@@ -1192,6 +1329,20 @@ export default function ChatView({
           )}
 
           <form className={`chat-input-bar ${replyingTo ? 'input-bar-has-reply' : ''}`} onSubmit={handleSendText}>
+            {/* Camera Capture Button */}
+            <button 
+              type="button" 
+              className="chat-action-btn btn-camera-action"
+              onClick={() => {
+                sounds.playClick();
+                setIsCameraModalOpen(true);
+              }}
+              title="Take & Send Photo (Camera / Webcam)"
+            >
+              <Camera size={18} className="text-pink" />
+            </button>
+
+            {/* Image Mode & Upload Button */}
             <div className="attachment-dropdown-wrap">
               <button 
                 type="button" 
@@ -1205,6 +1356,23 @@ export default function ChatView({
               {showImageModePicker && (
                 <div className="image-mode-picker">
                   <div className="picker-title">Send Image As:</div>
+
+                  <button 
+                    type="button" 
+                    className="picker-option option-camera"
+                    onClick={() => {
+                      sounds.playClick();
+                      setShowImageModePicker(false);
+                      setIsCameraModalOpen(true);
+                    }}
+                  >
+                    <div className="option-icon"><Camera size={16} /></div>
+                    <div className="option-text">
+                      <span className="option-name">📸 Take Camera Photo</span>
+                      <span className="option-desc">Webcam or Mobile Camera</span>
+                    </div>
+                  </button>
+
                   <button 
                     type="button" 
                     className="picker-option option-once"
@@ -1264,7 +1432,7 @@ export default function ChatView({
               className="chat-text-input" 
               placeholder={replyingTo ? `Replying to ${replyingTo.senderId === userProfile?.id ? 'yourself' : replyingTo.senderName}...` : "Type an encrypted message..."}
               value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
+              onChange={handleInputChange}
             />
 
             <button 
@@ -1307,6 +1475,7 @@ export default function ChatView({
           </div>
         </div>
       )}
+
       {/* Wallpaper Selection Modal */}
       <WallpaperModal
         isOpen={isWallpaperModalOpen}
@@ -1315,11 +1484,22 @@ export default function ChatView({
         customImage={customWallpaper}
         opacity={wallpaperOpacity}
         blur={wallpaperBlur}
+        isRoomActive={!!roomName}
+        roomName={roomName}
         onSelectWallpaper={handleSelectWallpaper}
         onUploadCustom={handleUploadCustomWallpaper}
         onClearCustom={handleClearCustomWallpaper}
         onChangeOpacity={handleChangeOpacity}
         onToggleBlur={handleToggleBlur}
+        onBroadcastWallpaper={onBroadcastWallpaper}
+      />
+
+      {/* Instant Camera Capture Modal */}
+      <CameraModal
+        isOpen={isCameraModalOpen}
+        onClose={() => setIsCameraModalOpen(false)}
+        onCaptureAndSend={handleCameraCaptureAndSend}
+        initialMode={imageMode}
       />
     </div>
   );

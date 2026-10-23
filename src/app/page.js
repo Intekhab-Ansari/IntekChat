@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import Navbar from '@/components/Navbar';
 import RadarView from '@/components/IntekDrop/RadarView';
@@ -36,6 +36,8 @@ export default function Home() {
   const [peers, setPeers] = useState([]);
   const [userProfile, setUserProfile] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [typingUsers, setTypingUsers] = useState([]);
+  const [syncedWallpaper, setSyncedWallpaper] = useState(null);
   const [activeTransfers, setActiveTransfers] = useState({});
   const [receivedFileModal, setReceivedFileModal] = useState(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -212,6 +214,66 @@ export default function Home() {
     setupCrypto();
   }, [roomName, roomPassword]);
 
+  // Incoming typing status handler
+  const handleIncomingTyping = useCallback(({ isTyping, senderId, senderName }) => {
+    if (!senderId || senderId === userProfile?.id) return;
+    setTypingUsers((prev) => {
+      const filtered = prev.filter((u) => u.id !== senderId);
+      if (isTyping) {
+        return [...filtered, { id: senderId, name: senderName || 'Peer', timestamp: Date.now() }];
+      }
+      return filtered;
+    });
+  }, [userProfile?.id]);
+
+  // Incoming message seen receipt handler
+  const handleIncomingMessageSeen = useCallback(({ messageIds, readerId, readerName }) => {
+    if (!Array.isArray(messageIds) || messageIds.length === 0) return;
+    setMessages((prev) => {
+      let changed = false;
+      const next = prev.map((msg) => {
+        if (messageIds.includes(msg.id)) {
+          changed = true;
+          const currentSeenBy = msg.seenBy || [];
+          const newSeenBy = readerName && !currentSeenBy.includes(readerName)
+            ? [...currentSeenBy, readerName]
+            : currentSeenBy;
+          return { ...msg, seen: true, seenBy: newSeenBy };
+        }
+        return msg;
+      });
+      return changed ? next : prev;
+    });
+  }, []);
+
+  // Incoming room wallpaper sync handler
+  const handleIncomingRoomWallpaper = useCallback((wallpaperPayload) => {
+    if (!wallpaperPayload) return;
+    setSyncedWallpaper(wallpaperPayload);
+    sounds.playSuccess();
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `sys-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        system: true,
+        text: `🎨 ${wallpaperPayload.senderName || 'A peer'} updated the room wallpaper to "${wallpaperPayload.wallpaperType || 'Custom'}"`,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }
+    ]);
+  }, []);
+
+  // Auto-clean expired typing indicators
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      setTypingUsers((prev) => {
+        const stillActive = prev.filter((u) => now - u.timestamp < 3500);
+        return stillActive.length === prev.length ? prev : stillActive;
+      });
+    }, 1500);
+    return () => clearInterval(interval);
+  }, []);
+
   // 3. Connect to Signaling Server & WebRTC Manager (Hybrid: Local Socket.IO + Cloud Fallback)
   useEffect(() => {
     if (!userProfile) return;
@@ -356,6 +418,12 @@ export default function Home() {
           setMessages((prev) =>
             prev.map((m) => (m.id === payload.messageId ? { ...m, isBurned: true } : m))
           );
+        } else if (type === 'typing') {
+          handleIncomingTyping(payload);
+        } else if (type === 'message-seen') {
+          handleIncomingMessageSeen(payload);
+        } else if (type === 'room-wallpaper') {
+          handleIncomingRoomWallpaper(payload);
         } else if (type === 'file-relay-start') {
           // Initialize incoming relay transfer
           relayIncomingFilesRef.current.set(payload.id, {
@@ -524,6 +592,15 @@ export default function Home() {
           setMessages((prev) =>
             prev.map((m) => (m.id === messageId ? { ...m, isBurned: true } : m))
           );
+        },
+        onTyping: (data) => {
+          handleIncomingTyping(data);
+        },
+        onMessageSeen: (data) => {
+          handleIncomingMessageSeen(data);
+        },
+        onRoomWallpaper: (payload) => {
+          handleIncomingRoomWallpaper(payload);
         }
       });
       webrtcRef.current = webrtc;
@@ -985,7 +1062,9 @@ export default function Home() {
       senderName: userProfile?.name || 'Anonymous',
       senderColor: userProfile?.colorIndex || 0,
       time,
-      isBurned: false
+      isBurned: false,
+      seen: false,
+      seenBy: []
     };
 
     // 1. Add plaintext directly to sender's view (deduplicated)
@@ -1069,6 +1148,63 @@ export default function Home() {
     }
   };
 
+  // Typing state broadcaster
+  const handleTypingChange = useCallback((isTyping) => {
+    if (!userProfile) return;
+    const senderName = userProfile?.name || 'Anonymous';
+    webrtcRef.current?.broadcastTyping(isTyping, senderName);
+    if (socketRef.current) {
+      socketRef.current.emit('e2ee-relay', {
+        type: 'typing',
+        payload: { isTyping, senderId: userProfile?.id, senderName }
+      });
+    }
+  }, [userProfile]);
+
+  // Mark unseen messages as seen and broadcast receipt
+  const handleMarkMessagesSeen = useCallback((unseenMessageIds) => {
+    if (!Array.isArray(unseenMessageIds) || unseenMessageIds.length === 0 || !userProfile) return;
+    const receipt = {
+      messageIds: unseenMessageIds,
+      readerId: userProfile?.id,
+      readerName: userProfile?.name || 'Peer'
+    };
+    webrtcRef.current?.broadcastMessageSeen(receipt);
+    if (socketRef.current) {
+      socketRef.current.emit('e2ee-relay', {
+        type: 'message-seen',
+        payload: receipt
+      });
+    }
+  }, [userProfile]);
+
+  // Broadcast room wallpaper to all participants
+  const handleBroadcastWallpaper = useCallback(async (wallpaperSettings) => {
+    if (!userProfile) return;
+    const payload = {
+      ...wallpaperSettings,
+      senderId: userProfile?.id,
+      senderName: userProfile?.name || 'Anonymous',
+      timestamp: Date.now()
+    };
+    setSyncedWallpaper(payload);
+
+    let sentPeerIds = [];
+    if (webrtcRef.current) {
+      sentPeerIds = webrtcRef.current.broadcastRoomWallpaper(payload) || [];
+    }
+    if (socketRef.current) {
+      const activePeers = peers || [];
+      const reachedCount = Array.isArray(sentPeerIds) ? sentPeerIds.length : 0;
+      if (reachedCount < activePeers.length || activePeers.length === 0) {
+        socketRef.current.emit('e2ee-relay', {
+          type: 'room-wallpaper',
+          payload
+        });
+      }
+    }
+  }, [userProfile, peers]);
+
   const handleToggleSound = () => {
     const muted = sounds.toggleMute();
     setSoundMuted(muted);
@@ -1136,6 +1272,11 @@ export default function Home() {
               setIsQrModalOpen(true);
             }}
             onLeaveRoom={handleLeaveRoom}
+            typingUsers={typingUsers}
+            onTypingChange={handleTypingChange}
+            syncedWallpaper={syncedWallpaper}
+            onBroadcastWallpaper={handleBroadcastWallpaper}
+            onMarkMessagesSeen={handleMarkMessagesSeen}
           />
         )}
       </main>
