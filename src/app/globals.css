@@ -2776,20 +2776,31 @@ body {
 /* Join Hero (When No Room) */
 .chat-join-hero {
   flex: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
+  padding: 2rem 1.25rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
 }
 
 .hero-card {
+  width: 100%;
   max-width: 520px;
+  min-width: 0;
+  box-sizing: border-box;
   text-align: center;
   background: var(--bg-surface);
   border: 1px solid var(--border-bright);
   border-radius: 20px;
-  padding: 3rem 2.25rem;
+  padding: 2.75rem 2rem;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  margin: auto;
 }
 
 .hero-badge {
@@ -2804,6 +2815,8 @@ body {
   font-weight: 700;
   color: var(--accent-bright);
   margin-bottom: 1.5rem;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .hero-title {
@@ -2811,6 +2824,8 @@ body {
   font-weight: 900;
   line-height: 1.2;
   margin-bottom: 1rem;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .text-gradient {
@@ -2822,6 +2837,7 @@ body {
   color: var(--text-muted);
   line-height: 1.5;
   margin-bottom: 2rem;
+  word-break: break-word;
 }
 
 .hero-form {
@@ -2829,6 +2845,8 @@ body {
   flex-direction: column;
   gap: 1rem;
   margin-bottom: 1.5rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .room-input-wrap {
@@ -2841,6 +2859,9 @@ body {
   padding: 0.6rem 1rem;
   padding-right: 95px;
   transition: all 0.2s ease;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .room-input-wrap:focus-within {
@@ -2852,10 +2873,17 @@ body {
   font-family: var(--font-mono);
   font-size: 0.9rem;
   color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.mobile-prefix {
+  display: none;
 }
 
 .room-input {
   flex: 1;
+  min-width: 0;
+  width: 0;
   background: transparent;
   border: none;
   outline: none;
@@ -2874,6 +2902,8 @@ body {
   padding: 0.85rem;
   font-size: 1rem;
   font-weight: 700;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .hero-quick-action {
@@ -2883,10 +2913,12 @@ body {
   gap: 0.6rem;
   font-size: 0.82rem;
   color: var(--text-dim);
+  flex-wrap: wrap;
+  text-align: center;
 }
 
 .btn-quick-create {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 0.35rem;
   background: transparent;
@@ -5657,6 +5689,175 @@ body {
     font-size: 0.72rem;
     gap: 0.35rem;
     justify-content: center;
+  }
+
+  /* Chat Join Hero Responsive Mobile Layout */
+  .chat-join-hero {
+    align-items: flex-start !important;
+    padding: 0.75rem 0.65rem 2.5rem 0.65rem !important;
+    overflow-y: auto !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .hero-card {
+    padding: 1.35rem 0.85rem !important;
+    border-radius: 16px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    margin: 0 auto !important;
+  }
+
+  .hero-badge {
+    margin-bottom: 0.75rem !important;
+    padding: 0.25rem 0.65rem !important;
+    font-size: 0.68rem !important;
+    white-space: normal !important;
+    text-align: center !important;
+    line-height: 1.3 !important;
+  }
+
+  .hero-title {
+    font-size: 1.35rem !important;
+    line-height: 1.25 !important;
+    margin-bottom: 0.55rem !important;
+    word-break: break-word !important;
+  }
+
+  .hero-subtitle {
+    font-size: 0.78rem !important;
+    line-height: 1.4 !important;
+    margin-bottom: 1rem !important;
+    padding: 0 0.15rem !important;
+  }
+
+  .hero-tabs {
+    padding: 3px !important;
+    gap: 4px !important;
+    margin-bottom: 0.95rem !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .hero-tab {
+    padding: 0.5rem 0.35rem !important;
+    font-size: 0.76rem !important;
+    gap: 0.35rem !important;
+    white-space: nowrap !important;
+  }
+
+  .room-input-wrap {
+    padding: 0.5rem 0.65rem !important;
+    padding-right: 76px !important;
+    border-radius: 10px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .desktop-prefix {
+    display: none !important;
+  }
+
+  .mobile-prefix {
+    display: inline !important;
+    font-size: 1rem !important;
+    font-weight: 800 !important;
+    color: var(--accent-bright) !important;
+    margin-right: 2px !important;
+  }
+
+  .room-input {
+    font-size: 0.85rem !important;
+    min-width: 0 !important;
+    padding-left: 0.15rem !important;
+  }
+
+  .btn-hero-random {
+    right: 5px !important;
+    padding: 4px 8px !important;
+    font-size: 0.7rem !important;
+    gap: 3px !important;
+  }
+
+  .btn-hero-random span {
+    font-size: 0.7rem !important;
+  }
+
+  .hero-preset-chips {
+    margin-top: 0.3rem !important;
+    margin-bottom: 0.85rem !important;
+    gap: 0.35rem !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .preset-label {
+    font-size: 0.68rem !important;
+    width: 100% !important;
+    margin-bottom: 0.15rem !important;
+    text-align: center !important;
+  }
+
+  .preset-chip {
+    font-size: 0.68rem !important;
+    padding: 3px 7px !important;
+  }
+
+  .hero-password-box {
+    padding: 0.7rem 0.8rem !important;
+    border-radius: 10px !important;
+    margin-bottom: 0.95rem !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    gap: 0.65rem !important;
+  }
+
+  .hero-checkbox-row {
+    gap: 0.5rem !important;
+  }
+
+  .hero-checkbox {
+    width: 16px !important;
+    height: 16px !important;
+  }
+
+  .hero-checkbox-title {
+    font-size: 0.8rem !important;
+  }
+
+  .hero-checkbox-desc {
+    font-size: 0.68rem !important;
+  }
+
+  .hero-password-input-wrap {
+    padding: 0.45rem 0.65rem !important;
+    border-radius: 8px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .hero-password-input {
+    font-size: 0.8rem !important;
+    min-width: 0 !important;
+  }
+
+  .hero-btn {
+    padding: 0.75rem 1rem !important;
+    font-size: 0.88rem !important;
+    border-radius: 10px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .hero-quick-action {
+    font-size: 0.75rem !important;
+    margin-top: 0.25rem !important;
+    gap: 0.35rem !important;
+  }
+
+  .btn-quick-create {
+    font-size: 0.75rem !important;
   }
 }
 

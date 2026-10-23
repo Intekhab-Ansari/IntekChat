@@ -836,8 +836,8 @@ export default function ChatView({
                 setHeroTab('create');
               }}
             >
-              <Sparkles size={15} />
-              <span>Create New Room</span>
+              <Sparkles size={14} />
+              <span>Create Room</span>
             </button>
 
             <button
@@ -848,15 +848,16 @@ export default function ChatView({
                 setHeroTab('join');
               }}
             >
-              <ArrowRight size={15} />
-              <span>Join Existing</span>
+              <ArrowRight size={14} />
+              <span>Join Room</span>
             </button>
           </div>
 
           <form className="hero-form" onSubmit={handleHeroSubmit}>
             {/* Room Name Input with Prefix and Random Generator */}
             <div className="room-input-wrap">
-              <span className="room-prefix">intekchat.com/</span>
+              <span className="room-prefix desktop-prefix">intekchat.com/</span>
+              <span className="room-prefix mobile-prefix">#</span>
               <input
                 type="text"
                 className="room-input"
@@ -872,7 +873,7 @@ export default function ChatView({
                   onClick={generateHeroRandomRoom}
                   title="Generate Unique Memorable Name"
                 >
-                  <Sparkles size={13} />
+                  <Sparkles size={12} />
                   <span>Random</span>
                 </button>
               )}
