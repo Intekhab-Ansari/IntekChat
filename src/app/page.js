@@ -285,9 +285,12 @@ export default function Home() {
       signaling.on('e2ee-relay', async ({ from, payload, type }) => {
         if (type === 'chat') {
           const decrypted = await decryptPayload(payload, cryptoKeyRef.current);
-          if (decrypted) {
-            sounds.playMessage();
-            setMessages((prev) => [...prev, decrypted]);
+          if (decrypted && decrypted.id) {
+            setMessages((prev) => {
+              if (prev.some((m) => m.id === decrypted.id)) return prev;
+              sounds.playMessage();
+              return [...prev, decrypted];
+            });
           }
         } else if (type === 'clear') {
           sounds.playBurn();
@@ -443,9 +446,12 @@ export default function Home() {
         },
         onChatMessage: async (encryptedPayload, fromPeerId) => {
           const decrypted = await decryptPayload(encryptedPayload, cryptoKeyRef.current);
-          if (decrypted) {
-            sounds.playMessage();
-            setMessages((prev) => [...prev, decrypted]);
+          if (decrypted && decrypted.id) {
+            setMessages((prev) => {
+              if (prev.some((m) => m.id === decrypted.id)) return prev;
+              sounds.playMessage();
+              return [...prev, decrypted];
+            });
           }
         },
         onChatClear: () => {
@@ -915,24 +921,34 @@ export default function Home() {
       isBurned: false
     };
 
-    // 1. Add plaintext directly to sender's view
-    setMessages((prev) => [...prev, fullMessage]);
+    // 1. Add plaintext directly to sender's view (deduplicated)
+    setMessages((prev) => {
+      if (prev.some((m) => m.id === messageId)) return prev;
+      return [...prev, fullMessage];
+    });
 
     // 2. Encrypt with AES-256-GCM before transmitting
     const encrypted = await encryptPayload(fullMessage, cryptoKeyRef.current);
 
-    // 3. Send over WebRTC DataChannels first; fallback to socket relay if no open channel
-    let channelsSent = 0;
+    // 3. Send over WebRTC DataChannels first to all connected peers
+    let sentPeerIds = [];
     if (webrtcRef.current) {
-      channelsSent = webrtcRef.current.broadcastChatMessage(encrypted);
+      sentPeerIds = webrtcRef.current.broadcastChatMessage(encrypted) || [];
     }
 
-    if (channelsSent === 0 && socketRef.current) {
-      // Fallback encrypted zero-knowledge socket relay
-      socketRef.current.emit('e2ee-relay', {
-        payload: encrypted,
-        type: 'chat'
-      });
+    // 4. Fallback encrypted zero-knowledge relay:
+    // If ANY peer in the room was not reached via direct WebRTC DataChannel (e.g. 3 devices
+    // connected, but WebRTC channel established only to 1 peer or pending on mobile carrier NAT),
+    // broadcast via relay so ALL devices in the room receive the message!
+    if (socketRef.current) {
+      const activePeers = peers || [];
+      const reachedCount = Array.isArray(sentPeerIds) ? sentPeerIds.length : 0;
+      if (reachedCount < activePeers.length || activePeers.length === 0) {
+        socketRef.current.emit('e2ee-relay', {
+          payload: encrypted,
+          type: 'chat'
+        });
+      }
     }
   };
 
@@ -941,13 +957,18 @@ export default function Home() {
     setMessages([]);
     sounds.playBurn();
 
+    let sentPeerIds = [];
     if (webrtcRef.current) {
-      webrtcRef.current.broadcastClearChat();
+      sentPeerIds = webrtcRef.current.broadcastClearChat() || [];
     }
     if (socketRef.current) {
-      socketRef.current.emit('e2ee-relay', {
-        type: 'clear'
-      });
+      const activePeers = peers || [];
+      const reachedCount = Array.isArray(sentPeerIds) ? sentPeerIds.length : 0;
+      if (reachedCount < activePeers.length || activePeers.length === 0) {
+        socketRef.current.emit('e2ee-relay', {
+          type: 'clear'
+        });
+      }
     }
   };
 
@@ -957,10 +978,11 @@ export default function Home() {
       prev.map((m) => (m.id === messageId ? { ...m, isBurned: true } : m))
     );
 
+    let sentDirect = false;
     if (webrtcRef.current) {
-      webrtcRef.current.sendViewOnceBurned(senderId, messageId);
+      sentDirect = webrtcRef.current.sendViewOnceBurned(senderId, messageId);
     }
-    if (socketRef.current) {
+    if (!sentDirect && socketRef.current) {
       socketRef.current.emit('e2ee-relay', {
         to: senderId,
         type: 'view-once-burned',

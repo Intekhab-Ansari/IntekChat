@@ -326,6 +326,7 @@ export default function RoomModal({
         )}
 
         {/* Sub-Tabs: Edit Room (if active) | Create Room | Join Room */}
+        {/* Sub-Tabs: Edit Room (if active) | Create Room | Join Room */}
         <div className="room-modal-tabs">
           {currentRoom && (
             <button
@@ -336,8 +337,9 @@ export default function RoomModal({
                 setModalTab('edit');
               }}
             >
-              <Edit3 size={14} />
-              <span>Edit Room</span>
+              <Edit3 size={14} className="flex-shrink-0" />
+              <span className="tab-text-full">Edit Room</span>
+              <span className="tab-text-short">Edit</span>
               <span className="tab-chip-active">Active</span>
             </button>
           )}
@@ -350,8 +352,9 @@ export default function RoomModal({
               setModalTab('create');
             }}
           >
-            <Sparkles size={14} />
-            <span>Create Room</span>
+            <Sparkles size={14} className="flex-shrink-0" />
+            <span className="tab-text-full">Create Room</span>
+            <span className="tab-text-short">Create</span>
           </button>
 
           <button
@@ -362,8 +365,9 @@ export default function RoomModal({
               setModalTab('join');
             }}
           >
-            <ArrowRight size={14} />
-            <span>Join Room</span>
+            <ArrowRight size={14} className="flex-shrink-0" />
+            <span className="tab-text-full">Join Room</span>
+            <span className="tab-text-short">Join</span>
           </button>
         </div>
 
@@ -390,7 +394,10 @@ export default function RoomModal({
             <div className="input-group">
               <label className="input-label">Edit Room ID / Name:</label>
               <div className="room-input-row">
-                <div className="room-prefix-box">intekchat.com/</div>
+                <div className="room-prefix-box">
+                  <span className="room-prefix-domain">intekchat.com/</span>
+                  <span className="room-prefix-short">#/</span>
+                </div>
                 <input
                   type="text"
                   className="modal-text-input room-name-input"
@@ -405,8 +412,8 @@ export default function RoomModal({
                   onClick={() => generateRandomRoomName('edit')}
                   title="Generate Random Memorable Name"
                 >
-                  <Sparkles size={14} />
-                  <span>Random</span>
+                  <Sparkles size={14} className="flex-shrink-0" />
+                  <span className="btn-random-label">Random</span>
                 </button>
               </div>
               <span className="input-hint">Changing Room ID will migrate all connected peers in real time.</span>
@@ -605,35 +612,18 @@ export default function RoomModal({
               </button>
             </div>
 
-            <div className="modal-footer modal-footer-spaced">
-              <button 
-                type="button" 
-                className="btn-leave-room-form" 
-                onClick={() => {
-                  sounds.playClick();
-                  onLeaveRoom();
-                  onClose();
-                }}
-                disabled={isSubmittingEdit}
-                title="Leave this room"
-              >
-                <LogOut size={14} />
-                <span>Leave Room</span>
+            <div className="modal-footer">
+              <button type="button" className="btn-secondary" onClick={onClose} disabled={isSubmittingEdit}>
+                <span>Cancel</span>
               </button>
-
-              <div className="modal-footer-right">
-                <button type="button" className="btn-secondary" onClick={onClose} disabled={isSubmittingEdit}>
-                  <span>Cancel</span>
-                </button>
-                <button 
-                  type="submit" 
-                  className="btn-primary"
-                  disabled={isSubmittingEdit || !editRoomName.trim()}
-                >
-                  {isSubmittingEdit ? <RefreshCw size={15} className="spin-animation" /> : <Check size={15} />}
-                  <span>{isSubmittingEdit ? 'Saving...' : 'Save & Update Room'}</span>
-                </button>
-              </div>
+              <button 
+                type="submit" 
+                className="btn-primary"
+                disabled={isSubmittingEdit || !editRoomName.trim()}
+              >
+                {isSubmittingEdit ? <RefreshCw size={15} className="spin-animation" /> : <Check size={15} />}
+                <span>{isSubmittingEdit ? 'Saving...' : 'Save & Update Room'}</span>
+              </button>
             </div>
           </form>
         )}
@@ -646,7 +636,10 @@ export default function RoomModal({
             <div className="input-group">
               <label className="input-label">Unique Room Name:</label>
               <div className="room-input-row">
-                <div className="room-prefix-box">intekchat.com/</div>
+                <div className="room-prefix-box">
+                  <span className="room-prefix-domain">intekchat.com/</span>
+                  <span className="room-prefix-short">#/</span>
+                </div>
                 <input
                   type="text"
                   className="modal-text-input room-name-input"
@@ -661,8 +654,8 @@ export default function RoomModal({
                   onClick={() => generateRandomRoomName('create')}
                   title="Generate Random Memorable Name"
                 >
-                  <Sparkles size={14} />
-                  <span>Random</span>
+                  <Sparkles size={14} className="flex-shrink-0" />
+                  <span className="btn-random-label">Random</span>
                 </button>
               </div>
 
@@ -770,7 +763,10 @@ export default function RoomModal({
             <div className="input-group">
               <label className="input-label">Enter Room Name to Join:</label>
               <div className="room-input-row">
-                <div className="room-prefix-box">intekchat.com/</div>
+                <div className="room-prefix-box">
+                  <span className="room-prefix-domain">intekchat.com/</span>
+                  <span className="room-prefix-short">#/</span>
+                </div>
                 <input
                   type="text"
                   className="modal-text-input room-name-input"

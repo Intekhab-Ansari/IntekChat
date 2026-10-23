@@ -29,6 +29,7 @@ import {
   Users,
   PanelLeft,
   ChevronLeft,
+  X,
   Info,
   Key,
   DatabaseZap,
@@ -472,6 +473,15 @@ export default function ChatView({
 
   return (
     <div className="chat-layout-wrapper">
+      {/* Mobile Backdrop for Sidebar */}
+      {isSidebarOpen && (
+        <div 
+          className="sidebar-mobile-backdrop" 
+          onClick={() => setIsSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
       {/* Hidden File Inputs */}
       <input 
         type="file" 
@@ -511,12 +521,12 @@ export default function ChatView({
             </button>
             <button 
               type="button"
-              className="sidebar-toggle-btn"
+              className="sidebar-close-btn"
               onClick={() => setIsSidebarOpen(false)}
-              title="Collapse Sidebar"
-              aria-label="Collapse Sidebar"
+              title="Close Room Sidebar"
+              aria-label="Close Room Sidebar"
             >
-              <ChevronLeft size={15} />
+              <X size={15} />
             </button>
           </div>
         </div>
@@ -681,10 +691,10 @@ export default function ChatView({
                 type="button"
                 className="btn-sidebar-open" 
                 onClick={() => setIsSidebarOpen(true)}
-                title="Show Room Info & Peers"
+                title="Show Room Details & Active Peers"
               >
-                <PanelLeft size={16} />
-                <span>Room Details</span>
+                <PanelLeft size={15} className="flex-shrink-0" />
+                <span className="btn-sidebar-label">Details</span>
               </button>
             )}
 

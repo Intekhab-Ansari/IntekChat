@@ -7,7 +7,7 @@ const ICE_SERVERS = {
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
     { urls: 'stun:stun3.l.google.com:19302' },
-    { urls: 'stun:stun4.l.google.com:19302' }
+    { urls: 'stun:stun.cloudflare.com:3478' }
   ]
 };
 
@@ -116,8 +116,19 @@ export class WebRTCManager {
 
   // Connect to a remote peer (caller initiates offer)
   async connectToPeer(remoteId) {
+    if (!remoteId || remoteId === this.selfPeer?.id) return;
     try {
       const pc = this.getOrCreatePeer(remoteId);
+
+      // Guard: If channel already open or already negotiating, avoid collision offer
+      const existingChannel = this.channels.get(remoteId);
+      if (existingChannel && existingChannel.readyState === 'open') {
+        return;
+      }
+      if (pc.signalingState !== 'stable') {
+        return;
+      }
+
       const channel = pc.createDataChannel('intek-channel', { ordered: true });
       this.setupChannel(remoteId, channel);
 
@@ -130,7 +141,7 @@ export class WebRTCManager {
         fromPeer: this.selfPeer
       });
     } catch (err) {
-      console.error('Failed to create offer for peer:', remoteId, err);
+      console.warn('Failed to create offer for peer:', remoteId, err);
     }
   }
 
@@ -504,43 +515,58 @@ export class WebRTCManager {
     return false;
   }
 
-  // Broadcast to all open channels in room
+  // Broadcast to all open channels in room, returns array of reached peer IDs
   broadcastChatMessage(payload) {
-    let sentCount = 0;
+    const sentPeerIds = [];
+    const packet = JSON.stringify({
+      type: 'chat-message',
+      payload
+    });
+
     for (const [peerId, channel] of this.channels.entries()) {
       if (channel && channel.readyState === 'open') {
-        channel.send(
-          JSON.stringify({
-            type: 'chat-message',
-            payload
-          })
-        );
-        sentCount++;
+        try {
+          channel.send(packet);
+          sentPeerIds.push(peerId);
+        } catch (e) {
+          console.warn('Failed to send on data channel to peer:', peerId, e);
+        }
       }
     }
-    return sentCount;
+    return sentPeerIds;
   }
 
-  // Broadcast Clear Chat command
+  // Broadcast Clear Chat command, returns array of reached peer IDs
   broadcastClearChat() {
-    for (const channel of this.channels.values()) {
+    const sentPeerIds = [];
+    const packet = JSON.stringify({ type: 'chat-clear' });
+
+    for (const [peerId, channel] of this.channels.entries()) {
       if (channel && channel.readyState === 'open') {
-        channel.send(JSON.stringify({ type: 'chat-clear' }));
+        try {
+          channel.send(packet);
+          sentPeerIds.push(peerId);
+        } catch (e) {}
       }
     }
+    return sentPeerIds;
   }
 
   // Notify sender that a View Once image was burned
   sendViewOnceBurned(senderId, messageId) {
     const channel = this.channels.get(senderId);
     if (channel && channel.readyState === 'open') {
-      channel.send(
-        JSON.stringify({
-          type: 'view-once-burned',
-          messageId
-        })
-      );
+      try {
+        channel.send(
+          JSON.stringify({
+            type: 'view-once-burned',
+            messageId
+          })
+        );
+        return true;
+      } catch (e) {}
     }
+    return false;
   }
 
   closePeer(remoteId) {
