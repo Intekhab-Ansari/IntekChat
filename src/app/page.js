@@ -15,6 +15,11 @@ import { deriveKey, encryptPayload, decryptPayload, hashPassword } from '@/lib/c
 import { WebRTCManager } from '@/lib/webrtc';
 import { CloudSignalingAdapter } from '@/lib/cloudSignaling';
 
+const getRoomStorageKey = (rName) => {
+  const clean = (rName || 'lobby').trim().toLowerCase().replace(/\s+/g, '-');
+  return `intekchat_room_msgs_${clean}`;
+};
+
 export default function Home() {
   const [activeTab, setActiveTab] = useState('drop'); // 'drop' | 'chat'
   const [roomName, setRoomName] = useState('');
@@ -155,6 +160,42 @@ export default function Home() {
     }
   };
 
+  // Restore room messages from localStorage on mount or room change (preserves chat on refresh)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const storageKey = getRoomStorageKey(roomName);
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setMessages(parsed);
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to restore messages from localStorage:', e);
+    }
+  }, [roomName]);
+
+  // Persist messages in localStorage until user explicitly clears chat
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const storageKey = getRoomStorageKey(roomName);
+    try {
+      if (!messages || messages.length === 0) return;
+      // Strip out large dataUrls (> 400KB) to prevent localStorage quota errors
+      const sanitized = messages.slice(-250).map((m) => {
+        if (m.dataUrl && m.dataUrl.length > 400000) {
+          return { ...m, dataUrl: '' };
+        }
+        return m;
+      });
+      localStorage.setItem(storageKey, JSON.stringify(sanitized));
+    } catch (e) {
+      console.warn('Failed to save messages to localStorage:', e);
+    }
+  }, [messages, roomName]);
+
   // 2. Initialize E2EE Cryptographic Key whenever Room or Password Changes
   useEffect(() => {
     async function setupCrypto() {
@@ -263,6 +304,17 @@ export default function Home() {
       // Room Details Updated by Host
       signaling.on('room-details-updated', ({ oldRoom, newRoom, isProtected, message }) => {
         sounds.playSuccess();
+        if (typeof window !== 'undefined' && oldRoom && newRoom) {
+          try {
+            const oldKey = getRoomStorageKey(oldRoom);
+            const newKey = getRoomStorageKey(newRoom);
+            const oldMsgs = localStorage.getItem(oldKey);
+            if (oldMsgs) {
+              localStorage.setItem(newKey, oldMsgs);
+              localStorage.removeItem(oldKey);
+            }
+          } catch {}
+        }
         setRoomName(newRoom);
         setIsRoomProtected(isProtected);
         if (typeof window !== 'undefined') {
@@ -295,6 +347,11 @@ export default function Home() {
         } else if (type === 'clear') {
           sounds.playBurn();
           setMessages([]);
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.removeItem(getRoomStorageKey(roomName));
+            } catch {}
+          }
         } else if (type === 'view-once-burned') {
           setMessages((prev) =>
             prev.map((m) => (m.id === payload.messageId ? { ...m, isBurned: true } : m))
@@ -457,6 +514,11 @@ export default function Home() {
         onChatClear: () => {
           sounds.playBurn();
           setMessages([]);
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.removeItem(getRoomStorageKey(roomName));
+            } catch {}
+          }
         },
         onViewOnceBurned: (messageId) => {
           setMessages((prev) =>
@@ -690,6 +752,11 @@ export default function Home() {
   };
 
   const handleLeaveRoom = () => {
+    if (typeof window !== 'undefined' && roomName) {
+      try {
+        localStorage.removeItem(getRoomStorageKey(roomName));
+      } catch {}
+    }
     setRoomName('');
     setRoomPassword('');
     setIsRoomProtected(false);
@@ -956,6 +1023,11 @@ export default function Home() {
   const handleClearChat = () => {
     setMessages([]);
     sounds.playBurn();
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem(getRoomStorageKey(roomName));
+      } catch {}
+    }
 
     let sentPeerIds = [];
     if (webrtcRef.current) {
@@ -974,9 +1046,15 @@ export default function Home() {
 
   // Burn View-Once Image
   const handleBurnViewOnce = (messageId, senderId) => {
-    setMessages((prev) =>
-      prev.map((m) => (m.id === messageId ? { ...m, isBurned: true } : m))
-    );
+    setMessages((prev) => {
+      const next = prev.map((m) => (m.id === messageId ? { ...m, isBurned: true, dataUrl: '' } : m));
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(getRoomStorageKey(roomName), JSON.stringify(next.slice(-250)));
+        } catch {}
+      }
+      return next;
+    });
 
     let sentDirect = false;
     if (webrtcRef.current) {

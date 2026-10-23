@@ -30,6 +30,7 @@ import {
   PanelLeft,
   ChevronLeft,
   X,
+  Reply,
   Info,
   Key,
   DatabaseZap,
@@ -91,10 +92,12 @@ export default function ChatView({
   const [customWallpaper, setCustomWallpaper] = useState(null);
   const [wallpaperOpacity, setWallpaperOpacity] = useState(18);
   const [wallpaperBlur, setWallpaperBlur] = useState(false);
+  const [replyingTo, setReplyingTo] = useState(null);
 
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const imageInputRef = useRef(null);
+  const textInputRef = useRef(null);
   const timerRef = useRef(null);
 
   const generateHeroRandomRoom = () => {
@@ -210,15 +213,61 @@ export default function ChatView({
     };
   }, [viewOnceModalData]);
 
+  // Cancel reply on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && replyingTo) {
+        setReplyingTo(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [replyingTo]);
+
+  const handleStartReply = (msg) => {
+    sounds.playClick();
+    setReplyingTo(msg);
+    setTimeout(() => {
+      textInputRef.current?.focus();
+    }, 50);
+  };
+
+  const scrollToMessage = (msgId) => {
+    if (!msgId) return;
+    const el = document.getElementById(`msg-${msgId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('msg-highlight-pulse');
+      setTimeout(() => {
+        el.classList.remove('msg-highlight-pulse');
+      }, 1400);
+    }
+  };
+
   const handleSendText = (e) => {
     e.preventDefault();
     if (!inputText.trim()) return;
 
     sounds.playMessage();
-    onSendMessage({
+    const payload = {
       type: 'text',
       text: inputText.trim()
-    });
+    };
+
+    if (replyingTo) {
+      payload.replyTo = {
+        id: replyingTo.id,
+        senderName: replyingTo.senderId === userProfile?.id ? 'You' : replyingTo.senderName,
+        senderColor: replyingTo.senderColor || 0,
+        text: replyingTo.type === 'text' 
+          ? (replyingTo.text.length > 80 ? replyingTo.text.slice(0, 80) + '...' : replyingTo.text)
+          : replyingTo.type === 'image' ? '📷 Photo' : `📎 ${replyingTo.name || 'File'}`,
+        type: replyingTo.type
+      };
+      setReplyingTo(null);
+    }
+
+    onSendMessage(payload);
     setInputText('');
   };
 
@@ -239,13 +288,28 @@ export default function ChatView({
     reader.onload = () => {
       const base64Data = reader.result;
       sounds.playTransferStart();
-      onSendMessage({
+      const payload = {
         type: 'image',
         dataUrl: base64Data,
         imageMode,
         name: file.name,
         size: file.size
-      });
+      };
+
+      if (replyingTo) {
+        payload.replyTo = {
+          id: replyingTo.id,
+          senderName: replyingTo.senderId === userProfile?.id ? 'You' : replyingTo.senderName,
+          senderColor: replyingTo.senderColor || 0,
+          text: replyingTo.type === 'text' 
+            ? (replyingTo.text.length > 80 ? replyingTo.text.slice(0, 80) + '...' : replyingTo.text)
+            : replyingTo.type === 'image' ? '📷 Photo' : `📎 ${replyingTo.name || 'File'}`,
+          type: replyingTo.type
+        };
+        setReplyingTo(null);
+      }
+
+      onSendMessage(payload);
     };
     reader.readAsDataURL(file);
   };
@@ -257,13 +321,28 @@ export default function ChatView({
     const reader = new FileReader();
     reader.onload = () => {
       sounds.playTransferStart();
-      onSendMessage({
+      const payload = {
         type: 'file',
         name: file.name,
         size: file.size,
         mimeType: file.type,
         dataUrl: reader.result
-      });
+      };
+
+      if (replyingTo) {
+        payload.replyTo = {
+          id: replyingTo.id,
+          senderName: replyingTo.senderId === userProfile?.id ? 'You' : replyingTo.senderName,
+          senderColor: replyingTo.senderColor || 0,
+          text: replyingTo.type === 'text' 
+            ? (replyingTo.text.length > 80 ? replyingTo.text.slice(0, 80) + '...' : replyingTo.text)
+            : replyingTo.type === 'image' ? '📷 Photo' : `📎 ${replyingTo.name || 'File'}`,
+          type: replyingTo.type
+        };
+        setReplyingTo(null);
+      }
+
+      onSendMessage(payload);
     };
     reader.readAsDataURL(file);
   };
@@ -913,6 +992,7 @@ export default function ChatView({
             return (
               <div 
                 key={msg.id} 
+                id={`msg-${msg.id}`}
                 className={`message-row ${isSelf ? 'message-self' : 'message-peer'}`}
               >
                 {!isSelf && (
@@ -932,9 +1012,42 @@ export default function ChatView({
                   <div className="msg-sender-info">
                     <span className="msg-sender-name">{isSelf ? 'You' : msg.senderName}</span>
                     <span className="msg-time">{msg.time}</span>
+                    <button
+                      type="button"
+                      className="msg-reply-btn"
+                      onClick={() => handleStartReply(msg)}
+                      title="Reply to this message"
+                    >
+                      <Reply size={12} />
+                      <span>Reply</span>
+                    </button>
                   </div>
 
-                  <div className="msg-bubble">
+                  <div 
+                    className="msg-bubble"
+                    onDoubleClick={() => handleStartReply(msg)}
+                    title="Double-click to reply"
+                  >
+                    {/* QUOTED REPLY BLOCK */}
+                    {msg.replyTo && (
+                      <div 
+                        className="msg-quote-card"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          scrollToMessage(msg.replyTo.id);
+                        }}
+                        title="Click to jump to quoted message"
+                      >
+                        <div className="quote-accent-line" />
+                        <div className="quote-body">
+                          <div className="quote-header">
+                            <Reply size={11} className="quote-icon" />
+                            <span className="quote-author">{msg.replyTo.senderName}</span>
+                          </div>
+                          <p className="quote-text">{msg.replyTo.text}</p>
+                        </div>
+                      </div>
+                    )}
                     {/* TEXT MESSAGE */}
                     {msg.type === 'text' && (
                       <p className="msg-text">{msg.text}</p>
@@ -1048,7 +1161,37 @@ export default function ChatView({
 
         {/* Input Composer Dock */}
         <div className="chat-input-wrapper">
-          <form className="chat-input-bar" onSubmit={handleSendText}>
+          {/* Active Reply Banner */}
+          {replyingTo && (
+            <div className="reply-preview-dock">
+              <div className="reply-preview-content">
+                <div className="reply-preview-bar-indicator" />
+                <div className="reply-preview-details">
+                  <span className="reply-preview-title">
+                    <Reply size={12} className="text-accent" />
+                    <span>Replying to <strong>{replyingTo.senderId === userProfile?.id ? 'yourself' : replyingTo.senderName}</strong></span>
+                  </span>
+                  <span className="reply-preview-snippet">
+                    {replyingTo.type === 'text' 
+                      ? replyingTo.text 
+                      : replyingTo.type === 'image' 
+                        ? '📷 Photo' 
+                        : `📎 ${replyingTo.name || 'File'}`}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn-close-reply"
+                onClick={() => setReplyingTo(null)}
+                title="Cancel reply (Esc)"
+              >
+                <X size={15} />
+              </button>
+            </div>
+          )}
+
+          <form className={`chat-input-bar ${replyingTo ? 'input-bar-has-reply' : ''}`} onSubmit={handleSendText}>
             <div className="attachment-dropdown-wrap">
               <button 
                 type="button" 
@@ -1116,9 +1259,10 @@ export default function ChatView({
             </button>
 
             <input 
+              ref={textInputRef}
               type="text" 
               className="chat-text-input" 
-              placeholder="Type an encrypted message..."
+              placeholder={replyingTo ? `Replying to ${replyingTo.senderId === userProfile?.id ? 'yourself' : replyingTo.senderName}...` : "Type an encrypted message..."}
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
             />
