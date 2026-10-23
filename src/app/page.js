@@ -73,14 +73,23 @@ export default function Home() {
       if (pairParam) {
         const cleanPair = pairParam.trim().toLowerCase();
         setDropPairId(cleanPair);
+        if (!roomParam) {
+          setRoomName(cleanPair);
+        }
         setActiveTab('drop');
       } else {
         setDropPairId(profile.id);
+        if (!roomParam) {
+          setRoomName(profile.id);
+        }
       }
 
       if (roomParam) {
         const cleanRoom = roomParam.trim().toLowerCase().replace(/\s+/g, '-');
         setRoomName(cleanRoom);
+        if (!pairParam) {
+          setDropPairId(cleanRoom);
+        }
         if (initialPwd) {
           setRoomPassword(initialPwd);
           setIsRoomProtected(true);
@@ -112,6 +121,39 @@ export default function Home() {
     if (typeof window !== 'undefined') {
       localStorage.setItem('intekchat_theme', themeName);
       document.documentElement.setAttribute('data-theme', themeName);
+    }
+  };
+
+  // Seamless Tab Switcher: Keeps P2P & Chat connected, syncs browser URL state
+  const handleSwitchTab = (newTab) => {
+    setActiveTab(newTab);
+    if (typeof window !== 'undefined') {
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', newTab);
+        if (newTab === 'drop') {
+          // When switching to IntekDrop, clean room/pwd so address bar shows clean P2P pairing
+          url.searchParams.delete('room');
+          url.searchParams.delete('pwd');
+          const pair = dropPairId || roomName || userProfile?.id;
+          if (pair) {
+            url.searchParams.set('pair', pair);
+          }
+        } else {
+          // When switching to IntekChat, clean pair so address bar reflects chat room
+          url.searchParams.delete('pair');
+          const room = roomName || dropPairId;
+          if (room) {
+            url.searchParams.set('room', room);
+            if (isRoomProtected && roomPassword) {
+              url.searchParams.set('pwd', roomPassword);
+            }
+          }
+        }
+        window.history.replaceState({}, '', url.toString());
+      } catch (err) {
+        console.warn('Failed to update URL on tab switch:', err);
+      }
     }
   };
 
@@ -329,11 +371,11 @@ export default function Home() {
       webrtcRef.current = webrtc;
     };
 
-    // Isolate signaling rooms between IntekDrop (P2P pairing) and IntekChat (Rooms)
-    const isDrop = activeTab === 'drop';
-    const effectiveRoom = isDrop
-      ? (dropPairId ? `drop-${dropPairId}` : (userProfile?.id ? `drop-${userProfile.id}` : 'intekdrop-nearby'))
-      : (roomName || '');
+    // Unified signaling network: IntekDrop and IntekChat share the P2P connection!
+    const effectiveRoom = (roomName || (dropPairId ? `drop-${dropPairId}` : 'intekdrop-network'))
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, '-');
 
     // If on Vercel and no custom server URL configured, use CloudSignalingAdapter directly
     if (isVercel && !customServerUrl) {
@@ -354,7 +396,7 @@ export default function Home() {
 
       socket.on('connect', async () => {
         let passwordHash = null;
-        if (roomPassword && !isDrop) {
+        if (roomPassword && isRoomProtected) {
           try {
             passwordHash = await hashPassword(roomPassword);
           } catch (err) {
@@ -395,7 +437,7 @@ export default function Home() {
       webrtcRef.current?.destroy();
       activeSignaling?.disconnect?.();
     };
-  }, [userProfile, activeTab, dropPairId, roomName, roomPassword]);
+  }, [userProfile, dropPairId, roomName, roomPassword]);
 
   // Handle Profile Update
   const handleUpdateProfile = (updatedProfile) => {
@@ -728,7 +770,7 @@ export default function Home() {
       {/* Top Cyber Navigation Bar */}
       <Navbar
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={handleSwitchTab}
         roomName={roomName}
         peerCount={peers.length}
         totalParticipants={totalParticipants}
@@ -795,6 +837,7 @@ export default function Home() {
         isRoomProtected={isRoomProtected}
         activeTab={activeTab}
         dropPairId={dropPairId || userProfile?.id || ''}
+        peers={peers}
         onJoinScannedRoom={handleJoinScannedRoom}
       />
 

@@ -59,19 +59,30 @@ export class CloudSignalingAdapter {
   }
 
   init() {
+    this.brokerIndex = this.brokerIndex || 0;
+    const brokerUrl = PUBLIC_BROKERS[this.brokerIndex % PUBLIC_BROKERS.length];
+    const clientId = `intek_${this.selfId}_${Math.random().toString(16).slice(2, 8)}`;
+
     try {
-      const brokerUrl = PUBLIC_BROKERS[0];
-      const clientId = `intek_${this.selfId}_${Math.random().toString(16).slice(2, 8)}`;
-      
       this.client = mqtt.connect(brokerUrl, {
         clientId,
         clean: true,
-        connectTimeout: 8000,
-        reconnectPeriod: 5000,
+        connectTimeout: 5000,
+        reconnectPeriod: 4000,
         keepalive: 30
       });
 
+      // Failover timer: if broker fails to connect within 4 seconds, try next fallback broker
+      if (this.failoverTimer) clearTimeout(this.failoverTimer);
+      this.failoverTimer = setTimeout(() => {
+        if (!this.connected && !this.destroyed) {
+          console.warn(`Signaling broker ${brokerUrl} timeout. Switching to next broker...`);
+          this.switchBroker();
+        }
+      }, 4000);
+
       this.client.on('connect', () => {
+        if (this.failoverTimer) clearTimeout(this.failoverTimer);
         this.connected = true;
         this.emitLocal('connect');
 
@@ -79,14 +90,15 @@ export class CloudSignalingAdapter {
         this.relayTopic = `${this.baseTopic}/relay`;
         this.client.subscribe([this.presenceTopic, this.myDirectTopic, this.relayTopic], { qos: 1 }, (err) => {
           if (!err) {
-            // Announce presence immediately
+            // Triple-burst presence announcement to overcome mobile network latency
             this.broadcastPresence('announce');
-            // Re-announce 800ms later to guarantee arrival across mobile networks
             setTimeout(() => {
-              if (this.connected) {
-                this.broadcastPresence('announce');
-              }
-            }, 800);
+              if (this.connected && !this.destroyed) this.broadcastPresence('announce');
+            }, 400);
+            setTimeout(() => {
+              if (this.connected && !this.destroyed) this.broadcastPresence('announce');
+            }, 1200);
+
             this.startHeartbeat();
           }
         });
@@ -103,6 +115,10 @@ export class CloudSignalingAdapter {
 
       this.client.on('error', (err) => {
         console.warn('Cloud signaling broker warning:', err.message);
+        if (!this.connected && !this.destroyed) {
+          if (this.failoverTimer) clearTimeout(this.failoverTimer);
+          this.switchBroker();
+        }
       });
 
       this.client.on('close', () => {
@@ -110,25 +126,40 @@ export class CloudSignalingAdapter {
       });
 
       // Cleanup stale peers that stopped heartbeating
-      this.cleanupInterval = setInterval(() => {
-        const now = Date.now();
-        for (const [peerId, peerData] of this.knownPeers.entries()) {
-          if (now - peerData.lastSeen > 35000) {
-            this.knownPeers.delete(peerId);
-            this.emitLocal('peer-left', { id: peerId });
-            this.broadcastCount();
+      if (!this.cleanupInterval) {
+        this.cleanupInterval = setInterval(() => {
+          const now = Date.now();
+          for (const [peerId, peerData] of this.knownPeers.entries()) {
+            if (now - peerData.lastSeen > 35000) {
+              this.knownPeers.delete(peerId);
+              this.emitLocal('peer-left', { id: peerId });
+              this.broadcastCount();
+            }
           }
-        }
-      }, 10000);
+        }, 10000);
+      }
 
       // Handle window unload / leave
-      if (typeof window !== 'undefined') {
+      if (typeof window !== 'undefined' && !this._unloadHandler) {
         this._unloadHandler = () => this.disconnect();
         window.addEventListener('beforeunload', this._unloadHandler);
       }
     } catch (err) {
       console.error('Failed to initialize cloud signaling adapter:', err);
+      if (!this.connected && !this.destroyed) {
+        this.switchBroker();
+      }
     }
+  }
+
+  switchBroker() {
+    if (this.destroyed) return;
+    try {
+      this.client?.end(true);
+    } catch {}
+    this.connected = false;
+    this.brokerIndex = (this.brokerIndex || 0) + 1;
+    this.init();
   }
 
   startHeartbeat() {
@@ -329,6 +360,8 @@ export class CloudSignalingAdapter {
   }
 
   disconnect() {
+    this.destroyed = true;
+    if (this.failoverTimer) clearTimeout(this.failoverTimer);
     this.stopHeartbeat();
     if (this.cleanupInterval) clearInterval(this.cleanupInterval);
     if (typeof window !== 'undefined' && this._unloadHandler) {

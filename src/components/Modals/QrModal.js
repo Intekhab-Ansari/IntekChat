@@ -34,7 +34,8 @@ export default function QrModal({
   isRoomProtected = false,
   activeTab = 'drop',
   onJoinScannedRoom,
-  dropPairId = ''
+  dropPairId = '',
+  peers = []
 }) {
   const canvasRef = useRef(null);
   const videoRef = useRef(null);
@@ -44,8 +45,7 @@ export default function QrModal({
 
   // Modal display mode: 'show' (displaying QR) or 'scan' (camera scanner)
   const [modalMode, setModalMode] = useState('show'); // 'show' | 'scan'
-  // QR target tab: defaults to whatever tab the user was in
-  const [targetTab, setTargetTab] = useState(activeTab || 'drop');
+  const isDrop = activeTab === 'drop';
 
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedRoom, setCopiedRoom] = useState(false);
@@ -62,14 +62,23 @@ export default function QrModal({
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [scannedResult, setScannedResult] = useState(null);
 
-  // Keep targetTab synced when opening modal
+  // Reset scanner state when modal opens
   useEffect(() => {
     if (isOpen) {
-      setTargetTab(activeTab || 'drop');
       setScannedResult(null);
       setCameraError('');
     }
-  }, [isOpen, activeTab]);
+  }, [isOpen]);
+
+  // Auto-dismiss modal after showing success alert when a peer joins in IntekDrop
+  useEffect(() => {
+    if (isOpen && isDrop && peers && peers.length > 0) {
+      const timer = setTimeout(() => {
+        onClose();
+      }, 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, isDrop, peers, onClose]);
 
   // Generate QR Code URL
   useEffect(() => {
@@ -83,9 +92,15 @@ export default function QrModal({
       const cleanRoom = (roomName || '').trim().toLowerCase().replace(/\s+/g, '-');
       
       let target = '';
-      if (targetTab === 'drop') {
+      if (isDrop) {
         // Pure IntekDrop P2P pairing link - NEVER injects IntekChat room or password!
-        const pairId = dropPairId || '';
+        let pairId = (dropPairId || '').trim();
+        if (!pairId) {
+          try {
+            const saved = localStorage.getItem('intekchat_profile');
+            if (saved) pairId = JSON.parse(saved).id || '';
+          } catch {}
+        }
         target = `${origin}/?tab=drop${pairId ? `&pair=${encodeURIComponent(pairId)}` : ''}`;
       } else {
         // IntekChat Room share link
@@ -108,7 +123,7 @@ export default function QrModal({
             width: 230,
             margin: 2,
             color: {
-              dark: targetTab === 'drop' ? '#06b6d4' : '#3b82f6',
+              dark: isDrop ? '#06b6d4' : '#3b82f6',
               light: '#ffffff'
             }
           },
@@ -118,7 +133,7 @@ export default function QrModal({
         );
       }
     }
-  }, [isOpen, modalMode, targetTab, roomName, roomPassword, isRoomProtected, includePasswordInQr, customHost, dropPairId]);
+  }, [isOpen, modalMode, isDrop, roomName, roomPassword, isRoomProtected, includePasswordInQr, customHost, dropPairId]);
 
   // Stop camera stream utility
   const stopCamera = useCallback(() => {
@@ -143,7 +158,7 @@ export default function QrModal({
     let room = '';
     let pwd = '';
     let pair = '';
-    let tab = targetTab || 'drop';
+    let tab = isDrop ? 'drop' : 'chat';
 
     // Parse potential URL
     try {
@@ -152,7 +167,7 @@ export default function QrModal({
         pair = url.searchParams.get('pair') || '';
         room = url.searchParams.get('room') || '';
         pwd = url.searchParams.get('pwd') || url.searchParams.get('pass') || url.searchParams.get('password') || '';
-        tab = url.searchParams.get('tab') || (pair ? 'drop' : (room ? 'chat' : targetTab));
+        tab = url.searchParams.get('tab') || (pair ? 'drop' : (room ? 'chat' : (isDrop ? 'drop' : 'chat')));
       } else {
         // Plain text room code
         room = data.trim();
@@ -174,7 +189,7 @@ export default function QrModal({
     setTimeout(() => {
       onClose();
     }, 700);
-  }, [targetTab, onJoinScannedRoom, onClose, stopCamera]);
+  }, [isDrop, onJoinScannedRoom, onClose, stopCamera]);
 
   // Start Camera Scanning Loop
   const startCamera = useCallback(async () => {
@@ -340,8 +355,8 @@ export default function QrModal({
     sounds.playClick();
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
-        const title = targetTab === 'drop' ? 'Pair with IntekDrop' : `Join room #${roomName} on IntekChat`;
-        const text = targetTab === 'drop'
+        const title = isDrop ? 'Pair with IntekDrop' : `Join room #${roomName} on IntekChat`;
+        const text = isDrop
           ? 'Connect with my device on IntekDrop to transfer files instantly!'
           : (isRoomProtected && roomPassword
               ? `Join my private room #${roomName} on IntekChat! Room Password: ${roomPassword}`
@@ -364,7 +379,7 @@ export default function QrModal({
         <div className="modal-header">
           <div className="modal-title-group">
             <div className="modal-title-badge">
-              {targetTab === 'drop' ? (
+              {isDrop ? (
                 <>
                   <Radio size={15} className="text-cyan animate-pulse" />
                   <span>IntekDrop P2P Device Pairing</span>
@@ -379,12 +394,12 @@ export default function QrModal({
             <h3>
               {modalMode === 'scan' 
                 ? 'Live Camera QR Scanner'
-                : (targetTab === 'drop' ? 'Pair Devices & Drop Files' : (roomName ? `Share Room #${roomName}` : 'Share Chat Room'))}
+                : (isDrop ? 'Pair Devices & Drop Files' : (roomName ? `Share Room #${roomName}` : 'Share Chat Room'))}
             </h3>
             <p>
               {modalMode === 'scan'
                 ? 'Point your camera at another device to sync instantly'
-                : (targetTab === 'drop'
+                : (isDrop
                     ? 'Scan with another phone or PC to pair devices on IntekDrop Radar and drop files instantly'
                     : 'Scan to open and join this end-to-end encrypted room directly in IntekChat')}
             </p>
@@ -429,48 +444,27 @@ export default function QrModal({
         {/* ---------------- MODE 1: SHOW QR CODE ---------------- */}
         {modalMode === 'show' && (
           <>
-            {/* Target Tab Picker: IntekDrop vs IntekChat */}
-            <div className="qr-tab-target-selector">
-              <span className="qr-target-label">Barcode Option:</span>
-              <div className="qr-target-btn-group">
-                <button
-                  type="button"
-                  className={`btn-qr-target ${targetTab === 'drop' ? 'active-drop' : ''}`}
-                  onClick={() => {
-                    sounds.playClick();
-                    setTargetTab('drop');
-                  }}
-                >
-                  <Radio size={14} />
-                  <span>IntekDrop (Files)</span>
-                </button>
-                <button
-                  type="button"
-                  className={`btn-qr-target ${targetTab === 'chat' ? 'active-chat' : ''}`}
-                  onClick={() => {
-                    sounds.playClick();
-                    setTargetTab('chat');
-                  }}
-                >
-                  <MessageSquare size={14} />
-                  <span>IntekChat (Chat)</span>
-                </button>
-              </div>
-            </div>
-
-            {/* If IntekDrop mode: Clean AirDrop-style P2P Pair Card (No Room ID or Password!) */}
-            {targetTab === 'drop' ? (
-              <div className="intekdrop-pair-banner">
-                <div className="intekdrop-pair-icon">
-                  <Radio size={18} className="text-cyan animate-pulse" />
+            {/* If IntekDrop mode: Clean AirDrop-style P2P Pair Card (No Room ID, Password, or Chat Buttons!) */}
+            {isDrop ? (
+              <>
+                {peers && peers.length > 0 && (
+                  <div className="intekdrop-connected-banner">
+                    <Check size={16} className="text-emerald" />
+                    <span>Device Connected: <strong>{peers[0].name}</strong> ({peers[0].os?.toUpperCase() || 'DEVICE'})</span>
+                  </div>
+                )}
+                <div className="intekdrop-pair-banner">
+                  <div className="intekdrop-pair-icon">
+                    <Radio size={18} className="text-cyan animate-pulse" />
+                  </div>
+                  <div className="intekdrop-pair-text">
+                    <span className="intekdrop-pair-title">IntekDrop Direct P2P Sync</span>
+                    <span className="intekdrop-pair-desc">
+                      Scan with another phone or PC to pair devices and drop files instantly.
+                    </span>
+                  </div>
                 </div>
-                <div className="intekdrop-pair-text">
-                  <span className="intekdrop-pair-title">IntekDrop Direct P2P Sync</span>
-                  <span className="intekdrop-pair-desc">
-                    Scan with another phone or PC to pair devices and drop files instantly.
-                  </span>
-                </div>
-              </div>
+              </>
             ) : (
               /* If IntekChat mode: Show Room ID and Password credentials */
               <>
@@ -611,7 +605,7 @@ export default function QrModal({
               <input type="text" readOnly value={shareUrl} className="share-url-input" />
               <button type="button" className="btn-copy-link" onClick={handleCopyLink}>
                 {copiedLink ? <Check size={16} className="text-emerald" /> : <Copy size={16} />}
-                <span>{copiedLink ? 'Copied' : (targetTab === 'drop' ? 'Copy Pairing Link' : 'Copy Room Link')}</span>
+                <span>{copiedLink ? 'Copied' : (isDrop ? 'Copy Pairing Link' : 'Copy Room Link')}</span>
               </button>
             </div>
 
@@ -619,7 +613,7 @@ export default function QrModal({
             <div className="qr-modal-footer">
               <button type="button" className="btn-native-share" onClick={handleNativeShare}>
                 <Share2 size={15} />
-                <span>{targetTab === 'drop' ? 'Share IntekDrop Link' : 'Share Room Link'}</span>
+                <span>{isDrop ? 'Share IntekDrop Link' : 'Share Room Link'}</span>
               </button>
             </div>
           </>
