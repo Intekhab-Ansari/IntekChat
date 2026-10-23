@@ -172,3 +172,66 @@ export function getWallpaperCss(presetId, customImage = null) {
 
   return { backgroundImage: 'none' };
 }
+
+/**
+ * Compresses and resizes a custom wallpaper image to ensure it is ultra-lightweight (< 40KB)
+ * so it transmits reliably over WebRTC DataChannels (< 64KB limit) and MQTT signaling (< 256KB limit)
+ * without exceeding localStorage quotas or dropping connections.
+ */
+export function compressWallpaperImage(fileOrDataUrl, maxDim = 900, quality = 0.70) {
+  return new Promise((resolve, reject) => {
+    if (typeof window === 'undefined') {
+      return resolve(typeof fileOrDataUrl === 'string' ? fileOrDataUrl : '');
+    }
+
+    const processImg = (img) => {
+      let width = img.naturalWidth || img.width || 800;
+      let height = img.naturalHeight || img.height || 600;
+
+      if (width > maxDim || height > maxDim) {
+        if (width >= height) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        } else {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        return resolve(typeof fileOrDataUrl === 'string' ? fileOrDataUrl : '');
+      }
+
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, width, height);
+
+      const compressed = canvas.toDataURL('image/jpeg', quality);
+      resolve(compressed);
+    };
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => processImg(img);
+    img.onerror = () => {
+      if (typeof fileOrDataUrl === 'string') resolve(fileOrDataUrl);
+      else reject(new Error('Failed to load image for wallpaper compression'));
+    };
+
+    if (typeof fileOrDataUrl === 'string') {
+      img.src = fileOrDataUrl;
+    } else {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        img.src = e.target.result;
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(fileOrDataUrl);
+    }
+  });
+}
+

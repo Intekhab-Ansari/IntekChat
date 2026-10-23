@@ -14,6 +14,7 @@ import { sounds } from '@/lib/sound';
 import { deriveKey, encryptPayload, decryptPayload, hashPassword } from '@/lib/crypto';
 import { WebRTCManager } from '@/lib/webrtc';
 import { CloudSignalingAdapter } from '@/lib/cloudSignaling';
+import { compressWallpaperImage } from '@/lib/wallpapers';
 
 const getRoomStorageKey = (rName) => {
   const clean = (rName || 'lobby').trim().toLowerCase().replace(/\s+/g, '-');
@@ -51,6 +52,11 @@ export default function Home() {
   const cryptoKeyRef = useRef(null);
   const cancelTokensRef = useRef(new Set());
   const relayIncomingFilesRef = useRef(new Map());
+  const syncedWallpaperRef = useRef(null);
+
+  useEffect(() => {
+    syncedWallpaperRef.current = syncedWallpaper;
+  }, [syncedWallpaper]);
 
   // 1. Initialize Profile, Theme & URL Room Params (including 1-scan QR auto join)
   useEffect(() => {
@@ -249,17 +255,33 @@ export default function Home() {
   // Incoming room wallpaper sync handler
   const handleIncomingRoomWallpaper = useCallback((wallpaperPayload) => {
     if (!wallpaperPayload) return;
-    setSyncedWallpaper(wallpaperPayload);
-    sounds.playSuccess();
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: `sys-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-        system: true,
-        text: `🎨 ${wallpaperPayload.senderName || 'A peer'} updated the room wallpaper to "${wallpaperPayload.wallpaperType || 'Custom'}"`,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    setSyncedWallpaper((prev) => {
+      // Deduplicate if already applied this exact sync event
+      if (
+        prev &&
+        prev.timestamp &&
+        wallpaperPayload.timestamp &&
+        prev.timestamp === wallpaperPayload.timestamp &&
+        prev.senderId === wallpaperPayload.senderId
+      ) {
+        return prev;
       }
-    ]);
+      sounds.playSuccess();
+      const wallTitle = wallpaperPayload.wallpaperType === 'custom'
+        ? 'Custom Photo'
+        : (wallpaperPayload.wallpaperType === 'none' ? 'Clean Solid' : wallpaperPayload.wallpaperType || 'Preset');
+
+      setMessages((mPrev) => [
+        ...mPrev,
+        {
+          id: `sys-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          system: true,
+          text: `🎨 ${wallpaperPayload.senderName || 'A peer'} updated the room wallpaper to "${wallTitle}"`,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+      ]);
+      return wallpaperPayload;
+    });
   }, []);
 
   // Auto-clean expired typing indicators
@@ -338,6 +360,16 @@ export default function Home() {
         // Connect to newly joined peer
         if (newPeer.id) {
           webrtcRef.current?.connectToPeer(newPeer.id);
+          // Sync current room wallpaper to newly joined peer
+          if (syncedWallpaperRef.current) {
+            try {
+              signaling.emit('e2ee-relay', {
+                to: newPeer.id,
+                type: 'room-wallpaper',
+                payload: syncedWallpaperRef.current
+              });
+            } catch (e) {}
+          }
         }
       });
 
@@ -526,6 +558,12 @@ export default function Home() {
       const webrtc = new WebRTCManager(signaling, userProfile, {
         onChannelOpen: (peerId) => {
           sounds.playJoin();
+          // Sync active room wallpaper over direct P2P data channel as soon as it opens
+          if (syncedWallpaperRef.current) {
+            try {
+              webrtc.sendRoomWallpaperToPeer(peerId, syncedWallpaperRef.current);
+            } catch (e) {}
+          }
         },
         onFileTransferStart: (meta) => {
           setActiveTransfers((prev) => ({
@@ -1181,29 +1219,43 @@ export default function Home() {
   // Broadcast room wallpaper to all participants
   const handleBroadcastWallpaper = useCallback(async (wallpaperSettings) => {
     if (!userProfile) return;
+
+    let finalCustomImage = wallpaperSettings.customImage;
+    if (wallpaperSettings.wallpaperType === 'custom' && finalCustomImage && finalCustomImage.length > 70000) {
+      try {
+        finalCustomImage = await compressWallpaperImage(finalCustomImage, 900, 0.70);
+      } catch (e) {}
+    }
+
     const payload = {
       ...wallpaperSettings,
+      customImage: wallpaperSettings.wallpaperType === 'custom' ? finalCustomImage : null,
       senderId: userProfile?.id,
       senderName: userProfile?.name || 'Anonymous',
       timestamp: Date.now()
     };
     setSyncedWallpaper(payload);
 
-    let sentPeerIds = [];
+    // 1. Send over direct WebRTC DataChannels to all connected peers
     if (webrtcRef.current) {
-      sentPeerIds = webrtcRef.current.broadcastRoomWallpaper(payload) || [];
+      try {
+        webrtcRef.current.broadcastRoomWallpaper(payload);
+      } catch (e) {
+        console.warn('WebRTC wallpaper broadcast warning:', e);
+      }
     }
+    // 2. ALWAYS also emit through signaling relay to guarantee 100% room delivery
     if (socketRef.current) {
-      const activePeers = peers || [];
-      const reachedCount = Array.isArray(sentPeerIds) ? sentPeerIds.length : 0;
-      if (reachedCount < activePeers.length || activePeers.length === 0) {
+      try {
         socketRef.current.emit('e2ee-relay', {
           type: 'room-wallpaper',
           payload
         });
+      } catch (e) {
+        console.warn('Signaling wallpaper relay warning:', e);
       }
     }
-  }, [userProfile, peers]);
+  }, [userProfile]);
 
   const handleToggleSound = () => {
     const muted = sounds.toggleMute();

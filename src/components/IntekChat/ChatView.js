@@ -482,8 +482,12 @@ export default function ChatView({
     setCustomWallpaper(dataUrl);
     setWallpaperType('custom');
     if (typeof window !== 'undefined') {
-      localStorage.setItem('intekchat_wallpaper_custom', dataUrl);
-      localStorage.setItem('intekchat_wallpaper_type', 'custom');
+      try {
+        localStorage.setItem('intekchat_wallpaper_custom', dataUrl);
+        localStorage.setItem('intekchat_wallpaper_type', 'custom');
+      } catch (e) {
+        console.warn('LocalStorage save custom wallpaper error:', e);
+      }
     }
   };
 
@@ -591,6 +595,14 @@ export default function ChatView({
       }
       if (typeof syncedWallpaper.blur === 'boolean') {
         setWallpaperBlur(syncedWallpaper.blur);
+      }
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('intekchat_wallpaper_type', syncedWallpaper.wallpaperType);
+          if (syncedWallpaper.customImage) {
+            localStorage.setItem('intekchat_wallpaper_custom', syncedWallpaper.customImage);
+          }
+        } catch (e) {}
       }
     }
   }, [syncedWallpaper]);

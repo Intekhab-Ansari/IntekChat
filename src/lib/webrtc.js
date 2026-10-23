@@ -640,6 +640,22 @@ export class WebRTCManager {
     return sentPeerIds;
   }
 
+  // Send room wallpaper to a single newly connected peer
+  sendRoomWallpaperToPeer(peerId, payload) {
+    const channel = this.channels.get(peerId);
+    if (channel && channel.readyState === 'open') {
+      try {
+        channel.send(JSON.stringify({
+          type: 'room-wallpaper',
+          payload
+        }));
+        return true;
+      } catch (e) {}
+    }
+    return false;
+  }
+
+
   closePeer(remoteId) {
     if (this.pendingIceCandidates) {
       this.pendingIceCandidates.delete(remoteId);
