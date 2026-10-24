@@ -2143,6 +2143,17 @@ body {
   transition: all 0.2s ease;
 }
 
+.prompt-chip-emerald {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #34d399;
+}
+
+.prompt-chip-emerald:hover {
+  background: rgba(16, 185, 129, 0.25);
+  color: #fff;
+}
+
 .prompt-chip-pink {
   background: rgba(244, 63, 94, 0.12);
   border: 1px solid rgba(244, 63, 94, 0.3);
@@ -2163,6 +2174,56 @@ body {
 .prompt-chip-cyan:hover {
   background: var(--border-accent);
   color: #fff;
+}
+
+@media (max-width: 640px) {
+  .empty-bubble {
+    padding: 0.75rem 0.85rem !important;
+    max-width: 320px !important;
+    width: 90% !important;
+    border-radius: 12px !important;
+  }
+
+  .empty-icon-shield {
+    width: 30px !important;
+    height: 30px !important;
+    margin-bottom: 0.3rem !important;
+  }
+
+  .empty-icon-shield svg {
+    width: 15px !important;
+    height: 15px !important;
+  }
+
+  .empty-bubble h3 {
+    font-size: 0.84rem !important;
+    margin-bottom: 0.15rem !important;
+  }
+
+  .empty-bubble p {
+    font-size: 0.69rem !important;
+    line-height: 1.3 !important;
+    max-width: 250px !important;
+  }
+
+  .empty-quick-prompts {
+    gap: 0.65rem !important;
+    margin-top: 0.55rem !important;
+  }
+
+  .prompt-chip {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    border-radius: 50% !important;
+    padding: 0 !important;
+    justify-content: center !important;
+  }
+
+  .prompt-chip .prompt-chip-label {
+    display: none !important;
+  }
 }
 
 /* Message Rows */

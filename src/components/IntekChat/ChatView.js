@@ -1442,17 +1442,21 @@ export default function ChatView({
                       sounds.playClick();
                       setIsCameraModalOpen(true);
                     }}
+                    title="Take Camera Photo"
+                    aria-label="Take Camera Photo"
                   >
-                    <Camera size={14} />
-                    <span>Take Camera Photo</span>
+                    <Camera size={15} className="flex-shrink-0" />
+                    <span className="prompt-chip-label">Camera Photo</span>
                   </button>
                   <button 
                     type="button" 
                     className="prompt-chip prompt-chip-pink"
                     onClick={() => handleTriggerImageUpload('once')}
+                    title="Send View-Once Photo (Self-destructing)"
+                    aria-label="Send View-Once Photo"
                   >
-                    <Flame size={14} />
-                    <span>Send View-Once Photo</span>
+                    <Flame size={15} className="flex-shrink-0" />
+                    <span className="prompt-chip-label">View-Once Photo</span>
                   </button>
                   <button 
                     type="button" 
@@ -1460,9 +1464,11 @@ export default function ChatView({
                     onClick={() => {
                       if (fileInputRef.current) fileInputRef.current.click();
                     }}
+                    title="Attach Any File (ZIP, PDF, APK, etc.)"
+                    aria-label="Attach File"
                   >
-                    <Paperclip size={14} />
-                    <span>Attach Any File</span>
+                    <Paperclip size={15} className="flex-shrink-0" />
+                    <span className="prompt-chip-label">Attach File</span>
                   </button>
                 </div>
               </div>
