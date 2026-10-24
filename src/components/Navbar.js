@@ -92,7 +92,38 @@ export default function Navbar({
         <div className="nav-left">
           <div className="logo-container">
             <div className="logo-glow-ring">
-              <img src="/favicon.svg" alt="intekchat logo" className="logo-img" width="28" height="28" />
+              <svg viewBox="0 0 64 64" fill="none" className="logo-svg" width="24" height="24">
+                <defs>
+                  <linearGradient id="nav-grad-cyan-pink" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#00f2fe" />
+                    <stop offset="50%" stopColor="#7928ca" />
+                    <stop offset="100%" stopColor="#ff0080" />
+                  </linearGradient>
+                  <filter id="nav-neon-glow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur stdDeviation="1.5" result="blur" />
+                    <feMerge>
+                      <feMergeNode in="blur" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                </defs>
+                <g filter="url(#nav-neon-glow)" transform="translate(6, 6) scale(0.8125)">
+                  <path d="M 20 32 C 8 32, 8 16, 20 16 C 32 16, 32 48, 44 48 C 56 48, 56 32, 44 32 C 32 32, 32 16, 20 16" 
+                        stroke="url(#nav-grad-cyan-pink)" 
+                        strokeWidth="5.5" 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        fill="none" />
+                  <path d="M 12 32 Q 22 18, 32 32 T 52 32" 
+                        stroke="#00f2fe" 
+                        strokeWidth="2.5" 
+                        strokeLinecap="round" 
+                        fill="none" 
+                        opacity="0.95" />
+                  <circle cx="20" cy="8" r="3.5" fill="#00f2fe" />
+                  <circle cx="32" cy="32" r="2.5" fill="#ff0080" />
+                </g>
+              </svg>
             </div>
             <div className="logo-text-group">
               <span className="logo-title">intek<span className="logo-accent">chat</span></span>
