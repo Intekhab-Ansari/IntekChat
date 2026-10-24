@@ -42,6 +42,7 @@ import {
 } from 'lucide-react';
 import { formatBytes, getAvatarColor } from '@/lib/peer';
 import { sounds } from '@/lib/sound';
+import { getWallpaperCss } from '@/lib/wallpapers';
 import WallpaperModal from '@/components/Modals/WallpaperModal';
 import CameraModal from '@/components/Modals/CameraModal';
 
@@ -449,9 +450,21 @@ export default function ChatView({
 
   const handleHeroSubmit = (e) => {
     e.preventDefault();
-    if (!heroRoomName.trim()) return;
+    const raw = heroRoomName.trim();
+    if (!raw) return;
     sounds.playSuccess();
-    const clean = heroRoomName.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '-');
+    let clean = raw.toLowerCase();
+    if (clean.includes('room=')) {
+      try {
+        const u = new URL(clean.startsWith('http') ? clean : `https://${clean}`);
+        const r = u.searchParams.get('room');
+        if (r) clean = r;
+      } catch {}
+    }
+    clean = clean.replace(/^(?:https?:\/\/)?(?:www\.)?intekchat\.(?:com|vercel\.app)\//i, '');
+    clean = clean.replace(/^[#/]+/, '');
+    clean = clean.replace(/[^a-z0-9-_]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    if (!clean) clean = `room-${Math.random().toString(36).substring(2, 8)}`;
     onJoinRoom(clean, heroProtectPassword ? heroPassword.trim() : null);
   };
 
@@ -825,7 +838,7 @@ export default function ChatView({
           </h1>
 
           <p className="hero-subtitle">
-            Create a custom room with a unique name and optional password protection. All chats, images, and files stay strictly inside your browsers with AES-256-GCM encryption.
+            Create a custom room with optional password protection. All chats, images, and files stay strictly inside your browsers with AES-256-GCM encryption.
           </p>
 
           {/* Hero Tabs: Create vs Join */}

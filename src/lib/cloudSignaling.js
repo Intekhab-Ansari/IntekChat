@@ -11,7 +11,7 @@ const PUBLIC_BROKERS = [
 
 export class CloudSignalingAdapter {
   constructor(roomName, userProfile, options = {}) {
-    this.roomName = (roomName || 'default-room').trim().toLowerCase().replace(/\s+/g, '-');
+    this.roomName = (roomName || 'default-room').trim().toLowerCase().replace(/[^a-z0-9-_]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'default-room';
     const safeId = userProfile?.id || `peer_${Math.random().toString(36).substring(2, 9)}_${Date.now().toString(36)}`;
     this.selfId = safeId;
     this.userProfile = { ...(userProfile || {}), id: safeId };

@@ -91,7 +91,7 @@ export default function Home() {
         setRoomName(cleanPair);
         setActiveTab('drop');
       } else if (roomParam) {
-        const cleanRoom = roomParam.trim().toLowerCase().replace(/\s+/g, '-');
+        const cleanRoom = roomParam.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
         setRoomName(cleanRoom);
         setDropPairId(cleanRoom);
         if (initialPwd) {
@@ -103,6 +103,7 @@ export default function Home() {
           try {
             const url = new URL(window.location.href);
             url.searchParams.set('room', cleanRoom);
+            url.searchParams.set('tab', 'chat');
             window.history.replaceState({}, '', url.toString());
           } catch {}
         }
@@ -735,26 +736,32 @@ export default function Home() {
 
   // Handle Joining / Creating Room
   const handleCreateOrJoinRoom = (newRoom, password = '') => {
-    const cleanRoom = (newRoom || '').trim().toLowerCase().replace(/\s+/g, '-');
+    const cleanRoom = (newRoom || '').trim().toLowerCase().replace(/[^a-z0-9-_]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
     setRoomName(cleanRoom);
     setRoomPassword(password || '');
     setIsRoomProtected(!!password);
     setTotalParticipants(1);
     setActiveTab('chat');
     if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href);
-      if (cleanRoom) {
-        url.searchParams.set('room', cleanRoom);
-        if (password) {
-          url.searchParams.set('pwd', password);
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', 'chat');
+        if (cleanRoom) {
+          url.searchParams.set('room', cleanRoom);
+          if (password) {
+            url.searchParams.set('pwd', password);
+          } else {
+            url.searchParams.delete('pwd');
+          }
         } else {
+          url.searchParams.delete('room');
           url.searchParams.delete('pwd');
         }
-      } else {
-        url.searchParams.delete('room');
-        url.searchParams.delete('pwd');
+        url.searchParams.delete('pair');
+        window.history.pushState({}, '', url.toString());
+      } catch (e) {
+        console.warn('URL update warning:', e);
       }
-      window.history.pushState({}, '', url.toString());
     }
     setMessages([]);
     sounds.playJoin();
