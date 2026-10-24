@@ -468,7 +468,7 @@ export default function QrModal({
               {isDrop ? (
                 <>
                   <Radio size={15} className="text-cyan animate-pulse" />
-                  <span>IntekDrop P2P Device Pairing</span>
+                  <span>IntekDrop Device Pairing</span>
                 </>
               ) : (
                 <>

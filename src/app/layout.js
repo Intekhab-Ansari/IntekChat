@@ -12,8 +12,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "intekchat | Next-Gen P2P File Sharing & End-to-End Encrypted Chat",
-  description: "Share files directly peer-to-peer at high speed without server limits. Anonymous room chat with zero login, self-destructing View-Once photos, and AES-256-GCM encryption.",
+  title: "intekchat | Next-Gen File Sharing & Private Encrypted Chat",
+  description: "Share files directly at high speed without server limits. Anonymous room chat with zero login, self-destructing View-Once photos, and private encryption.",
   keywords: [
     "intekchat",
     "p2p file sharing",
@@ -36,8 +36,8 @@ export const metadata = {
     canonical: "/"
   },
   openGraph: {
-    title: "intekchat | High-Speed P2P File Sharing & Anonymous E2EE Chat",
-    description: "Fastest WebRTC P2P file drop and zero-knowledge encrypted chat rooms. No apps, no accounts, no server file storage.",
+    title: "intekchat | High-Speed File Sharing & Private Encrypted Chat",
+    description: "Fast direct file drop and private encrypted chat rooms. No apps, no accounts, no server file storage.",
     url: "https://intekchat.com",
     siteName: "intekchat",
     locale: "en_US",
@@ -45,8 +45,8 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "intekchat | High-Speed P2P File Sharing & Encrypted Chat",
-    description: "Send any file peer-to-peer at maximum network speed. Chat anonymously with View-Once photos and zero server footprints."
+    title: "intekchat | High-Speed File Sharing & Encrypted Chat",
+    description: "Send any file directly at maximum network speed. Chat anonymously with View-Once photos and zero server footprints."
   },
   robots: {
     index: true,
@@ -80,7 +80,7 @@ export default function RootLayout({ children }) {
     "name": "intekchat",
     "operatingSystem": "Web, Android, iOS, Windows, macOS, Linux",
     "applicationCategory": "CommunicationApplication",
-    "description": "Ultra-fast P2P file sharing and zero-knowledge encrypted instant chat without server storage.",
+    "description": "Ultra-fast direct file sharing and private encrypted instant chat without server storage.",
     "offers": {
       "@type": "Offer",
       "price": "0",

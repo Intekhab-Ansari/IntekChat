@@ -191,7 +191,7 @@ export default function RadarView({
             <span className="self-status">
               <span className="pulse-dot" />
               <span className="desktop-radar-status">
-                {peers.length > 0 ? `${peers.length} Device${peers.length > 1 ? 's' : ''} Nearby` : 'Radar Active • P2P Ready'}
+                {peers.length > 0 ? `${peers.length} Device${peers.length > 1 ? 's' : ''} Nearby` : 'Radar Active • Ready to Connect'}
               </span>
               <span className="mobile-radar-status">
                 {peers.length > 0 ? `${peers.length} Nearby` : 'Radar Active • Ready'}

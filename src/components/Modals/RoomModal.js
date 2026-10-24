@@ -252,7 +252,7 @@ export default function RoomModal({
                 <span className="current-room-name">#{currentRoom}</span>
                 <div className="current-room-pills-row">
                   <span className="current-room-badge-pill">
-                    {isRoomProtected ? '🔒 Password Protected' : '🔓 Open E2EE Room'}
+                    {isRoomProtected ? '🔒 Password Protected' : '🔓 Open Room'}
                   </span>
                   {isRoomProtected && roomPassword && (
                     <span className="current-room-pass-badge">
@@ -733,7 +733,7 @@ export default function RoomModal({
                   </div>
                   <div className="password-tip">
                     <ShieldCheck size={13} className="text-cyan" />
-                    <span>Password acts as a zero-knowledge AES-256 key. Only people with this password can decrypt your chat and files.</span>
+                    <span>Only people with this password can unlock and read your chat messages and files.</span>
                   </div>
                 </div>
               )}

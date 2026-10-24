@@ -859,7 +859,7 @@ export default function Home() {
               {
                 id: `sys-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
                 system: true,
-                text: `Room details updated to #${cleanNew} (${res.isProtected ? 'Password Protected 🔒' : 'Open E2EE 🔓'})`,
+                text: `Room details updated to #${cleanNew} (${res.isProtected ? 'Password Protected 🔒' : 'Open Room 🔓'})`,
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
               }
             ]);

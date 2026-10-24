@@ -33,7 +33,7 @@ export default function PasswordPromptModal({
               <span>Password Protected Room</span>
             </div>
             <h3>Room #{roomName}</h3>
-            <p>This room requires a password for Zero-Knowledge E2EE decryption.</p>
+            <p>This room requires a password to unlock and view messages.</p>
           </div>
           <button 
             type="button" 
@@ -78,7 +78,7 @@ export default function PasswordPromptModal({
 
           <div className="password-security-note">
             <ShieldCheck size={14} className="text-cyan" />
-            <span>The password is used directly with PBKDF2 to derive your AES-256-GCM encryption key. Zero server knowledge.</span>
+            <span>Your password is encrypted directly on your device. Zero knowledge is ever stored on any server.</span>
           </div>
 
           <div className="modal-footer">

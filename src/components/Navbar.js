@@ -69,7 +69,6 @@ export default function Navbar({
           </div>
           <div className="logo-text-group">
             <span className="logo-title">intek<span className="logo-accent">chat</span></span>
-            <span className="logo-badge">P2P • E2EE</span>
           </div>
         </div>
 
@@ -79,7 +78,7 @@ export default function Navbar({
             id="tab-drop"
             className={`nav-tab nav-tab-drop ${activeTab === 'drop' ? 'active' : ''}`}
             onClick={() => setActiveTab('drop')}
-            title="IntekDrop: Ultra High-Speed Local & Room P2P File Sharing"
+            title="IntekDrop: Ultra High-Speed Local & Room File Sharing"
           >
             <div className="tab-icon-wrap icon-drop">
               <Radio size={16} />
@@ -93,14 +92,14 @@ export default function Navbar({
             id="tab-chat"
             className={`nav-tab nav-tab-chat ${activeTab === 'chat' ? 'active' : ''}`}
             onClick={() => setActiveTab('chat')}
-            title="IntekChat: Ephemeral End-to-End Encrypted Room Chat & Media"
+            title="IntekChat: Private Encrypted Room Chat & Media"
           >
             <div className="tab-icon-wrap icon-chat">
               <MessageSquare size={16} />
               {activeTab === 'chat' && <span className="tab-pulse-ring-purple" />}
             </div>
             <span className="tab-title">IntekChat</span>
-            <span className="tab-pill pill-chat">E2EE</span>
+            <span className="tab-pill pill-chat">Chat</span>
           </button>
         </div>
       </div>
@@ -130,7 +129,7 @@ export default function Navbar({
             type="button"
             className="network-pill interactive-pill" 
             onClick={onOpenRoomModal}
-            title={roomName ? `In room: #${roomName} (${isRoomProtected ? 'Password Protected' : 'Open E2EE'}). Click to manage.` : 'On Local Wi-Fi Network. Click to create or join a room.'}
+            title={roomName ? `In room: #${roomName} (${isRoomProtected ? 'Password Protected' : 'Open Room'}). Click to manage.` : 'On Local Wi-Fi Network. Click to create or join a room.'}
           >
             {roomName ? (
               <>
@@ -149,7 +148,7 @@ export default function Navbar({
               <span className="desktop-peer-text">
                 {roomName 
                   ? (totalParticipants <= 1 ? '1 in room (You)' : `${totalParticipants} in room`) 
-                  : `${peerCount} ${peerCount === 1 ? 'peer' : 'peers'}`}
+                  : `${peerCount} ${peerCount === 1 ? 'device' : 'devices'}`}
               </span>
               <span className="mobile-peer-badge-count">
                 {roomName ? totalParticipants : peerCount}
@@ -285,7 +284,7 @@ export default function Navbar({
               {activeTab === 'chat' && <span className="tab-pulse-ring-purple" />}
             </div>
             <span className="mobile-tab-title">IntekChat</span>
-            <span className="tab-pill pill-chat">E2EE</span>
+            <span className="tab-pill pill-chat">Chat</span>
           </button>
         </div>
       </div>

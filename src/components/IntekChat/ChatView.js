@@ -217,7 +217,7 @@ function SwipeableMessageRow({
             <span 
               className="msg-seen-status" 
               title={msg.seen 
-                ? `Seen by ${msg.seenBy && msg.seenBy.length > 0 ? msg.seenBy.join(', ') : 'peer'}` 
+                ? `Seen by ${msg.seenBy && msg.seenBy.length > 0 ? msg.seenBy.join(', ') : 'others'}` 
                 : 'Sent (Encrypted)'}
             >
               {msg.seen ? (
@@ -838,7 +838,7 @@ export default function ChatView({
           </h1>
 
           <p className="hero-subtitle">
-            Create a custom room with optional password protection. All chats, images, and files stay strictly inside your browsers with AES-256-GCM encryption.
+            Create a custom room with optional password protection. All chats, images, and files stay strictly inside your browsers with end-to-end encryption.
           </p>
 
           {/* Hero Tabs: Create vs Join */}
@@ -930,7 +930,7 @@ export default function ChatView({
                       <Lock size={13} className="text-accent" />
                       <span>Protect Room with Password</span>
                     </span>
-                    <span className="hero-checkbox-desc">Peers will need this password to join & decrypt</span>
+                    <span className="hero-checkbox-desc">Others will need this password to join & read messages</span>
                   </div>
                 </label>
 
@@ -1099,7 +1099,7 @@ export default function ChatView({
             )}
             <div className="spec-row">
               <span className="spec-label">Access Mode:</span>
-              <span className="spec-value">{isRoomProtected ? '🔒 Password Protected' : '🔓 Open E2EE'}</span>
+              <span className="spec-value">{isRoomProtected ? '🔒 Password Protected' : '🔓 Open Room'}</span>
             </div>
             <div className="spec-row">
               <span className="spec-label">Online In Room:</span>
@@ -1109,15 +1109,15 @@ export default function ChatView({
             </div>
             <div className="spec-row">
               <span className="spec-label">Encryption:</span>
-              <span className="spec-value">AES-256-GCM</span>
+              <span className="spec-value">End-to-End Encrypted</span>
             </div>
             <div className="spec-row">
-              <span className="spec-label">Key Exchange:</span>
-              <span className="spec-value">{isRoomProtected ? 'PBKDF2 (Password Salted)' : 'PBKDF2-SHA256'}</span>
+              <span className="spec-label">Security:</span>
+              <span className="spec-value">{isRoomProtected ? 'Password Protected' : 'Private & Secure'}</span>
             </div>
             <div className="spec-row">
               <span className="spec-label">Storage:</span>
-              <span className="spec-value text-accent">0 B (RAM only)</span>
+              <span className="spec-value text-accent">0 B (No Server Storage)</span>
             </div>
           </div>
         </div>
@@ -1126,7 +1126,7 @@ export default function ChatView({
         <div className="sidebar-section sidebar-peers-section">
           <div className="sidebar-section-title">
             <Users size={14} className="text-purple" />
-            <span>Peers in Room ({peers.length + 1})</span>
+            <span>People in Room ({peers.length + 1})</span>
           </div>
 
           <div className="sidebar-peers-scroll">
@@ -1165,7 +1165,7 @@ export default function ChatView({
             {peers.length === 0 && (
               <div className="no-peers-box">
                 <p>Waiting for others to join #{roomName}...</p>
-                <span>Share your room link to invite peers</span>
+                <span>Share your room link to invite others</span>
               </div>
             )}
           </div>
@@ -1230,7 +1230,7 @@ export default function ChatView({
                 type="button"
                 className="btn-sidebar-open" 
                 onClick={() => setIsSidebarOpen(true)}
-                title="Show Room Details & Active Peers"
+                title="Show Room Details & Participants"
               >
                 <PanelLeft size={15} className="flex-shrink-0" />
                 <span className="btn-sidebar-label">Details</span>
@@ -1260,8 +1260,8 @@ export default function ChatView({
             <span className="chat-peer-status" title="Real-time participants in this room">
               <span className="realtime-live-dot" />
               {peerCount === 0 
-                ? '1 in room (Waiting for peers)' 
-                : `${totalParticipants || (peerCount + 1)} in room (${peerCount} peer${peerCount === 1 ? '' : 's'} + You)`}
+                ? '1 in room (Waiting for others)' 
+                : `${totalParticipants || (peerCount + 1)} in room (${peerCount} other${peerCount === 1 ? '' : 's'} + You)`}
             </span>
           </div>
 
@@ -1395,8 +1395,8 @@ export default function ChatView({
 
         <div className="security-banner">
           <ShieldCheck size={14} className="text-cyan flex-shrink-0" />
-          <span className="desktop-e2ee-text">End-to-End Encrypted (AES-256-GCM) • Direct P2P Channels • Zero Server Logs</span>
-          <span className="mobile-e2ee-text">End-to-End Encrypted (AES-256-GCM)</span>
+          <span className="desktop-e2ee-text">End-to-End Encrypted • Direct Private Connection • Zero Server Logs</span>
+          <span className="mobile-e2ee-text">End-to-End Encrypted • Private & Direct</span>
         </div>
 
         {/* Messages Feed Container */}
@@ -1408,7 +1408,7 @@ export default function ChatView({
                   <Lock size={20} className="text-accent animate-pulse" />
                 </div>
                 <h3>Room #{roomName} is Ready</h3>
-                <p>This room is private and encrypted with AES-256-GCM. Messages leave zero trace on any server.</p>
+                <p>This room is private and encrypted. Messages leave zero trace on any server.</p>
                 <div className="empty-quick-prompts">
                   <button 
                     type="button" 
