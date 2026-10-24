@@ -1405,7 +1405,7 @@ export default function ChatView({
             <div className="chat-empty">
               <div className="empty-bubble">
                 <div className="empty-icon-shield">
-                  <Lock size={28} className="text-accent animate-pulse" />
+                  <Lock size={20} className="text-accent animate-pulse" />
                 </div>
                 <h3>Room #{roomName} is Ready</h3>
                 <p>This room is private and encrypted with AES-256-GCM. Messages leave zero trace on any server.</p>
