@@ -272,18 +272,23 @@ export default function Home() {
         ? 'Custom Photo'
         : (wallpaperPayload.wallpaperType === 'none' ? 'Clean Solid' : wallpaperPayload.wallpaperType || 'Preset');
 
+      // Do not duplicate if this is our own broadcast echoed back
+      if (userProfile?.id && wallpaperPayload.senderId === userProfile.id) {
+        return wallpaperPayload;
+      }
+
       setMessages((mPrev) => [
         ...mPrev,
         {
           id: `sys-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
           system: true,
-          text: `🎨 ${wallpaperPayload.senderName || 'A peer'} updated the room wallpaper to "${wallTitle}"`,
+          text: `🎨 ${wallpaperPayload.senderName || 'Someone'} set wallpaper: "${wallTitle}"`,
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ]);
       return wallpaperPayload;
     });
-  }, []);
+  }, [userProfile]);
 
   // Auto-clean expired typing indicators
   useEffect(() => {
@@ -1242,6 +1247,20 @@ export default function Home() {
       timestamp: Date.now()
     };
     setSyncedWallpaper(payload);
+
+    const wallTitle = wallpaperSettings.wallpaperType === 'custom'
+      ? 'Custom Photo'
+      : (wallpaperSettings.wallpaperType === 'none' ? 'Clean Solid' : wallpaperSettings.wallpaperType || 'Preset');
+
+    setMessages((mPrev) => [
+      ...mPrev,
+      {
+        id: `sys-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        system: true,
+        text: `🎨 You set wallpaper: "${wallTitle}"`,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }
+    ]);
 
     // 1. Send over direct WebRTC DataChannels to all connected peers
     if (webrtcRef.current) {
