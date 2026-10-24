@@ -7447,14 +7447,16 @@ body {
    WALLPAPER SCOPE SELECTOR STYLES
    ========================================================================== */
 .wallpaper-scope-card {
-  margin: 0.75rem 1.25rem 0;
-  padding: 0.75rem 0.95rem;
+  margin: 0.65rem 0 0.85rem;
+  padding: 0.75rem 0.85rem;
   background: rgba(6, 182, 212, 0.05);
   border: 1px solid rgba(6, 182, 212, 0.2);
   border-radius: 12px;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .wallpaper-scope-card .scope-header {
@@ -7471,16 +7473,18 @@ body {
 
 .scope-toggle-tabs {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 0.45rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .scope-tab {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.4rem;
-  padding: 0.5rem 0.65rem;
+  gap: 0.35rem;
+  padding: 0.45rem 0.5rem;
   border-radius: 9px;
   font-size: 0.78rem;
   font-weight: 600;
@@ -7490,6 +7494,28 @@ body {
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.scope-tab span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.scope-text-short {
+  display: none;
+}
+
+@media (max-width: 440px) {
+  .scope-text-full {
+    display: none;
+  }
+  .scope-text-short {
+    display: inline;
+  }
 }
 
 .scope-tab:hover {

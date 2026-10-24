@@ -154,9 +154,10 @@ export default function WallpaperModal({
                   sounds.playClick();
                   setApplyScope('local');
                 }}
+                title="Only customize your personal chat view"
               >
-                <User size={13} />
-                <span>👤 Just for You</span>
+                <User size={13} className="flex-shrink-0" />
+                <span>Just for You</span>
               </button>
               <button
                 type="button"
@@ -165,9 +166,11 @@ export default function WallpaperModal({
                   sounds.playClick();
                   setApplyScope('room');
                 }}
+                title="Broadcast this wallpaper to everyone in the room"
               >
-                <Users size={13} />
-                <span>🌐 Set for Everyone in Room</span>
+                <Users size={13} className="flex-shrink-0" />
+                <span className="scope-text-full">Everyone in Room</span>
+                <span className="scope-text-short">Everyone</span>
               </button>
             </div>
             <p className="scope-hint">
