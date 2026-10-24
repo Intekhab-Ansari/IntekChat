@@ -43,7 +43,8 @@ import {
   Paintbrush,
   Edit3,
   QrCode,
-  LogOut
+  LogOut,
+  Palette
 } from 'lucide-react';
 import { formatBytes, getAvatarColor } from '@/lib/peer';
 import { sounds } from '@/lib/sound';
@@ -466,7 +467,17 @@ export default function ChatView({
   syncedWallpaper,
   onBroadcastWallpaper,
   onMarkMessagesSeen,
-  onDeleteMessage
+  onDeleteMessage,
+  wallpaperType: propWallpaperType,
+  customWallpaper: propCustomWallpaper,
+  wallpaperOpacity: propWallpaperOpacity,
+  wallpaperBlur: propWallpaperBlur,
+  onOpenAppearance,
+  onSelectWallpaper: propOnSelectWallpaper,
+  onUploadCustomWallpaper: propOnUploadCustomWallpaper,
+  onClearCustomWallpaper: propOnClearCustomWallpaper,
+  onChangeWallpaperOpacity: propOnChangeWallpaperOpacity,
+  onToggleWallpaperBlur: propOnToggleWallpaperBlur
 }) {
   const avatarStyle = getAvatarColor(userProfile?.colorIndex || 0);
   const [inputText, setInputText] = useState('');
@@ -572,6 +583,11 @@ export default function ChatView({
   const [wallpaperOpacity, setWallpaperOpacity] = useState(18);
   const [wallpaperBlur, setWallpaperBlur] = useState(false);
   const [replyingTo, setReplyingTo] = useState(null);
+
+  const activeWallpaperType = propWallpaperType !== undefined ? propWallpaperType : wallpaperType;
+  const activeCustomWallpaper = propCustomWallpaper !== undefined ? propCustomWallpaper : customWallpaper;
+  const activeWallpaperOpacity = propWallpaperOpacity !== undefined ? propWallpaperOpacity : wallpaperOpacity;
+  const activeWallpaperBlur = propWallpaperBlur !== undefined ? propWallpaperBlur : wallpaperBlur;
 
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -1358,12 +1374,16 @@ export default function ChatView({
             className="sidebar-action-btn wallpaper-btn"
             onClick={() => {
               sounds.playClick();
-              setIsWallpaperModalOpen(true);
+              if (onOpenAppearance) {
+                onOpenAppearance('wallpaper');
+              } else {
+                setIsWallpaperModalOpen(true);
+              }
             }}
-            title="Customize Chat Wallpaper & Patterns"
+            title="Theme & Chat Wallpaper"
           >
-            <Paintbrush size={14} />
-            <span>Chat Wallpaper</span>
+            <Palette size={14} />
+            <span>Theme & Wallpaper</span>
           </button>
 
           <button 
@@ -1510,12 +1530,16 @@ export default function ChatView({
                 className="btn-wallpaper"
                 onClick={() => {
                   sounds.playClick();
-                  setIsWallpaperModalOpen(true);
+                  if (onOpenAppearance) {
+                    onOpenAppearance('wallpaper');
+                  } else {
+                    setIsWallpaperModalOpen(true);
+                  }
                 }}
-                title="Customize Chat Wallpaper & Patterns"
+                title="Theme & Chat Wallpaper"
               >
-                <Paintbrush size={15} />
-                <span>Wallpaper</span>
+                <Palette size={15} />
+                <span>Appearance</span>
               </button>
 
               {/* Share Room QR Code Button */}
@@ -1603,13 +1627,13 @@ export default function ChatView({
         )}
 
         {/* Dynamic Wallpaper Background Canvas Layer */}
-        {wallpaperType !== 'none' && (
+        {activeWallpaperType !== 'none' && (
           <div 
             className="chat-wallpaper-canvas"
             style={{
-              ...getWallpaperCss(wallpaperType, customWallpaper),
-              opacity: wallpaperOpacity / 100,
-              filter: wallpaperBlur ? 'blur(8px)' : 'none'
+              ...getWallpaperCss(activeWallpaperType, activeCustomWallpaper),
+              opacity: activeWallpaperOpacity / 100,
+              filter: activeWallpaperBlur ? 'blur(8px)' : 'none'
             }}
           />
         )}
@@ -1926,23 +1950,25 @@ export default function ChatView({
         </div>
       )}
 
-      {/* Wallpaper Selection Modal */}
-      <WallpaperModal
-        isOpen={isWallpaperModalOpen}
-        onClose={() => setIsWallpaperModalOpen(false)}
-        currentWallpaper={wallpaperType}
-        customImage={customWallpaper}
-        opacity={wallpaperOpacity}
-        blur={wallpaperBlur}
-        isRoomActive={!!roomName}
-        roomName={roomName}
-        onSelectWallpaper={handleSelectWallpaper}
-        onUploadCustom={handleUploadCustomWallpaper}
-        onClearCustom={handleClearCustomWallpaper}
-        onChangeOpacity={handleChangeOpacity}
-        onToggleBlur={handleToggleBlur}
-        onBroadcastWallpaper={onBroadcastWallpaper}
-      />
+      {/* Wallpaper Selection Modal (Render fallback only if not managed globally by page.js) */}
+      {!onOpenAppearance && (
+        <WallpaperModal
+          isOpen={isWallpaperModalOpen}
+          onClose={() => setIsWallpaperModalOpen(false)}
+          currentWallpaper={wallpaperType}
+          customImage={customWallpaper}
+          opacity={wallpaperOpacity}
+          blur={wallpaperBlur}
+          isRoomActive={!!roomName}
+          roomName={roomName}
+          onSelectWallpaper={handleSelectWallpaper}
+          onUploadCustom={handleUploadCustomWallpaper}
+          onClearCustom={handleClearCustomWallpaper}
+          onChangeOpacity={handleChangeOpacity}
+          onToggleBlur={handleToggleBlur}
+          onBroadcastWallpaper={onBroadcastWallpaper}
+        />
+      )}
 
       {/* Instant Camera Capture Modal */}
       <CameraModal

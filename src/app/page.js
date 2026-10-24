@@ -9,6 +9,7 @@ import QrModal from '@/components/Modals/QrModal';
 import FileReceiveModal from '@/components/Modals/FileReceiveModal';
 import RoomModal from '@/components/Modals/RoomModal';
 import PasswordPromptModal from '@/components/Modals/PasswordPromptModal';
+import WallpaperModal from '@/components/Modals/WallpaperModal';
 import { getOrCreatePeerProfile } from '@/lib/peer';
 import { sounds } from '@/lib/sound';
 import { deriveKey, encryptPayload, decryptPayload, hashPassword } from '@/lib/crypto';
@@ -46,6 +47,12 @@ export default function Home() {
   const [qrModalMode, setQrModalMode] = useState('show');
   const [soundMuted, setSoundMuted] = useState(false);
   const [currentTheme, setCurrentTheme] = useState('sapphire'); // 'sapphire' | 'silk' | 'cyberpunk' | 'amber' | 'amethyst' | 'emerald' | 'obsidian' | 'frost'
+  const [isAppearanceModalOpen, setIsAppearanceModalOpen] = useState(false);
+  const [appearanceInitialTab, setAppearanceInitialTab] = useState('theme');
+  const [wallpaperType, setWallpaperType] = useState('doodles');
+  const [customWallpaper, setCustomWallpaper] = useState(null);
+  const [wallpaperOpacity, setWallpaperOpacity] = useState(18);
+  const [wallpaperBlur, setWallpaperBlur] = useState(false);
 
   const socketRef = useRef(null);
   const webrtcRef = useRef(null);
@@ -75,6 +82,16 @@ export default function Home() {
       }
       setCurrentTheme(savedTheme);
       document.documentElement.setAttribute('data-theme', savedTheme);
+
+      // Load saved wallpaper settings
+      const savedWallType = localStorage.getItem('intekchat_wallpaper_type');
+      if (savedWallType !== null) setWallpaperType(savedWallType);
+      const savedCustom = localStorage.getItem('intekchat_wallpaper_custom');
+      if (savedCustom) setCustomWallpaper(savedCustom);
+      const savedOpacity = localStorage.getItem('intekchat_wallpaper_opacity');
+      if (savedOpacity) setWallpaperOpacity(Number(savedOpacity));
+      const savedBlur = localStorage.getItem('intekchat_wallpaper_blur');
+      if (savedBlur !== null) setWallpaperBlur(savedBlur === 'true');
 
       const params = new URLSearchParams(window.location.search);
       const roomParam = params.get('room');
@@ -133,6 +150,55 @@ export default function Home() {
       localStorage.setItem('intekchat_theme', themeName);
       document.documentElement.setAttribute('data-theme', themeName);
     }
+  };
+
+  const handleSelectWallpaper = (type) => {
+    setWallpaperType(type);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('intekchat_wallpaper_type', type);
+    }
+  };
+
+  const handleUploadCustomWallpaper = (dataUrl) => {
+    setCustomWallpaper(dataUrl);
+    setWallpaperType('custom');
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('intekchat_wallpaper_custom', dataUrl);
+        localStorage.setItem('intekchat_wallpaper_type', 'custom');
+      } catch (e) {
+        console.warn('LocalStorage save custom wallpaper error:', e);
+      }
+    }
+  };
+
+  const handleClearCustomWallpaper = () => {
+    setCustomWallpaper(null);
+    setWallpaperType('none');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('intekchat_wallpaper_custom');
+      localStorage.setItem('intekchat_wallpaper_type', 'none');
+    }
+  };
+
+  const handleChangeWallpaperOpacity = (val) => {
+    setWallpaperOpacity(val);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('intekchat_wallpaper_opacity', String(val));
+    }
+  };
+
+  const handleToggleWallpaperBlur = (val) => {
+    setWallpaperBlur(val);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('intekchat_wallpaper_blur', String(val));
+    }
+  };
+
+  const handleOpenAppearance = (tab = 'theme') => {
+    sounds.playClick();
+    setAppearanceInitialTab(tab);
+    setIsAppearanceModalOpen(true);
   };
 
   // Seamless Tab Switcher: Keeps P2P & Chat connected, syncs browser URL state
@@ -277,6 +343,19 @@ export default function Home() {
       // Do not duplicate if this is our own broadcast echoed back
       if (userProfile?.id && wallpaperPayload.senderId === userProfile.id) {
         return wallpaperPayload;
+      }
+
+      if (wallpaperPayload.wallpaperType) {
+        setWallpaperType(wallpaperPayload.wallpaperType);
+      }
+      if (wallpaperPayload.customImage !== undefined) {
+        setCustomWallpaper(wallpaperPayload.customImage);
+      }
+      if (typeof wallpaperPayload.opacity === 'number') {
+        setWallpaperOpacity(wallpaperPayload.opacity);
+      }
+      if (typeof wallpaperPayload.blur === 'boolean') {
+        setWallpaperBlur(wallpaperPayload.blur);
       }
 
       setMessages((mPrev) => [
@@ -1377,6 +1456,7 @@ export default function Home() {
         onToggleSound={handleToggleSound}
         currentTheme={currentTheme}
         onSelectTheme={handleSelectTheme}
+        onOpenAppearance={handleOpenAppearance}
         isRoomProtected={isRoomProtected}
         onOpenRoomModal={() => handleOpenRoomModal()}
       />
@@ -1425,6 +1505,16 @@ export default function Home() {
             syncedWallpaper={syncedWallpaper}
             onBroadcastWallpaper={handleBroadcastWallpaper}
             onMarkMessagesSeen={handleMarkMessagesSeen}
+            wallpaperType={wallpaperType}
+            customWallpaper={customWallpaper}
+            wallpaperOpacity={wallpaperOpacity}
+            wallpaperBlur={wallpaperBlur}
+            onOpenAppearance={handleOpenAppearance}
+            onSelectWallpaper={handleSelectWallpaper}
+            onUploadCustomWallpaper={handleUploadCustomWallpaper}
+            onClearCustomWallpaper={handleClearCustomWallpaper}
+            onChangeWallpaperOpacity={handleChangeWallpaperOpacity}
+            onToggleWallpaperBlur={handleToggleWallpaperBlur}
           />
         )}
       </main>
@@ -1479,6 +1569,27 @@ export default function Home() {
         error={passwordPromptError}
         onSubmitPassword={handlePasswordPromptSubmit}
         onCancel={handlePasswordPromptCancel}
+      />
+
+      {/* Unified Appearance Modal (App Color Theme & Chat Wallpaper) */}
+      <WallpaperModal
+        isOpen={isAppearanceModalOpen}
+        onClose={() => setIsAppearanceModalOpen(false)}
+        initialTab={appearanceInitialTab}
+        currentTheme={currentTheme}
+        onSelectTheme={handleSelectTheme}
+        currentWallpaper={wallpaperType}
+        customImage={customWallpaper}
+        opacity={wallpaperOpacity}
+        blur={wallpaperBlur}
+        isRoomActive={!!roomName}
+        roomName={roomName}
+        onSelectWallpaper={handleSelectWallpaper}
+        onUploadCustom={handleUploadCustomWallpaper}
+        onClearCustom={handleClearCustomWallpaper}
+        onChangeOpacity={handleChangeWallpaperOpacity}
+        onToggleBlur={handleToggleWallpaperBlur}
+        onBroadcastWallpaper={handleBroadcastWallpaper}
       />
     </div>
   );
