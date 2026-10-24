@@ -386,28 +386,35 @@ export default function RadarView({
           <div className="hud-list">
             {Object.values(activeTransfers).map((transfer) => (
               <div key={transfer.id} className="hud-item">
-                <div className="hud-item-info">
-                  <span className="hud-item-name" title={transfer.fileName}>
-                    {transfer.fileName}
-                  </span>
-                  <span className="hud-item-stats">
-                    {formatBytes(transfer.direction === 'send' ? transfer.sentBytes : transfer.receivedBytes)} / {formatBytes(transfer.totalBytes)} • {formatBytes(transfer.speed)}/s
-                  </span>
-                </div>
+                <div className="hud-item-main">
+                  <div className="hud-item-info">
+                    <span className="hud-item-name" title={transfer.fileName}>
+                      {transfer.fileName}
+                    </span>
+                    <span className="hud-item-stats">
+                      {formatBytes(transfer.direction === 'send' ? transfer.sentBytes : transfer.receivedBytes)} / {formatBytes(transfer.totalBytes)} • {formatBytes(transfer.speed)}/s
+                    </span>
+                  </div>
 
-                <div className="hud-progress-bar">
-                  <div 
-                    className="hud-progress-fill" 
-                    style={{ width: `${transfer.progress}%` }} 
-                  />
+                  <div className="hud-progress-bar">
+                    <div 
+                      className="hud-progress-fill" 
+                      style={{ width: `${transfer.progress}%` }} 
+                    />
+                  </div>
                 </div>
 
                 <button 
+                  type="button"
                   className="hud-cancel-btn"
-                  onClick={() => onCancelTransfer(transfer.id)}
+                  onClick={() => {
+                    sounds.playClick();
+                    onCancelTransfer(transfer.id);
+                  }}
                   title="Cancel Transfer"
+                  aria-label="Cancel Transfer"
                 >
-                  <X size={14} />
+                  <X size={18} strokeWidth={2.4} />
                 </button>
               </div>
             ))}
