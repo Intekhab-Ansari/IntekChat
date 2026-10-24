@@ -20,6 +20,17 @@ import {
 import { getAvatarColor } from '@/lib/peer';
 import { sounds } from '@/lib/sound';
 
+const THEME_COLORS = {
+  sapphire: '#3b82f6',
+  silk: '#7c3aed',
+  cyberpunk: '#f43f5e',
+  amber: '#f59e0b',
+  amethyst: '#a855f7',
+  emerald: '#00f59b',
+  obsidian: '#e4e4e7',
+  frost: '#38bdf8'
+};
+
 export default function Navbar({
   activeTab,
   setActiveTab,
@@ -277,7 +288,24 @@ export default function Navbar({
                   onTouchStart={() => setShowMobileMenu(false)}
                 />
                 <div className="mobile-menu-dropdown animate-fade-in">
-                  {/* Mode Switcher Tabs inside mobile drawer to save vertical space */}
+                  {/* Dedicated Header with Title & Explicit Close Button */}
+                  <div className="mobile-menu-header">
+                    <span className="mobile-menu-title">Quick Menu</span>
+                    <button 
+                      type="button" 
+                      className="mobile-menu-close-btn"
+                      onClick={() => {
+                        sounds.playClick();
+                        setShowMobileMenu(false);
+                      }}
+                      title="Close Menu"
+                      aria-label="Close Menu"
+                    >
+                      <X size={15} />
+                    </button>
+                  </div>
+
+                  {/* Mode Switcher Tabs inside mobile drawer */}
                   <div className="mobile-menu-tabs-header">
                     <button
                       type="button"
@@ -288,9 +316,8 @@ export default function Navbar({
                         setShowMobileMenu(false);
                       }}
                     >
-                      <Radio size={15} />
+                      <Radio size={14} />
                       <span>IntekDrop</span>
-                      <span className="tab-pill pill-drop">Files</span>
                     </button>
                     <button
                       type="button"
@@ -301,9 +328,8 @@ export default function Navbar({
                         setShowMobileMenu(false);
                       }}
                     >
-                      <MessageSquare size={15} />
+                      <MessageSquare size={14} />
                       <span>IntekChat</span>
-                      <span className="tab-pill pill-chat">Chat</span>
                     </button>
                   </div>
 
@@ -320,11 +346,11 @@ export default function Navbar({
                         onOpenRoomModal?.();
                       }}
                     >
-                      <Plus size={18} className="text-cyan" />
-                      <div className="menu-item-text">
-                        <span className="menu-item-title">Room Manager</span>
-                        <span className="menu-item-sub">{roomName ? `Active: #${roomName}` : 'Create or Join Room'}</span>
+                      <div className="mobile-item-left">
+                        <Plus size={16} className="text-cyan" />
+                        <span>Room Manager</span>
                       </div>
+                      {roomName && <span className="mobile-item-badge font-mono">#{roomName}</span>}
                     </button>
 
                     {/* QR Code & Scanner */}
@@ -337,10 +363,9 @@ export default function Navbar({
                         onOpenQr?.();
                       }}
                     >
-                      <QrCode size={18} className="text-cyan" />
-                      <div className="menu-item-text">
-                        <span className="menu-item-title">QR Code & Scanner</span>
-                        <span className="menu-item-sub">Scan camera or share QR</span>
+                      <div className="mobile-item-left">
+                        <QrCode size={16} className="text-cyan" />
+                        <span>QR Scanner</span>
                       </div>
                     </button>
 
@@ -352,11 +377,11 @@ export default function Navbar({
                         handleCopyLink();
                       }}
                     >
-                      {copied ? <Check size={18} className="text-emerald" /> : <Share2 size={18} className="text-pink" />}
-                      <div className="menu-item-text">
-                        <span className="menu-item-title">{copied ? 'Link Copied!' : 'Copy Invite Link'}</span>
-                        <span className="menu-item-sub">Share room URL with friends</span>
+                      <div className="mobile-item-left">
+                        {copied ? <Check size={16} className="text-emerald" /> : <Share2 size={16} className="text-pink" />}
+                        <span>{copied ? 'Link Copied!' : 'Copy Room Link'}</span>
                       </div>
+                      {copied && <span className="mobile-item-badge text-emerald">Copied</span>}
                     </button>
 
                     {/* Combined Theme & Wallpaper */}
@@ -369,11 +394,14 @@ export default function Navbar({
                         onOpenAppearance?.('theme');
                       }}
                     >
-                      <Palette size={18} className="text-accent" />
-                      <div className="menu-item-text">
-                        <span className="menu-item-title">Theme & Wallpaper</span>
-                        <span className="menu-item-sub">Curated themes & wallpapers</span>
+                      <div className="mobile-item-left">
+                        <Palette size={16} className="text-accent" />
+                        <span>Theme & Wallpaper</span>
                       </div>
+                      <span 
+                        className="mobile-theme-indicator" 
+                        style={{ backgroundColor: THEME_COLORS[currentTheme] || '#3b82f6' }} 
+                      />
                     </button>
 
                     {/* Sound Toggle */}
@@ -385,11 +413,13 @@ export default function Navbar({
                         onToggleSound?.();
                       }}
                     >
-                      {soundMuted ? <VolumeX size={18} className="text-muted" /> : <Volume2 size={18} className="text-cyan" />}
-                      <div className="menu-item-text">
-                        <span className="menu-item-title">Audio Chimes</span>
-                        <span className="menu-item-sub">{soundMuted ? 'Muted' : 'Sound active'}</span>
+                      <div className="mobile-item-left">
+                        {soundMuted ? <VolumeX size={16} className="text-muted" /> : <Volume2 size={16} className="text-cyan" />}
+                        <span>Sound Effects</span>
                       </div>
+                      <span className={`mobile-item-badge ${soundMuted ? 'text-muted' : 'text-cyan'}`}>
+                        {soundMuted ? 'Off' : 'On'}
+                      </span>
                     </button>
 
                     {/* My Profile */}
@@ -402,11 +432,11 @@ export default function Navbar({
                         onOpenProfile?.();
                       }}
                     >
-                      <User size={18} className="text-cyan" />
-                      <div className="menu-item-text">
-                        <span className="menu-item-title">My Profile ({userProfile?.name || 'Anonymous'})</span>
-                        <span className="menu-item-sub">Edit avatar & pseudonym</span>
+                      <div className="mobile-item-left">
+                        <User size={16} className="text-cyan" />
+                        <span>Profile</span>
                       </div>
+                      <span className="mobile-item-badge profile-badge">{userProfile?.name || 'Anonymous'}</span>
                     </button>
                   </div>
                 </div>
