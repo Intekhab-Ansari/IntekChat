@@ -53,6 +53,8 @@ export default function Home() {
   const cancelTokensRef = useRef(new Set());
   const relayIncomingFilesRef = useRef(new Map());
   const syncedWallpaperRef = useRef(null);
+  const sendQueueRef = useRef([]);
+  const isSendingFileRef = useRef(false);
 
   useEffect(() => {
     syncedWallpaperRef.current = syncedWallpaper;
@@ -340,9 +342,10 @@ export default function Home() {
         setPeers(filtered);
         setTotalParticipants(typeof totalCount === 'number' ? totalCount : filtered.length + 1);
 
-        // Connect to peers (polite peer rollback handles glare automatically)
+        // Snapdrop deterministic single-offerer:
+        // Only initiate offer if our ID is greater than remote peer's ID to prevent glare and collisions
         filtered.forEach((p) => {
-          if (p.id) {
+          if (p.id && selfId && selfId > p.id) {
             webrtcRef.current?.connectToPeer(p.id);
           }
         });
@@ -363,19 +366,19 @@ export default function Home() {
           return next;
         });
 
-        // Connect to newly joined peer
-        if (newPeer.id) {
+        // Connect to newly joined peer (deterministic single offerer)
+        if (newPeer.id && userProfile?.id && userProfile.id > newPeer.id) {
           webrtcRef.current?.connectToPeer(newPeer.id);
-          // Sync current room wallpaper to newly joined peer
-          if (syncedWallpaperRef.current) {
-            try {
-              signaling.emit('e2ee-relay', {
-                to: newPeer.id,
-                type: 'room-wallpaper',
-                payload: syncedWallpaperRef.current
-              });
-            } catch (e) {}
-          }
+        }
+        // Sync current room wallpaper to newly joined peer
+        if (syncedWallpaperRef.current && newPeer.id) {
+          try {
+            signaling.emit('e2ee-relay', {
+              to: newPeer.id,
+              type: 'room-wallpaper',
+              payload: syncedWallpaperRef.current
+            });
+          } catch (e) {}
         }
       });
 
@@ -550,6 +553,20 @@ export default function Home() {
               delete next[record.id];
               return next;
             });
+            // Snapdrop-style instant auto-download directly to disk
+            let autoSaved = false;
+            try {
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = record.name;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              autoSaved = true;
+            } catch (err) {
+              console.warn('Auto download error:', err);
+            }
+
             setReceivedFileModal({
               id: record.id,
               name: record.name,
@@ -558,7 +575,8 @@ export default function Home() {
               blob,
               url,
               senderId: from,
-              senderName: record.senderName
+              senderName: record.senderName,
+              autoDownloaded: autoSaved
             });
             relayIncomingFilesRef.current.delete(payload.id);
           }
@@ -610,7 +628,25 @@ export default function Home() {
             delete next[completedFile.id];
             return next;
           });
-          setReceivedFileModal(completedFile);
+
+          // Snapdrop-style instant auto-download directly to disk
+          let autoSaved = false;
+          try {
+            const a = document.createElement('a');
+            a.href = completedFile.url;
+            a.download = completedFile.name;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            autoSaved = true;
+          } catch (err) {
+            console.warn('Auto download error:', err);
+          }
+
+          setReceivedFileModal({
+            ...completedFile,
+            autoDownloaded: autoSaved
+          });
         },
         onFileTransferCancel: (transferId) => {
           setActiveTransfers((prev) => {
@@ -1009,7 +1045,7 @@ export default function Home() {
   };
 
   // Send File in IntekDrop Tab (Hybrid: WebRTC P2P Direct + Automatic Encrypted Relay Fallback)
-  const handleSendFile = async (peerId, file) => {
+  const executeSendFile = async (peerId, file) => {
     if (!webrtcRef.current && !socketRef.current) return;
 
     const transferId = `send-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
@@ -1028,7 +1064,7 @@ export default function Home() {
     }));
 
     try {
-      // 1. First attempt ultra-fast direct WebRTC DataChannel transfer
+      // 1. First attempt ultra-fast direct WebRTC DataChannel transfer (full local WiFi gigabit speed)
       await webrtcRef.current.sendFile(
         peerId,
         file,
@@ -1094,6 +1130,28 @@ export default function Home() {
         });
       }
     }
+  };
+
+  const processSendQueue = async () => {
+    if (isSendingFileRef.current || sendQueueRef.current.length === 0) return;
+    isSendingFileRef.current = true;
+    const task = sendQueueRef.current.shift();
+    if (task) {
+      try {
+        await executeSendFile(task.peerId, task.file);
+      } catch (e) {
+        console.error('File send task error:', e);
+      }
+    }
+    isSendingFileRef.current = false;
+    if (sendQueueRef.current.length > 0) {
+      setTimeout(processSendQueue, 50);
+    }
+  };
+
+  const handleSendFile = (peerId, file) => {
+    sendQueueRef.current.push({ peerId, file });
+    processSendQueue();
   };
 
   const handleCancelTransfer = (transferId) => {

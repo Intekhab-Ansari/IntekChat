@@ -8,14 +8,15 @@ const ICE_SERVERS = {
     { urls: 'stun:stun2.l.google.com:19302' },
     { urls: 'stun:stun3.l.google.com:19302' },
     { urls: 'stun:stun.cloudflare.com:3478' }
-  ]
+  ],
+  iceCandidatePoolSize: 10
 };
 
 // 64 KB chunk size: Optimal for modern browser WebRTC engines
 const CHUNK_SIZE = 64 * 1024;
-// Thresholds for flow control to saturate bandwidth without buffer overflow
-const BUFFERED_AMOUNT_LOW_THRESHOLD = 64 * 1024; // 64 KB
-const BUFFERED_AMOUNT_MAX = 256 * 1024; // 256 KB
+// Buffer thresholds calibrated for multi-gigabit wire speed on local WiFi LAN
+const BUFFERED_AMOUNT_LOW_THRESHOLD = 512 * 1024; // 512 KB
+const BUFFERED_AMOUNT_MAX = 8 * 1024 * 1024; // 8 MB flow window for full LAN saturation
 
 export class WebRTCManager {
   constructor(socket, selfPeerInfo, callbacks = {}) {
@@ -83,7 +84,7 @@ export class WebRTCManager {
       if (this.callbacks.onConnectionStateChange) {
         this.callbacks.onConnectionStateChange(remoteId, pc.connectionState);
       }
-      if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+      if (pc.connectionState === 'failed') {
         this.closePeer(remoteId);
       }
     };
@@ -268,6 +269,8 @@ export class WebRTCManager {
           const blob = new Blob(fileRecord.chunks, {
             type: fileRecord.mimeType || 'application/octet-stream'
           });
+          // Immediate memory free to handle massive files smoothly
+          fileRecord.chunks = [];
           const url = URL.createObjectURL(blob);
 
           sounds.playTransferComplete();
@@ -389,7 +392,7 @@ export class WebRTCManager {
   }
 
   // Ensure data channel is ready before transfer, auto-initiating peer connection if needed
-  async ensureChannelReady(remoteId, timeoutMs = 3500) {
+  async ensureChannelReady(remoteId, timeoutMs = 12000) {
     const existing = this.channels.get(remoteId);
     if (existing && existing.readyState === 'open') {
       return existing;
@@ -426,7 +429,7 @@ export class WebRTCManager {
   async sendFile(remoteId, file, onProgress, onCancelCheck) {
     let channel = this.channels.get(remoteId);
     if (!channel || channel.readyState !== 'open') {
-      channel = await this.ensureChannelReady(remoteId, 3500);
+      channel = await this.ensureChannelReady(remoteId, 12000);
     }
 
     const transferId = `file-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;

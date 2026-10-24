@@ -913,8 +913,8 @@ export default function ChatView({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 8 * 1024 * 1024) {
-      alert('Photo exceeds 8MB. For large media and files, switch to the IntekDrop tab for lightning-fast direct P2P streaming!');
+    if (file.size > 25 * 1024 * 1024) {
+      alert('Photo exceeds 25MB. For large media and files, switch to the IntekDrop tab for lightning-fast direct P2P streaming!');
       return;
     }
 
@@ -952,8 +952,8 @@ export default function ChatView({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 8 * 1024 * 1024) {
-      alert('File exceeds 8MB. For large files (ZIP, video, ISO, etc.), use the IntekDrop tab for unlimited high-speed P2P transfer!');
+    if (file.size > 25 * 1024 * 1024) {
+      alert('File exceeds 25MB. For large files (ZIP, video, ISO, etc.), use the IntekDrop tab for unlimited high-speed P2P transfer!');
       return;
     }
 

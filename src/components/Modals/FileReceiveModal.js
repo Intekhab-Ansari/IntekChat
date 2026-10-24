@@ -28,8 +28,8 @@ export default function FileReceiveModal({ fileData, onClose }) {
               <CheckCircle size={24} className="text-emerald" />
             </div>
             <div>
-              <h3>File Received!</h3>
-              <p>From: <strong>{fileData.senderName || 'Anonymous Peer'}</strong></p>
+              <h3>{fileData.autoDownloaded ? 'Saved to Downloads!' : 'File Received!'}</h3>
+              <p>{fileData.autoDownloaded ? 'Automatically saved from: ' : 'From: '}<strong>{fileData.senderName || 'Anonymous Peer'}</strong></p>
             </div>
           </div>
           <button className="modal-close-btn" onClick={onClose}>
@@ -48,13 +48,28 @@ export default function FileReceiveModal({ fileData, onClose }) {
         </div>
 
         <div className="modal-footer">
-          <button type="button" className="btn-secondary" onClick={onClose}>
-            Dismiss
-          </button>
-          <button type="button" className="btn-primary" onClick={handleDownload}>
-            <Download size={16} />
-            <span>Save to Disk</span>
-          </button>
+          {fileData.autoDownloaded ? (
+            <>
+              <button type="button" className="btn-secondary" onClick={handleDownload} title="Download a second copy">
+                <Download size={15} />
+                <span>Download Again</span>
+              </button>
+              <button type="button" className="btn-primary" onClick={onClose}>
+                <CheckCircle size={15} />
+                <span>Done</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <button type="button" className="btn-secondary" onClick={onClose}>
+                Dismiss
+              </button>
+              <button type="button" className="btn-primary" onClick={handleDownload}>
+                <Download size={15} />
+                <span>Save to Disk</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
