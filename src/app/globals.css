@@ -1817,11 +1817,13 @@ body {
 }
 
 .chat-header {
+  position: relative;
+  z-index: 20;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0.65rem 1.25rem;
-  background: var(--bg-sidebar);
+  background: var(--bg-sidebar) !important;
   border-bottom: 1px solid var(--border-subtle);
   gap: 0.85rem;
   white-space: nowrap !important;
@@ -1829,6 +1831,9 @@ body {
   min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 .chat-header::-webkit-scrollbar {
@@ -1884,6 +1889,10 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
+  background: var(--bg-surface) !important;
+  border: 1px solid var(--border-subtle);
+  border-radius: 9999px;
+  padding: 0.25rem 0.65rem;
   white-space: nowrap !important;
   flex-shrink: 0 !important;
 }
@@ -1920,7 +1929,7 @@ body {
   align-items: center;
   gap: 0.35rem;
   padding: 0.35rem 0.75rem;
-  background: var(--bg-surface);
+  background: var(--bg-surface) !important;
   border: 1px solid var(--border-subtle);
   border-radius: 9999px;
   color: var(--text-muted);
@@ -1935,10 +1944,11 @@ body {
 .btn-stealth:hover {
   color: #fff;
   border-color: var(--border-bright);
+  background: var(--bg-card-hover) !important;
 }
 
 .btn-stealth.stealth-active {
-  background: var(--accent-primary);
+  background: var(--accent-primary) !important;
   color: #fff;
   border-color: var(--accent-bright);
 }
@@ -1948,8 +1958,8 @@ body {
   align-items: center;
   gap: 0.35rem;
   padding: 0.35rem 0.75rem;
-  background: rgba(244, 63, 94, 0.12);
-  border: 1px solid rgba(244, 63, 94, 0.25);
+  background: var(--bg-surface) !important;
+  border: 1px solid rgba(244, 63, 94, 0.45) !important;
   border-radius: 9999px;
   color: #fb7185;
   font-size: 0.74rem;
@@ -1961,7 +1971,7 @@ body {
 }
 
 .btn-clear-chat:hover {
-  background: rgba(244, 63, 94, 0.25);
+  background: rgba(244, 63, 94, 0.85) !important;
   color: #fff;
 }
 
@@ -1970,8 +1980,8 @@ body {
   align-items: center;
   gap: 0.35rem;
   padding: 0.35rem 0.75rem;
-  background: rgba(239, 68, 68, 0.12);
-  border: 1px solid rgba(239, 68, 68, 0.28);
+  background: var(--bg-surface) !important;
+  border: 1px solid rgba(239, 68, 68, 0.45) !important;
   border-radius: 9999px;
   color: #f87171;
   font-size: 0.74rem;
@@ -1983,7 +1993,7 @@ body {
 }
 
 .btn-leave-chat:hover {
-  background: rgba(239, 68, 68, 0.25);
+  background: rgba(239, 68, 68, 0.85) !important;
   border-color: #ef4444;
   color: #fff;
   transform: translateY(-1px);
@@ -1995,7 +2005,7 @@ body {
   align-items: center;
   gap: 0.35rem;
   padding: 0.35rem 0.75rem;
-  background: var(--bg-surface);
+  background: var(--bg-surface) !important;
   border: 1px solid var(--border-subtle);
   border-radius: 9999px;
   color: var(--text-muted);
@@ -2010,12 +2020,12 @@ body {
 .btn-wallpaper:hover {
   color: #fff;
   border-color: var(--accent-bright);
-  background: var(--bg-card-hover);
+  background: var(--bg-card-hover) !important;
   transform: translateY(-1px);
 }
 
 .wallpaper-btn {
-  background: var(--bg-surface);
+  background: var(--bg-surface) !important;
   border: 1px solid var(--border-subtle);
   color: var(--text-main);
   margin-bottom: 0;
@@ -2024,7 +2034,7 @@ body {
 .wallpaper-btn:hover {
   border-color: var(--accent-bright);
   color: #fff;
-  background: var(--bg-card);
+  background: var(--bg-card) !important;
 }
 
 /* Dynamic Wallpaper Background Canvas Layer */
@@ -2035,7 +2045,7 @@ body {
   width: 100%;
   height: 100%;
   pointer-events: none;
-  z-index: 1;
+  z-index: 0;
   transition: opacity 0.35s ease, filter 0.35s ease;
 }
 
@@ -4812,8 +4822,8 @@ body {
   gap: 0.35rem;
   padding: 0.25rem 0.65rem;
   border-radius: 6px;
-  background: rgba(124, 58, 237, 0.12);
-  border: 1px solid rgba(124, 58, 237, 0.35);
+  background: var(--bg-surface) !important;
+  border: 1px solid var(--border-accent);
   color: var(--accent-bright);
   font-size: 0.75rem;
   font-weight: 700;
@@ -6081,6 +6091,11 @@ body {
   }
 
   .chat-header {
+    position: relative;
+    z-index: 20;
+    background: var(--bg-sidebar) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
     padding: 0.35rem 0.55rem;
     flex-wrap: nowrap;
     gap: 0.3rem;
@@ -7865,7 +7880,7 @@ body {
   align-items: center;
   gap: 0.35rem;
   padding: 0.35rem 0.65rem;
-  background: var(--bg-surface);
+  background: var(--bg-surface) !important;
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   color: var(--text-muted);
@@ -7881,18 +7896,22 @@ body {
 .btn-collapse-header:hover {
   color: #fff;
   border-color: var(--border-bright);
-  background: var(--bg-card);
+  background: var(--bg-card) !important;
 }
 
 .collapsed-header-bar {
+  position: relative;
+  z-index: 20;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0.35rem 0.85rem;
-  background: var(--bg-sidebar);
+  background: var(--bg-sidebar) !important;
   border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
-  z-index: 10;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
   animation: fadeIn 0.2s ease-out;
 }
 
@@ -7901,7 +7920,7 @@ body {
   align-items: center;
   gap: 0.45rem;
   padding: 0.28rem 0.85rem;
-  background: var(--bg-surface);
+  background: var(--bg-surface) !important;
   border: 1px solid var(--border-subtle);
   border-radius: 9999px;
   color: var(--text-muted);
@@ -7913,7 +7932,7 @@ body {
 }
 
 .btn-expand-header:hover {
-  background: var(--bg-card);
+  background: var(--bg-card) !important;
   border-color: var(--border-bright);
   color: #fff;
   transform: translateY(-1px);
