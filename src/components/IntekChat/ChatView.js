@@ -30,6 +30,11 @@ import {
   Users,
   PanelLeft,
   ChevronLeft,
+  ChevronDown,
+  ChevronUp,
+  MoreVertical,
+  MoreHorizontal,
+  Copy,
   X,
   Reply,
   Info,
@@ -46,7 +51,7 @@ import { getWallpaperCss } from '@/lib/wallpapers';
 import WallpaperModal from '@/components/Modals/WallpaperModal';
 import CameraModal from '@/components/Modals/CameraModal';
 
-// Interactive Swipe-to-Reply Message Item with Rubber-Band Resistance & Haptic Feedback
+// Interactive Swipe-to-Reply Message Item with Long-Press Context Menu & Haptic Feedback
 function SwipeableMessageRow({
   msg,
   isSelf,
@@ -56,11 +61,25 @@ function SwipeableMessageRow({
   scrollToMessage,
   handleOpenViewOnce,
   setViewOnceModalData,
-  getFileIcon
+  getFileIcon,
+  onOpenMessageOptions
 }) {
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const touchStartRef = useRef(null);
+  const longPressTimerRef = useRef(null);
+  const isLongPressActiveRef = useRef(false);
+
+  const clearLongPress = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => clearLongPress();
+  }, [clearLongPress]);
 
   const handleTouchStart = (e) => {
     const touch = e.touches[0];
@@ -69,6 +88,21 @@ function SwipeableMessageRow({
       y: touch.clientY,
       isHorizontal: null
     };
+    isLongPressActiveRef.current = false;
+    clearLongPress();
+
+    // 420ms long press detection just like WhatsApp / Telegram
+    longPressTimerRef.current = setTimeout(() => {
+      isLongPressActiveRef.current = true;
+      setIsDragging(false);
+      setSwipeOffset(0);
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        try { navigator.vibrate([28, 22]); } catch {}
+      }
+      sounds.playClick();
+      onOpenMessageOptions?.(msg, { x: touch.clientX, y: touch.clientY });
+    }, 420);
+
     setIsDragging(true);
   };
 
@@ -77,6 +111,12 @@ function SwipeableMessageRow({
     const touch = e.touches[0];
     const deltaX = touch.clientX - touchStartRef.current.x;
     const deltaY = touch.clientY - touchStartRef.current.y;
+
+    if (Math.hypot(deltaX, deltaY) > 8) {
+      clearLongPress();
+    }
+
+    if (isLongPressActiveRef.current) return;
 
     if (touchStartRef.current.isHorizontal === null) {
       if (Math.abs(deltaY) > 8 && Math.abs(deltaY) > Math.abs(deltaX)) {
@@ -106,7 +146,17 @@ function SwipeableMessageRow({
     }
   };
 
-  const handleTouchEnd = () => {
+  const handleTouchEnd = (e) => {
+    clearLongPress();
+    if (isLongPressActiveRef.current) {
+      isLongPressActiveRef.current = false;
+      setIsDragging(false);
+      setSwipeOffset(0);
+      touchStartRef.current = null;
+      if (e?.cancelable) e.preventDefault();
+      return;
+    }
+
     setIsDragging(false);
     if (swipeOffset >= 48) {
       sounds.playClick();
@@ -117,6 +167,13 @@ function SwipeableMessageRow({
     }
     setSwipeOffset(0);
     touchStartRef.current = null;
+  };
+
+  const handleContextMenu = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    clearLongPress();
+    onOpenMessageOptions?.(msg, { x: e.clientX, y: e.clientY });
   };
 
   const handleMouseDown = (e) => {
@@ -236,13 +293,25 @@ function SwipeableMessageRow({
             <Reply size={12} />
             <span>Reply</span>
           </button>
+          <button
+            type="button"
+            className="msg-more-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenMessageOptions?.(msg, { x: e.clientX, y: e.clientY });
+            }}
+            title="Message options (Copy, Reply, Info, Delete)"
+          >
+            <MoreHorizontal size={13} />
+          </button>
         </div>
 
         <div 
           className="msg-bubble"
           onMouseDown={handleMouseDown}
           onDoubleClick={() => onStartReply(msg)}
-          title="Swipe or double-click to reply"
+          onContextMenu={handleContextMenu}
+          title="Hold or right-click for options (Copy, Reply, etc.)"
         >
           {/* QUOTED REPLY BLOCK */}
           {msg.replyTo && (
@@ -396,7 +465,8 @@ export default function ChatView({
   onTypingChange,
   syncedWallpaper,
   onBroadcastWallpaper,
-  onMarkMessagesSeen
+  onMarkMessagesSeen,
+  onDeleteMessage
 }) {
   const avatarStyle = getAvatarColor(userProfile?.colorIndex || 0);
   const [inputText, setInputText] = useState('');
@@ -410,6 +480,80 @@ export default function ChatView({
     }
     return true;
   });
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
+  const [selectedMessageForOptions, setSelectedMessageForOptions] = useState(null);
+  const [copyToast, setCopyToast] = useState(null);
+  const copyToastTimerRef = useRef(null);
+
+  const handleOpenMessageOptions = useCallback((msg, coords) => {
+    setSelectedMessageForOptions({ msg, coords });
+  }, []);
+
+  const handleCopyMessage = useCallback((msg) => {
+    if (!msg) return;
+    let textToCopy = '';
+    if (msg.type === 'text') {
+      textToCopy = msg.text || '';
+    } else if (msg.type === 'file') {
+      textToCopy = msg.name ? `[File: ${msg.name}]` : (msg.dataUrl || '');
+    } else if (msg.type === 'image') {
+      textToCopy = msg.name ? `[Photo: ${msg.name}]` : (msg.dataUrl || '');
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(textToCopy).then(() => {
+        setCopyToast('Copied to clipboard');
+        if (copyToastTimerRef.current) clearTimeout(copyToastTimerRef.current);
+        copyToastTimerRef.current = setTimeout(() => setCopyToast(null), 2200);
+      }).catch(() => {
+        setCopyToast('Copied');
+        setTimeout(() => setCopyToast(null), 2000);
+      });
+    }
+    sounds.playClick();
+    setSelectedMessageForOptions(null);
+  }, []);
+
+  const handleSaveMedia = useCallback((msg) => {
+    if (!msg || !msg.dataUrl) return;
+    try {
+      const a = document.createElement('a');
+      a.href = msg.dataUrl;
+      a.download = msg.name || (msg.type === 'image' ? 'photo.png' : 'file');
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setCopyToast('Saved to device');
+      if (copyToastTimerRef.current) clearTimeout(copyToastTimerRef.current);
+      copyToastTimerRef.current = setTimeout(() => setCopyToast(null), 2200);
+    } catch (e) {
+      console.warn('Save failed:', e);
+    }
+    setSelectedMessageForOptions(null);
+  }, []);
+
+  const handleDeleteFromSession = useCallback((msgId) => {
+    if (onDeleteMessage) {
+      onDeleteMessage(msgId);
+      setCopyToast('Message deleted');
+      if (copyToastTimerRef.current) clearTimeout(copyToastTimerRef.current);
+      copyToastTimerRef.current = setTimeout(() => setCopyToast(null), 2000);
+    }
+    setSelectedMessageForOptions(null);
+  }, [onDeleteMessage]);
+
+  // Close message options modal on Escape key
+  useEffect(() => {
+    if (!selectedMessageForOptions) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setSelectedMessageForOptions(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedMessageForOptions]);
+
   const [showSidebarPassword, setShowSidebarPassword] = useState(false);
   const [viewOnceModalData, setViewOnceModalData] = useState(null);
   const [viewOnceTimer, setViewOnceTimer] = useState(10);
@@ -1247,164 +1391,205 @@ export default function ChatView({
 
       {/* Main Conversation Column */}
       <section className="chat-main-pane">
-        {/* Chat Sub-Header */}
-        <div className="chat-header">
-          <div className="header-left">
-            {!isSidebarOpen && (
+        {/* Chat Sub-Header (Collapsible on toggle basis to maximize chat space) */}
+        {isHeaderCollapsed ? (
+          <div className="collapsed-header-bar">
+            <button
+              type="button"
+              className="btn-expand-header"
+              onClick={() => {
+                sounds.playClick();
+                setIsHeaderCollapsed(false);
+              }}
+              title="Show room options and toolbar"
+            >
+              <div className="collapsed-expand-inner">
+                {isRoomProtected ? <Lock size={13} className="text-pink" /> : <Lock size={13} className="text-accent" />}
+                <span className="collapsed-room-name">#{roomName}</span>
+                <span className="collapsed-peer-pill">
+                  <span className="realtime-live-dot" />
+                  <span>{peerCount === 0 ? '1 in room' : `${peerCount + 1} online`}</span>
+                </span>
+                <ChevronDown size={14} className="collapsed-chevron" />
+                <span className="collapsed-text">Show Options</span>
+              </div>
+            </button>
+          </div>
+        ) : (
+          <div className="chat-header">
+            <div className="header-left">
+              {!isSidebarOpen && (
+                <button 
+                  type="button"
+                  className="btn-sidebar-open" 
+                  onClick={() => setIsSidebarOpen(true)}
+                  title="Show Room Details & Participants"
+                >
+                  <PanelLeft size={15} className="flex-shrink-0" />
+                  <span className="btn-sidebar-label">Details</span>
+                </button>
+              )}
+
+              <div 
+                className="chat-room-badge clickable-room-badge"
+                onClick={onOpenRoomModal}
+                title="Click to manage room or switch rooms"
+              >
+                {isRoomProtected ? <Lock size={15} className="text-pink" /> : <Lock size={14} className="text-accent" />}
+                <span className="room-title">#{roomName}</span>
+                {isRoomProtected && <span className="room-protected-pill">Protected</span>}
+              </div>
+
+              <button 
+                type="button" 
+                className="btn-edit-room-quick"
+                onClick={onOpenEditRoom || onOpenRoomModal}
+                title="Edit Room ID and Password Protection"
+              >
+                <Edit3 size={13} />
+                <span>Edit Room</span>
+              </button>
+
+              <span className="chat-peer-status" title="Real-time participants in this room">
+                <span className="realtime-live-dot" />
+                {peerCount === 0 
+                  ? '1 in room (Waiting for others)' 
+                  : `${totalParticipants || (peerCount + 1)} in room (${peerCount} other${peerCount === 1 ? '' : 's'} + You)`}
+              </span>
+            </div>
+
+            <div className="header-right">
+              {/* Collapse Toolbar Button to maximize chat viewport */}
+              <button
+                type="button"
+                className="btn-collapse-header"
+                onClick={() => {
+                  sounds.playClick();
+                  setIsHeaderCollapsed(true);
+                }}
+                title="Hide options bar to maximize space for chatting"
+              >
+                <ChevronUp size={15} />
+                <span>Hide</span>
+              </button>
+
+              {/* Switch to Text / Stealth Privacy Toggle */}
+              <button
+                type="button"
+                className={`btn-stealth ${isStealthTextMode ? 'stealth-active' : ''}`}
+                onClick={() => setIsStealthTextMode(!isStealthTextMode)}
+                title="Switch between Rich Media Mode and Discreet Text-Only Mode (Stealth Privacy)"
+              >
+                {isStealthTextMode ? (
+                  <>
+                    <LayoutGrid size={15} />
+                    <span>Rich Media Mode</span>
+                  </>
+                ) : (
+                  <>
+                    <Type size={15} />
+                    <span>Switch to Text</span>
+                  </>
+                )}
+              </button>
+
+              {/* Chat Wallpaper Button */}
+              <button
+                type="button"
+                className="btn-wallpaper"
+                onClick={() => {
+                  sounds.playClick();
+                  setIsWallpaperModalOpen(true);
+                }}
+                title="Customize Chat Wallpaper & Patterns"
+              >
+                <Paintbrush size={15} />
+                <span>Wallpaper</span>
+              </button>
+
+              {/* Share Room QR Code Button */}
+              <button
+                type="button"
+                className="btn-wallpaper"
+                onClick={() => {
+                  sounds.playClick();
+                  onOpenQr?.();
+                }}
+                title="Share Room QR Code & Credentials"
+              >
+                <QrCode size={15} />
+                <span>Room QR</span>
+              </button>
+
+              {/* Clear Chat Button */}
               <button 
                 type="button"
-                className="btn-sidebar-open" 
-                onClick={() => setIsSidebarOpen(true)}
-                title="Show Room Details & Participants"
+                className="btn-clear-chat" 
+                onClick={() => {
+                  sounds.playClick();
+                  if (window.confirm('Clear all chat messages from this session?')) {
+                    onClearChat();
+                  }
+                }}
+                title="Instant wipe of chat history (Zero Trace)"
               >
-                <PanelLeft size={15} className="flex-shrink-0" />
-                <span className="btn-sidebar-label">Details</span>
+                <Trash2 size={15} />
+                <span>Clear Chat</span>
               </button>
-            )}
 
-            <div 
-              className="chat-room-badge clickable-room-badge"
-              onClick={onOpenRoomModal}
-              title="Click to manage room or switch rooms"
-            >
-              {isRoomProtected ? <Lock size={15} className="text-pink" /> : <Lock size={14} className="text-accent" />}
-              <span className="room-title">#{roomName}</span>
-              {isRoomProtected && <span className="room-protected-pill">Protected</span>}
+              {/* Quick Leave Room Button */}
+              {roomName && (
+                <button 
+                  type="button"
+                  className="btn-leave-chat" 
+                  onClick={() => {
+                    sounds.playClick();
+                    if (window.confirm(`Leave room #${roomName} and return to Local Wi-Fi?`)) {
+                      onLeaveRoom?.();
+                    }
+                  }}
+                  title="Leave room and return to local network"
+                >
+                  <LogOut size={14} />
+                  <span>Leave</span>
+                </button>
+              )}
             </div>
+          </div>
+        )}
+
+        {/* Mobile Identity & Presence Strip (Shown when options bar is open) */}
+        {!isHeaderCollapsed && (
+          <div className="mobile-identity-strip">
+            <button 
+              type="button" 
+              className="mobile-id-tag user-tag"
+              onClick={onOpenProfile}
+              title="Click to view/change your Codename & Avatar"
+            >
+              <span 
+                className="id-dot-avatar" 
+                style={{ background: avatarStyle?.border || '#3b82f6' }} 
+              />
+              <span className="id-tag-label">You:</span>
+              <span className="id-tag-name">{userProfile?.name || 'Anonymous'}</span>
+              <span className="id-tag-os">({userProfile?.os?.toUpperCase() || 'HOST'})</span>
+            </button>
 
             <button 
               type="button" 
-              className="btn-edit-room-quick"
-              onClick={onOpenEditRoom || onOpenRoomModal}
-              title="Edit Room ID and Password Protection"
+              className="mobile-id-tag room-tag"
+              onClick={onOpenRoomModal}
+              title="Room Details & Participant Count"
             >
-              <Edit3 size={13} />
-              <span>Edit Room</span>
-            </button>
-
-            <span className="chat-peer-status" title="Real-time participants in this room">
               <span className="realtime-live-dot" />
-              {peerCount === 0 
-                ? '1 in room (Waiting for others)' 
-                : `${totalParticipants || (peerCount + 1)} in room (${peerCount} other${peerCount === 1 ? '' : 's'} + You)`}
-            </span>
+              <span className="id-room-name">#{roomName}</span>
+              <span className="id-room-count">
+                {peerCount === 0 ? '1 online' : `${peerCount + 1} online`}
+              </span>
+            </button>
           </div>
-
-          <div className="header-right">
-            {/* Switch to Text / Stealth Privacy Toggle */}
-            <button
-              type="button"
-              className={`btn-stealth ${isStealthTextMode ? 'stealth-active' : ''}`}
-              onClick={() => setIsStealthTextMode(!isStealthTextMode)}
-              title="Switch between Rich Media Mode and Discreet Text-Only Mode (Stealth Privacy)"
-            >
-              {isStealthTextMode ? (
-                <>
-                  <LayoutGrid size={15} />
-                  <span>Rich Media Mode</span>
-                </>
-              ) : (
-                <>
-                  <Type size={15} />
-                  <span>Switch to Text</span>
-                </>
-              )}
-            </button>
-
-            {/* Chat Wallpaper Button */}
-            <button
-              type="button"
-              className="btn-wallpaper"
-              onClick={() => {
-                sounds.playClick();
-                setIsWallpaperModalOpen(true);
-              }}
-              title="Customize Chat Wallpaper & Patterns"
-            >
-              <Paintbrush size={15} />
-              <span>Wallpaper</span>
-            </button>
-
-            {/* Share Room QR Code Button */}
-            <button
-              type="button"
-              className="btn-wallpaper"
-              onClick={() => {
-                sounds.playClick();
-                onOpenQr?.();
-              }}
-              title="Share Room QR Code & Credentials"
-            >
-              <QrCode size={15} />
-              <span>Room QR</span>
-            </button>
-
-            {/* Clear Chat Button */}
-            <button 
-              type="button"
-              className="btn-clear-chat" 
-              onClick={() => {
-                sounds.playClick();
-                if (window.confirm('Clear all chat messages from this session?')) {
-                  onClearChat();
-                }
-              }}
-              title="Instant wipe of chat history (Zero Trace)"
-            >
-              <Trash2 size={15} />
-              <span>Clear Chat</span>
-            </button>
-
-            {/* Quick Leave Room Button */}
-            {roomName && (
-              <button 
-                type="button"
-                className="btn-leave-chat" 
-                onClick={() => {
-                  sounds.playClick();
-                  if (window.confirm(`Leave room #${roomName} and return to Local Wi-Fi?`)) {
-                    onLeaveRoom?.();
-                  }
-                }}
-                title="Leave room and return to local network"
-              >
-                <LogOut size={14} />
-                <span>Leave</span>
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Mobile Identity & Presence Strip (Shown on mobile devices) */}
-        <div className="mobile-identity-strip">
-          <button 
-            type="button" 
-            className="mobile-id-tag user-tag"
-            onClick={onOpenProfile}
-            title="Click to view/change your Codename & Avatar"
-          >
-            <span 
-              className="id-dot-avatar" 
-              style={{ background: avatarStyle?.border || '#3b82f6' }} 
-            />
-            <span className="id-tag-label">You:</span>
-            <span className="id-tag-name">{userProfile?.name || 'Anonymous'}</span>
-            <span className="id-tag-os">({userProfile?.os?.toUpperCase() || 'HOST'})</span>
-          </button>
-
-          <button 
-            type="button" 
-            className="mobile-id-tag room-tag"
-            onClick={onOpenRoomModal}
-            title="Room Details & Participant Count"
-          >
-            <span className="realtime-live-dot" />
-            <span className="id-room-name">#{roomName}</span>
-            <span className="id-room-count">
-              {peerCount === 0 ? '1 online' : `${peerCount + 1} online`}
-            </span>
-          </button>
-        </div>
+        )}
 
         {/* Dynamic Wallpaper Background Canvas Layer */}
         {wallpaperType !== 'none' && (
@@ -1503,6 +1688,7 @@ export default function ChatView({
                 handleOpenViewOnce={handleOpenViewOnce}
                 setViewOnceModalData={setViewOnceModalData}
                 getFileIcon={getFileIcon}
+                onOpenMessageOptions={handleOpenMessageOptions}
               />
             );
           })}
@@ -1750,6 +1936,171 @@ export default function ChatView({
         onCaptureAndSend={handleCameraCaptureAndSend}
         initialMode={imageMode}
       />
+
+      {/* Contextual Message Options Modal / Bottom Sheet */}
+      {selectedMessageForOptions && (
+        <div className="message-options-modal-layer">
+          <div 
+            className="message-options-backdrop"
+            onClick={() => setSelectedMessageForOptions(null)}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setSelectedMessageForOptions(null);
+            }}
+          />
+          <div 
+            className="message-options-card"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Message Actions"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="msg-opt-header">
+              <div className="msg-opt-header-info">
+                <span className="msg-opt-sender">
+                  {selectedMessageForOptions.msg.senderId === userProfile?.id ? 'You' : (selectedMessageForOptions.msg.senderName || 'Peer')}
+                </span>
+                <span className="msg-opt-time">{selectedMessageForOptions.msg.time}</span>
+              </div>
+              <button 
+                type="button"
+                className="msg-opt-close-btn"
+                onClick={() => setSelectedMessageForOptions(null)}
+                title="Close options"
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            {/* Snippet Preview */}
+            <div className="msg-opt-preview">
+              {selectedMessageForOptions.msg.type === 'text' && (
+                <p className="msg-opt-preview-text">{selectedMessageForOptions.msg.text}</p>
+              )}
+              {selectedMessageForOptions.msg.type === 'image' && (
+                <div className="msg-opt-preview-media">
+                  <ImageIcon size={14} className="text-pink" />
+                  <span>Photo ({selectedMessageForOptions.msg.imageMode || 'permanent'})</span>
+                </div>
+              )}
+              {selectedMessageForOptions.msg.type === 'file' && (
+                <div className="msg-opt-preview-media">
+                  <FileText size={14} className="text-cyan" />
+                  <span>{selectedMessageForOptions.msg.name || 'File'} ({formatBytes(selectedMessageForOptions.msg.size)})</span>
+                </div>
+              )}
+            </div>
+
+            <div className="msg-opt-actions-list">
+              {/* Reply */}
+              <button
+                type="button"
+                className="msg-opt-action-btn"
+                onClick={() => {
+                  sounds.playClick();
+                  handleStartReply(selectedMessageForOptions.msg);
+                  setSelectedMessageForOptions(null);
+                }}
+              >
+                <div className="msg-opt-icon-circle action-reply">
+                  <Reply size={16} />
+                </div>
+                <div className="msg-opt-action-text">
+                  <span className="action-title">Reply</span>
+                  <span className="action-subtitle">Quote this message in chat</span>
+                </div>
+              </button>
+
+              {/* Copy */}
+              <button
+                type="button"
+                className="msg-opt-action-btn"
+                onClick={() => handleCopyMessage(selectedMessageForOptions.msg)}
+              >
+                <div className="msg-opt-icon-circle action-copy">
+                  <Copy size={16} />
+                </div>
+                <div className="msg-opt-action-text">
+                  <span className="action-title">
+                    {selectedMessageForOptions.msg.type === 'text' ? 'Copy Text' : 'Copy'}
+                  </span>
+                  <span className="action-subtitle">Copy to clipboard</span>
+                </div>
+              </button>
+
+              {/* Save / Download */}
+              {(selectedMessageForOptions.msg.type === 'file' || (selectedMessageForOptions.msg.type === 'image' && selectedMessageForOptions.msg.imageMode !== 'once')) && selectedMessageForOptions.msg.dataUrl && (
+                <button
+                  type="button"
+                  className="msg-opt-action-btn"
+                  onClick={() => handleSaveMedia(selectedMessageForOptions.msg)}
+                >
+                  <div className="msg-opt-icon-circle action-download">
+                    <Download size={16} />
+                  </div>
+                  <div className="msg-opt-action-text">
+                    <span className="action-title">Save to Device</span>
+                    <span className="action-subtitle">Download file or photo</span>
+                  </div>
+                </button>
+              )}
+
+              {/* View Fullscreen for Image */}
+              {selectedMessageForOptions.msg.type === 'image' && !selectedMessageForOptions.msg.isBurned && (
+                <button
+                  type="button"
+                  className="msg-opt-action-btn"
+                  onClick={() => {
+                    sounds.playClick();
+                    if (selectedMessageForOptions.msg.imageMode === 'once') {
+                      handleOpenViewOnce(selectedMessageForOptions.msg);
+                    } else {
+                      setViewOnceModalData(selectedMessageForOptions.msg);
+                    }
+                    setSelectedMessageForOptions(null);
+                  }}
+                >
+                  <div className="msg-opt-icon-circle action-view">
+                    <Eye size={16} />
+                  </div>
+                  <div className="msg-opt-action-text">
+                    <span className="action-title">View Fullscreen</span>
+                    <span className="action-subtitle">Expand photo view</span>
+                  </div>
+                </button>
+              )}
+
+              {/* Delete for Me */}
+              <button
+                type="button"
+                className="msg-opt-action-btn action-delete-btn"
+                onClick={() => handleDeleteFromSession(selectedMessageForOptions.msg.id)}
+              >
+                <div className="msg-opt-icon-circle action-delete">
+                  <Trash2 size={16} />
+                </div>
+                <div className="msg-opt-action-text">
+                  <span className="action-title">Delete for Me</span>
+                  <span className="action-subtitle">Remove from this session</span>
+                </div>
+              </button>
+            </div>
+
+            <div className="msg-opt-footer">
+              <ShieldCheck size={13} className="text-cyan" />
+              <span>Direct End-to-End Encrypted Session</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Copy Notification Toast */}
+      {copyToast && (
+        <div className="msg-copy-toast" role="status" aria-live="polite">
+          <CheckCheck size={15} className="text-emerald" />
+          <span>{copyToast}</span>
+        </div>
+      )}
     </div>
   );
 }

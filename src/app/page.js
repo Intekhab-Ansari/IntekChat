@@ -1283,6 +1283,11 @@ export default function Home() {
     }
   }, [userProfile]);
 
+  const handleDeleteMessage = useCallback((messageId) => {
+    setMessages((prev) => prev.filter((m) => m.id !== messageId));
+    sounds.playClick();
+  }, []);
+
   const handleToggleSound = () => {
     const muted = sounds.toggleMute();
     setSoundMuted(muted);
@@ -1333,6 +1338,7 @@ export default function Home() {
             messages={messages}
             onSendMessage={handleSendMessage}
             onClearChat={handleClearChat}
+            onDeleteMessage={handleDeleteMessage}
             onBurnViewOnce={handleBurnViewOnce}
             roomName={roomName}
             roomPassword={roomPassword}
