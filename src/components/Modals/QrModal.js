@@ -745,50 +745,16 @@ export default function QrModal({
 
                 {cameraError ? (
                   <div className="camera-permission-card">
-                    {retryFailedBanner && (
-                      <div className="camera-blocked-callout animate-shake">
-                        <div className="callout-header">
-                          <span className="callout-arrow">▲</span>
-                          <strong>Chrome is still blocking camera access!</strong>
-                        </div>
-                        <p className="callout-text">
-                          Browser security prevents websites from re-opening permission automatically once blocked.
-                        </p>
-                        <div className="callout-solution">
-                          Look at your top browser address bar ➔ Click <strong>camera (🎥⃠)</strong> or <strong>padlock (🔒)</strong> ➔ Change Camera to <strong>Allow</strong> ➔ Click &quot;Try Again&quot;.
-                        </div>
-                      </div>
-                    )}
-
                     <div className="permission-card-header">
                       <div className="permission-icon-badge">
-                        <VideoOff size={20} className="text-pink" />
+                        <VideoOff size={16} className="text-pink" />
                       </div>
                       <div className="permission-text-wrap">
-                        <h4>Camera Permission Denied</h4>
+                        <h4>Camera Blocked</h4>
                         <p>
-                          Your browser has blocked camera access for this site. 
-                          Browsers remember this block even after refreshing the page.
+                          Allow camera in your browser address bar (🔒), then try again.
                         </p>
                       </div>
-                    </div>
-
-                    <div className="permission-guide-steps">
-                      <span className="guide-steps-title">To grant camera permission:</span>
-                      <ol className="permission-steps-list">
-                        <li>
-                          <span className="step-num">1</span>
-                          <span>Click the <strong>camera icon (🎥⃠)</strong> or <strong>padlock (🔒)</strong> in your browser address bar above.</span>
-                        </li>
-                        <li>
-                          <span className="step-num">2</span>
-                          <span>Select <strong>&quot;Always allow&quot;</strong> or switch Camera permission to <strong>Allow</strong>.</span>
-                        </li>
-                        <li>
-                          <span className="step-num">3</span>
-                          <span>Click the <strong>&quot;Try Again / Request Permission&quot;</strong> button below.</span>
-                        </li>
-                      </ol>
                     </div>
 
                     <div className="permission-actions-group">
@@ -798,8 +764,8 @@ export default function QrModal({
                         onClick={handleRetryCamera}
                         disabled={isRetrying}
                       >
-                        <RefreshCw size={15} className={isRetrying ? 'animate-spin' : ''} />
-                        <span>{isRetrying ? 'Checking Permission...' : 'Try Again / Request Permission'}</span>
+                        <RefreshCw size={13} className={isRetrying ? 'animate-spin' : ''} />
+                        <span>{isRetrying ? 'Checking...' : 'Try Again'}</span>
                       </button>
 
                       <button
@@ -807,32 +773,27 @@ export default function QrModal({
                         className="btn-permission-secondary"
                         onClick={() => fileInputRef.current?.click()}
                       >
-                        <Upload size={15} />
-                        <span>Upload QR Code Image</span>
+                        <Upload size={13} />
+                        <span>Upload QR Image</span>
                       </button>
                     </div>
 
-                    {/* Manual Code / Link Input Fallback (Works 100% Without Camera) */}
+                    {/* Manual Code / Link Input Fallback */}
                     <div className="manual-pair-box">
                       <div className="manual-pair-divider">
                         <span>OR CONNECT DIRECTLY</span>
                       </div>
-                      <p className="manual-pair-desc">
-                        {isDrop 
-                          ? 'Paste the other device\'s Pair Code or Link to connect instantly:' 
-                          : 'Paste the Room Name or Link to join instantly:'}
-                      </p>
                       <form onSubmit={handleManualPairSubmit} className="manual-pair-form">
                         <input
                           type="text"
-                          placeholder={isDrop ? 'Paste pair code or link (e.g. shadow-sanctum-983)' : 'Paste room link or name'}
+                          placeholder={isDrop ? 'Paste pair code or link' : 'Paste room link or name'}
                           value={manualCodeInput}
                           onChange={(e) => setManualCodeInput(e.target.value)}
                           className="manual-pair-input"
                         />
                         <button type="submit" className="btn-manual-pair-submit">
                           <span>Connect</span>
-                          <ArrowRight size={14} />
+                          <ArrowRight size={13} />
                         </button>
                       </form>
                     </div>
