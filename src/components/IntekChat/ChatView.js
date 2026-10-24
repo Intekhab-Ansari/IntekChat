@@ -841,9 +841,10 @@ export default function ChatView({
     onTypingChange?.(false);
 
     sounds.playMessage();
+    const cleanText = inputText.trim().slice(0, 10000);
     const payload = {
       type: 'text',
-      text: inputText.trim()
+      text: cleanText
     };
 
     if (replyingTo) {
@@ -912,6 +913,11 @@ export default function ChatView({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (file.size > 8 * 1024 * 1024) {
+      alert('Photo exceeds 8MB. For large media and files, switch to the IntekDrop tab for lightning-fast direct P2P streaming!');
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = () => {
       const base64Data = reader.result;
@@ -945,6 +951,11 @@ export default function ChatView({
   const handleGenericFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (file.size > 8 * 1024 * 1024) {
+      alert('File exceeds 8MB. For large files (ZIP, video, ISO, etc.), use the IntekDrop tab for unlimited high-speed P2P transfer!');
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = () => {
@@ -1852,6 +1863,7 @@ export default function ChatView({
               ref={textInputRef}
               type="text" 
               className="chat-text-input" 
+              maxLength={10000}
               placeholder={replyingTo ? `Replying to ${replyingTo.senderId === userProfile?.id ? 'yourself' : replyingTo.senderName}...` : "Type an encrypted message..."}
               value={inputText}
               onChange={handleInputChange}
@@ -1905,6 +1917,9 @@ export default function ChatView({
                 src={viewOnceModalData.dataUrl} 
                 alt="View Once Secret" 
                 className="modal-burn-img" 
+                draggable={false}
+                onContextMenu={(e) => e.preventDefault()}
+                style={{ userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' }}
               />
             </div>
           </div>

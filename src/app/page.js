@@ -454,7 +454,7 @@ export default function Home() {
           }
         } else if (type === 'view-once-burned') {
           setMessages((prev) =>
-            prev.map((m) => (m.id === payload.messageId ? { ...m, isBurned: true } : m))
+            prev.map((m) => (m.id === payload.messageId ? { ...m, isBurned: true, dataUrl: '' } : m))
           );
         } else if (type === 'typing') {
           handleIncomingTyping(payload);
@@ -502,8 +502,14 @@ export default function Home() {
               for (let i = 0; i < len; i++) {
                 bytes[i] = binaryStr.charCodeAt(i);
               }
-              record.chunks[payload.index] = bytes.buffer;
-              record.receivedBytes += len;
+              if (
+                typeof payload.index === 'number' &&
+                payload.index >= 0 &&
+                payload.index < (record.totalChunks || 100000)
+              ) {
+                record.chunks[payload.index] = bytes.buffer;
+                record.receivedBytes += len;
+              }
 
               const now = Date.now();
               if (now - record.lastTelemetryTime > 150 || record.receivedBytes >= record.size) {
@@ -634,7 +640,7 @@ export default function Home() {
         },
         onViewOnceBurned: (messageId) => {
           setMessages((prev) =>
-            prev.map((m) => (m.id === messageId ? { ...m, isBurned: true } : m))
+            prev.map((m) => (m.id === messageId ? { ...m, isBurned: true, dataUrl: '' } : m))
           );
         },
         onTyping: (data) => {
