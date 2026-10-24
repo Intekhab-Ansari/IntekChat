@@ -37,7 +37,32 @@ export default function Navbar({
 }) {
   const [copied, setCopied] = React.useState(false);
   const [showThemePicker, setShowThemePicker] = React.useState(false);
+  const themePickerRef = React.useRef(null);
   const avatarStyle = getAvatarColor(userProfile?.colorIndex || 0);
+
+  // Close theme menu when clicking anywhere outside
+  React.useEffect(() => {
+    if (!showThemePicker) return;
+
+    const handleClickOutside = (e) => {
+      if (themePickerRef.current && !themePickerRef.current.contains(e.target)) {
+        setShowThemePicker(false);
+      }
+    };
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setShowThemePicker(false);
+      }
+    };
+
+    window.addEventListener('pointerdown', handleClickOutside, true);
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => {
+      window.removeEventListener('pointerdown', handleClickOutside, true);
+      window.removeEventListener('keydown', handleKeyDown, true);
+    };
+  }, [showThemePicker]);
 
   const THEMES = [
     { id: 'silk', name: 'Silk Daylight', color: '#7c3aed', desc: 'Executive Clean Light Mode' },
@@ -190,7 +215,7 @@ export default function Navbar({
         </button>
 
         {/* Theme Selector Dropdown */}
-        <div className="theme-selector-wrap mobile-hide-btn">
+        <div className="theme-selector-wrap mobile-hide-btn" ref={themePickerRef}>
           <button 
             className="icon-btn" 
             onClick={() => setShowThemePicker(!showThemePicker)} 
@@ -201,7 +226,13 @@ export default function Navbar({
           </button>
 
           {showThemePicker && (
-            <div className="theme-dropdown-menu">
+            <>
+              <div 
+                className="theme-dropdown-backdrop" 
+                onClick={() => setShowThemePicker(false)} 
+                onTouchStart={() => setShowThemePicker(false)}
+              />
+              <div className="theme-dropdown-menu">
               <div className="theme-menu-header">Color Themes</div>
               {THEMES.map((t) => (
                 <button
@@ -221,6 +252,7 @@ export default function Navbar({
                 </button>
               ))}
             </div>
+            </>
           )}
         </div>
 

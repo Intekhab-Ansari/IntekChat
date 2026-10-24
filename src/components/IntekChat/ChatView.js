@@ -434,6 +434,7 @@ export default function ChatView({
   const imageInputRef = useRef(null);
   const cameraInputRef = useRef(null);
   const textInputRef = useRef(null);
+  const imagePickerRef = useRef(null);
   const timerRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const isCurrentlyTypingRef = useRef(false);
@@ -577,6 +578,30 @@ export default function ChatView({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [replyingTo]);
+
+  // Close image options menu when clicking anywhere outside or pressing Escape
+  useEffect(() => {
+    if (!showImageModePicker) return;
+
+    const handleClickOutside = (e) => {
+      if (imagePickerRef.current && !imagePickerRef.current.contains(e.target)) {
+        setShowImageModePicker(false);
+      }
+    };
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setShowImageModePicker(false);
+      }
+    };
+
+    window.addEventListener('pointerdown', handleClickOutside, true);
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => {
+      window.removeEventListener('pointerdown', handleClickOutside, true);
+      window.removeEventListener('keydown', handleKeyDown, true);
+    };
+  }, [showImageModePicker]);
 
   const handleStartReply = (msg) => {
     sounds.playClick();
@@ -1541,7 +1566,7 @@ export default function ChatView({
             </button>
 
             {/* Image Mode & Upload Button */}
-            <div className="attachment-dropdown-wrap">
+            <div className="attachment-dropdown-wrap" ref={imagePickerRef}>
               <button 
                 type="button" 
                 className="chat-action-btn"
@@ -1552,7 +1577,13 @@ export default function ChatView({
               </button>
 
               {showImageModePicker && (
-                <div className="image-mode-picker">
+                <>
+                  <div 
+                    className="image-picker-backdrop" 
+                    onClick={() => setShowImageModePicker(false)}
+                    onTouchStart={() => setShowImageModePicker(false)}
+                  />
+                  <div className="image-mode-picker">
                   <div className="picker-title">Send Image As:</div>
 
                   <button 
@@ -1607,6 +1638,7 @@ export default function ChatView({
                     </div>
                   </button>
                 </div>
+                </>
               )}
             </div>
 
@@ -1660,8 +1692,8 @@ export default function ChatView({
 
       {/* View-Once Full Screen Modal */}
       {viewOnceModalData && (
-        <div className="view-once-modal-overlay">
-          <div className="view-once-modal-content">
+        <div className="view-once-modal-overlay" onClick={handleCloseAndBurnViewOnce}>
+          <div className="view-once-modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-burn-header">
               <div className="burn-warning">
                 <Flame size={18} className="text-pink animate-pulse" />

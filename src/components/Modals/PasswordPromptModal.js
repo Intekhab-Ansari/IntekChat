@@ -24,7 +24,7 @@ export default function PasswordPromptModal({
   };
 
   return (
-    <div className="modal-backdrop">
+    <div className="modal-backdrop" onClick={onCancel}>
       <div className="modal-card password-prompt-card" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title-group">

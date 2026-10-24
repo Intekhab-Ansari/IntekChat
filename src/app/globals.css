@@ -2717,6 +2717,18 @@ body {
   border-color: var(--border-bright);
 }
 
+/* Transparent click-outside backdrops for popups & option menus */
+.image-picker-backdrop,
+.theme-dropdown-backdrop {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 55;
+  background: transparent;
+  cursor: default;
+}
+
 .attachment-dropdown-wrap {
   position: relative;
 }
