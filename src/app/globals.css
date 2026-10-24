@@ -594,7 +594,7 @@ body {
 
 .icon-btn:hover {
   background: var(--bg-card-hover);
-  color: #fff;
+  color: var(--text-main);
   border-color: var(--border-bright);
   transform: translateY(-1px);
 }
@@ -2695,7 +2695,7 @@ body {
 
 .chat-action-btn:hover {
   background: var(--bg-card-hover);
-  color: #fff;
+  color: var(--text-main);
   border-color: var(--border-bright);
 }
 
@@ -4837,6 +4837,9 @@ body {
 [data-theme="silk"] .current-room-name,
 [data-theme="silk"] .file-name,
 [data-theme="silk"] .wallpaper-name,
+[data-theme="silk"] .empty-bubble h3,
+[data-theme="silk"] .room-title,
+[data-theme="silk"] .room-label,
 [data-theme="silk"] .profile-name {
   color: #0f172a !important;
 }
@@ -4905,6 +4908,298 @@ body {
 
 [data-theme="silk"] .btn-secondary:hover {
   background: #f1f5f9;
+}
+
+/* Silk Daylight - Interactive Button & Icon Hover Contrast Enhancements */
+[data-theme="silk"] .icon-btn {
+  background: #ffffff;
+  border-color: rgba(148, 163, 184, 0.35);
+  color: #334155;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+[data-theme="silk"] .icon-btn:hover {
+  background: rgba(124, 58, 237, 0.12) !important;
+  color: #7c3aed !important;
+  border-color: #7c3aed !important;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.18) !important;
+  transform: translateY(-1px);
+}
+
+[data-theme="silk"] .icon-btn:hover svg {
+  color: inherit !important;
+  stroke: currentColor !important;
+}
+
+[data-theme="silk"] .icon-btn:hover svg.text-emerald {
+  color: #059669 !important;
+  stroke: #059669 !important;
+}
+
+[data-theme="silk"] .icon-btn:hover svg.text-cyan {
+  color: #0284c7 !important;
+  stroke: #0284c7 !important;
+}
+
+[data-theme="silk"] .btn-room-trigger {
+  background: rgba(124, 58, 237, 0.1) !important;
+  border-color: rgba(124, 58, 237, 0.35) !important;
+  color: #7c3aed !important;
+}
+
+[data-theme="silk"] .btn-room-trigger:hover {
+  background: #7c3aed !important;
+  color: #ffffff !important;
+  border-color: #6d28d9 !important;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.3) !important;
+}
+
+[data-theme="silk"] .btn-room-trigger:hover svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+[data-theme="silk"] .chat-action-btn {
+  background: #f1f5f9;
+  border-color: rgba(148, 163, 184, 0.35);
+  color: #475569;
+}
+
+[data-theme="silk"] .chat-action-btn:hover {
+  background: rgba(124, 58, 237, 0.12) !important;
+  color: #7c3aed !important;
+  border-color: #7c3aed !important;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.15) !important;
+}
+
+[data-theme="silk"] .chat-action-btn:hover svg {
+  color: #7c3aed !important;
+  stroke: #7c3aed !important;
+}
+
+[data-theme="silk"] .btn-wallpaper {
+  background: #ffffff;
+  border-color: rgba(148, 163, 184, 0.35);
+  color: #334155;
+}
+
+[data-theme="silk"] .btn-wallpaper:hover {
+  background: rgba(124, 58, 237, 0.12) !important;
+  color: #7c3aed !important;
+  border-color: #7c3aed !important;
+}
+
+[data-theme="silk"] .btn-wallpaper:hover svg {
+  color: #7c3aed !important;
+  stroke: #7c3aed !important;
+}
+
+[data-theme="silk"] .btn-stealth {
+  background: #ffffff;
+  border-color: rgba(148, 163, 184, 0.35);
+  color: #334155;
+}
+
+[data-theme="silk"] .btn-stealth:hover:not(.stealth-active) {
+  background: rgba(124, 58, 237, 0.12) !important;
+  color: #7c3aed !important;
+  border-color: #7c3aed !important;
+}
+
+[data-theme="silk"] .btn-stealth:hover:not(.stealth-active) svg {
+  color: #7c3aed !important;
+  stroke: #7c3aed !important;
+}
+
+[data-theme="silk"] .btn-sidebar-open {
+  background: #ffffff;
+  border-color: rgba(148, 163, 184, 0.35);
+  color: #334155;
+}
+
+[data-theme="silk"] .btn-sidebar-open:hover {
+  background: rgba(124, 58, 237, 0.12) !important;
+  color: #7c3aed !important;
+  border-color: #7c3aed !important;
+}
+
+[data-theme="silk"] .btn-sidebar-open:hover svg {
+  color: #7c3aed !important;
+  stroke: #7c3aed !important;
+}
+
+[data-theme="silk"] .sidebar-close-btn,
+[data-theme="silk"] .sidebar-toggle-btn {
+  background: #f1f5f9;
+  border-color: rgba(148, 163, 184, 0.35);
+  color: #475569;
+}
+
+[data-theme="silk"] .sidebar-close-btn:hover,
+[data-theme="silk"] .sidebar-toggle-btn:hover {
+  background: #e2e8f0 !important;
+  border-color: #94a3b8 !important;
+  color: #0f172a !important;
+}
+
+[data-theme="silk"] .sidebar-close-btn:hover svg,
+[data-theme="silk"] .sidebar-toggle-btn:hover svg {
+  color: #0f172a !important;
+  stroke: #0f172a !important;
+}
+
+[data-theme="silk"] .sidebar-edit-btn {
+  background: #f1f5f9;
+  border-color: rgba(148, 163, 184, 0.35);
+  color: #7c3aed;
+}
+
+[data-theme="silk"] .sidebar-edit-btn:hover {
+  background: #7c3aed !important;
+  border-color: #6d28d9 !important;
+  color: #ffffff !important;
+}
+
+[data-theme="silk"] .sidebar-edit-btn:hover svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+[data-theme="silk"] .btn-edit-room-quick {
+  background: rgba(124, 58, 237, 0.1) !important;
+  border-color: rgba(124, 58, 237, 0.3) !important;
+  color: #7c3aed !important;
+}
+
+[data-theme="silk"] .btn-edit-room-quick:hover {
+  background: #7c3aed !important;
+  color: #ffffff !important;
+  border-color: #6d28d9 !important;
+}
+
+[data-theme="silk"] .btn-edit-room-quick:hover svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+[data-theme="silk"] .btn-clear-chat:hover {
+  background: #e11d48 !important;
+  color: #ffffff !important;
+  border-color: #be123c !important;
+}
+
+[data-theme="silk"] .btn-clear-chat:hover svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+[data-theme="silk"] .btn-leave-chat:hover {
+  background: #dc2626 !important;
+  color: #ffffff !important;
+  border-color: #b91c1c !important;
+}
+
+[data-theme="silk"] .btn-leave-chat:hover svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+[data-theme="silk"] .wallpaper-btn {
+  background: #ffffff;
+  border-color: rgba(148, 163, 184, 0.35);
+  color: #0f172a;
+}
+
+[data-theme="silk"] .wallpaper-btn:hover {
+  background: rgba(124, 58, 237, 0.12) !important;
+  color: #7c3aed !important;
+  border-color: #7c3aed !important;
+}
+
+[data-theme="silk"] .wallpaper-btn:hover svg {
+  color: #7c3aed !important;
+  stroke: #7c3aed !important;
+}
+
+[data-theme="silk"] .btn-copy-room-link {
+  background: #ffffff;
+  border-color: rgba(148, 163, 184, 0.35);
+  color: #0f172a;
+}
+
+[data-theme="silk"] .btn-copy-room-link:hover {
+  background: rgba(124, 58, 237, 0.12) !important;
+  color: #7c3aed !important;
+  border-color: #7c3aed !important;
+}
+
+[data-theme="silk"] .btn-copy-room-link:hover svg {
+  color: #7c3aed !important;
+  stroke: #7c3aed !important;
+}
+
+[data-theme="silk"] .empty-bubble {
+  background: #ffffff;
+  border-color: rgba(148, 163, 184, 0.35);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+}
+
+[data-theme="silk"] .prompt-chip-pink:hover {
+  background: #e11d48 !important;
+  color: #ffffff !important;
+}
+
+[data-theme="silk"] .prompt-chip-pink:hover svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+[data-theme="silk"] .prompt-chip-cyan:hover {
+  background: #7c3aed !important;
+  color: #ffffff !important;
+}
+
+[data-theme="silk"] .prompt-chip-cyan:hover svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+[data-theme="silk"] .prompt-chip-emerald:hover {
+  background: #059669 !important;
+  color: #ffffff !important;
+}
+
+[data-theme="silk"] .prompt-chip-emerald:hover svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+[data-theme="silk"] .btn-radar-qr-show {
+  background: #ffffff;
+  border-color: rgba(148, 163, 184, 0.35);
+  color: #0f172a;
+}
+
+[data-theme="silk"] .btn-radar-qr-show:hover {
+  background: rgba(124, 58, 237, 0.1) !important;
+  border-color: #7c3aed !important;
+  color: #7c3aed !important;
+}
+
+[data-theme="silk"] .btn-radar-qr-show:hover svg {
+  color: #7c3aed !important;
+  stroke: #7c3aed !important;
+}
+
+[data-theme="silk"] .btn-close-reply:hover {
+  background: #e11d48 !important;
+  color: #ffffff !important;
+  border-color: #be123c !important;
+}
+
+[data-theme="silk"] .btn-close-reply:hover svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
 }
 
 /* ==========================================================================
