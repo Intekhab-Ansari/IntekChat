@@ -223,7 +223,7 @@ export default function CameraModal({
               title="Burns forever after 1 viewing"
             >
               <Flame size={13} />
-              <span>⚡ View Once</span>
+              <span>View Once</span>
             </button>
 
             <button
@@ -236,7 +236,7 @@ export default function CameraModal({
               title="Replayable during this session"
             >
               <Repeat size={13} />
-              <span>🔁 Repeat</span>
+              <span>Repeat</span>
             </button>
 
             <button
@@ -249,7 +249,7 @@ export default function CameraModal({
               title="Standard viewable photo"
             >
               <InfinityIcon size={13} />
-              <span>♾️ Permanent</span>
+              <span>Permanent</span>
             </button>
           </div>
         </div>
