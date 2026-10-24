@@ -416,7 +416,6 @@ export default function RoomModal({
                   <span className="btn-random-label">Random</span>
                 </button>
               </div>
-              <span className="input-hint">Changing Room ID will migrate all connected peers in real time.</span>
             </div>
 
             {/* Password Management */}
@@ -798,7 +797,7 @@ export default function RoomModal({
                   {showJoinPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
-              <span className="input-hint">If this room has a password, enter it here or unlock when prompted.</span>
+              <span className="input-hint">Optional: Enter password if room is protected.</span>
             </div>
 
             <div className="modal-footer">
