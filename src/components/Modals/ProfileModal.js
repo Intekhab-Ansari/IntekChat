@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Check, RefreshCw, User, Laptop, Smartphone, Tablet } from 'lucide-react';
 import { generateRandomName, getAvatarColor, savePeerProfile } from '@/lib/peer';
 import { sounds } from '@/lib/sound';
@@ -8,6 +8,30 @@ import { sounds } from '@/lib/sound';
 export default function ProfileModal({ isOpen, onClose, userProfile, onUpdateProfile }) {
   const [name, setName] = useState(userProfile?.name || '');
   const [selectedColor, setSelectedColor] = useState(userProfile?.colorIndex || 0);
+
+  // Sync state whenever modal is opened or userProfile changes
+  useEffect(() => {
+    if (isOpen) {
+      if (userProfile?.name) {
+        setName(userProfile.name);
+      }
+      if (typeof userProfile?.colorIndex === 'number') {
+        setSelectedColor(userProfile.colorIndex);
+      }
+    }
+  }, [isOpen, userProfile]);
+
+  // Support closing modal with Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onClose?.();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -89,6 +113,7 @@ export default function ProfileModal({ isOpen, onClose, userProfile, onUpdatePro
               <input
                 type="text"
                 className="modal-text-input"
+                placeholder="Enter your codename..."
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 maxLength={30}
