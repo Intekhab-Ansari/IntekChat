@@ -228,7 +228,7 @@ export default function RoomModal({
               <span>Room Manager</span>
             </div>
             <h3>Custom Encrypted Rooms</h3>
-            <p>Create, join, or customize private rooms with custom keys & password protection</p>
+            <p className="room-modal-subtitle">Create or customize private encrypted rooms</p>
           </div>
           <button 
             type="button" 

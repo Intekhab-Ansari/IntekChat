@@ -3428,8 +3428,8 @@ body {
 }
 
 .room-modal-card {
-  max-width: 520px;
-  width: 100%;
+  max-width: 410px;
+  width: 95%;
   max-height: 88vh;
   overflow-y: auto;
   scrollbar-width: thin;
@@ -3803,14 +3803,145 @@ body {
    ROOM MANAGER MODAL & PASSWORD PROMPT MODAL (ULTRA-PREMIUM GLASSMORPHISM)
    ========================================================================== */
 .room-modal-card {
-  max-width: 540px;
-  width: 95%;
+  max-width: 410px !important;
+  width: 94% !important;
+  padding: 1.15rem 1.25rem !important;
+  border-radius: 16px !important;
   background: linear-gradient(155deg, rgba(20, 26, 44, 0.96), rgba(11, 15, 26, 0.98)) !important;
   border: 1px solid rgba(255, 255, 255, 0.12) !important;
-  box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.8), 0 0 45px rgba(59, 130, 246, 0.15) !important;
+  box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.8), 0 0 35px rgba(59, 130, 246, 0.15) !important;
   backdrop-filter: blur(24px) !important;
   position: relative;
   overflow: hidden;
+}
+
+.room-modal-card .modal-header {
+  margin-bottom: 0.75rem !important;
+}
+
+.room-modal-card .modal-title-group h3 {
+  font-size: 1.05rem !important;
+  margin-bottom: 0.15rem !important;
+  white-space: nowrap !important;
+}
+
+.room-modal-card .room-modal-subtitle {
+  font-size: 0.72rem !important;
+  color: var(--text-dim) !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  margin-top: 0 !important;
+}
+
+.room-modal-card .current-room-banner {
+  padding: 0.55rem 0.75rem !important;
+  margin-bottom: 0.75rem !important;
+  border-radius: 12px !important;
+  gap: 0.5rem !important;
+}
+
+.room-modal-card .current-room-icon-wrap {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 8px !important;
+}
+
+.room-modal-card .current-room-label {
+  font-size: 0.62rem !important;
+}
+
+.room-modal-card .current-room-name {
+  font-size: 0.84rem !important;
+  max-width: 140px !important;
+}
+
+.room-modal-card .current-room-badge-pill {
+  font-size: 0.65rem !important;
+}
+
+.room-modal-card .btn-edit-room-toggle,
+.room-modal-card .btn-copy-room-link,
+.room-modal-card .btn-leave-room {
+  height: 28px !important;
+  padding: 0.2rem 0.55rem !important;
+  font-size: 0.72rem !important;
+  border-radius: 6px !important;
+}
+
+.room-modal-card .room-modal-tabs {
+  margin-bottom: 0.75rem !important;
+  padding: 2px !important;
+  gap: 3px !important;
+  border-radius: 10px !important;
+}
+
+.room-modal-card .room-modal-tab {
+  padding: 0.32rem 0.6rem !important;
+  font-size: 0.75rem !important;
+  height: 30px !important;
+}
+
+.room-modal-card .input-group {
+  margin-bottom: 0.65rem !important;
+}
+
+.room-modal-card .input-label {
+  font-size: 0.74rem !important;
+  margin-bottom: 0.25rem !important;
+  white-space: nowrap !important;
+}
+
+.room-modal-card .room-name-input {
+  padding: 0.45rem 0.65rem !important;
+  font-size: 0.82rem !important;
+  height: 36px !important;
+}
+
+.room-modal-card .btn-random-room {
+  padding: 0.2rem 0.55rem !important;
+  height: 28px !important;
+  font-size: 0.72rem !important;
+}
+
+.room-modal-card .password-protect-card {
+  padding: 0.55rem 0.8rem !important;
+  margin-top: 0.55rem !important;
+  border-radius: 12px !important;
+}
+
+.room-modal-card .protect-icon-circle {
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 8px !important;
+}
+
+.room-modal-card .protect-title {
+  font-size: 0.82rem !important;
+  white-space: nowrap !important;
+}
+
+.room-modal-card .protect-subtitle {
+  font-size: 0.68rem !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  max-width: 250px !important;
+  display: block !important;
+}
+
+.room-modal-card .modal-footer {
+  margin-top: 0.85rem !important;
+  gap: 0.55rem !important;
+  padding-top: 0 !important;
+}
+
+.room-modal-card .modal-footer button {
+  height: 36px !important;
+  padding: 0.45rem 1rem !important;
+  font-size: 0.82rem !important;
+  border-radius: 10px !important;
+  white-space: nowrap !important;
 }
 
 .room-modal-card::before {
@@ -3851,49 +3982,62 @@ body {
   box-shadow: 0 0 12px rgba(244, 63, 94, 0.2);
 }
 
-/* Quick Preset Chips */
+/* Quick Preset Chips - strictly in ONE LINE */
 .room-preset-chips {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-  margin-top: 0.65rem;
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  overflow-x: auto !important;
+  scrollbar-width: none !important;
+  gap: 0.28rem !important;
+  margin-top: 0.45rem !important;
+  white-space: nowrap !important;
+  width: 100% !important;
+  padding-bottom: 2px !important;
+}
+
+.room-preset-chips::-webkit-scrollbar {
+  display: none !important;
 }
 
 .hero-preset-chips {
-  justify-content: center;
-  margin-top: 0.1rem;
-  margin-bottom: 0.35rem;
-  gap: 0.35rem;
+  justify-content: center !important;
+  margin-top: 0.1rem !important;
+  margin-bottom: 0.35rem !important;
+  gap: 0.28rem !important;
 }
 
 .preset-label {
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-right: 0.2rem;
+  font-size: 0.65rem !important;
+  font-weight: 700 !important;
+  color: var(--text-dim) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  margin-right: 0.15rem !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
 }
 
 .preset-chip {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--border-subtle);
-  color: var(--text-muted);
-  font-size: 0.75rem;
-  font-weight: 700;
-  padding: 3px 9px;
-  border-radius: 9999px;
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid var(--border-subtle) !important;
+  color: var(--text-muted) !important;
+  font-size: 0.7rem !important;
+  font-weight: 700 !important;
+  padding: 2px 7px !important;
+  border-radius: 9999px !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .preset-chip:hover {
-  background: rgba(59, 130, 246, 0.15);
-  border-color: var(--accent-primary);
-  color: #fff;
-  transform: translateY(-1px);
-  box-shadow: 0 3px 10px rgba(59, 130, 246, 0.25);
+  background: rgba(59, 130, 246, 0.15) !important;
+  border-color: var(--accent-primary) !important;
+  color: #fff !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 3px 10px rgba(59, 130, 246, 0.25) !important;
 }
 
 .protect-active {
