@@ -1260,7 +1260,7 @@ export default function ChatView({
             <span className="chat-peer-status" title="Real-time participants in this room">
               <span className="realtime-live-dot" />
               {peerCount === 0 
-                ? '1 in room (You • Waiting for others to join)' 
+                ? '1 in room (Waiting for peers)' 
                 : `${totalParticipants || (peerCount + 1)} in room (${peerCount} peer${peerCount === 1 ? '' : 's'} + You)`}
             </span>
           </div>
