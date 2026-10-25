@@ -60,12 +60,42 @@ export default function Home() {
   const cancelTokensRef = useRef(new Set());
   const relayIncomingFilesRef = useRef(new Map());
   const syncedWallpaperRef = useRef(null);
+  const messagesRef = useRef([]);
+  const roomNameRef = useRef('');
+  const currentThemeRef = useRef('sapphire');
+  const wallpaperSettingsRef = useRef({
+    wallpaperType: 'doodles',
+    customWallpaper: null,
+    wallpaperOpacity: 18,
+    wallpaperBlur: false
+  });
   const sendQueueRef = useRef([]);
   const isSendingFileRef = useRef(false);
 
   useEffect(() => {
     syncedWallpaperRef.current = syncedWallpaper;
   }, [syncedWallpaper]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
+    roomNameRef.current = roomName;
+  }, [roomName]);
+
+  useEffect(() => {
+    currentThemeRef.current = currentTheme;
+  }, [currentTheme]);
+
+  useEffect(() => {
+    wallpaperSettingsRef.current = {
+      wallpaperType,
+      customWallpaper,
+      wallpaperOpacity,
+      wallpaperBlur
+    };
+  }, [wallpaperType, customWallpaper, wallpaperOpacity, wallpaperBlur]);
 
   // Handle mobile visual viewport & virtual keyboard sticking (WhatsApp-like layout)
   useEffect(() => {
@@ -414,6 +444,156 @@ export default function Home() {
     });
   }, [userProfile]);
 
+  // Send active room state (messages, wallpaper, theme) to newly joined or requesting peer
+  const sendRoomStateToPeer = useCallback(async (targetPeerId) => {
+    if (!targetPeerId) return;
+
+    const currentMsgs = messagesRef.current || [];
+    // Sanitize messages: exclude huge media attachments to ensure fast sync
+    const sanitizedMsgs = currentMsgs.slice(-100).map((m) => {
+      if (m.dataUrl && m.dataUrl.length > 250000) {
+        return { ...m, dataUrl: '' };
+      }
+      return m;
+    });
+
+    const activeWall = wallpaperSettingsRef.current;
+    let customImageToSend = activeWall?.customWallpaper || null;
+    if (activeWall?.wallpaperType === 'custom' && customImageToSend && customImageToSend.length > 70000) {
+      try {
+        customImageToSend = await compressWallpaperImage(customImageToSend, 800, 0.65);
+      } catch (e) {}
+    }
+
+    const syncPayload = {
+      messages: sanitizedMsgs,
+      wallpaper: {
+        wallpaperType: activeWall?.wallpaperType || 'doodles',
+        customImage: activeWall?.wallpaperType === 'custom' ? customImageToSend : null,
+        opacity: typeof activeWall?.wallpaperOpacity === 'number' ? activeWall.wallpaperOpacity : 18,
+        blur: Boolean(activeWall?.wallpaperBlur)
+      },
+      theme: currentThemeRef.current || 'sapphire',
+      roomName: roomNameRef.current,
+      senderId: userProfile?.id,
+      senderName: userProfile?.name || 'Peer',
+      timestamp: Date.now()
+    };
+
+    let payloadToSend = syncPayload;
+    if (cryptoKeyRef.current) {
+      try {
+        const encrypted = await encryptPayload(syncPayload, cryptoKeyRef.current);
+        if (encrypted) payloadToSend = encrypted;
+      } catch (err) {
+        console.warn('Failed to encrypt room-state-sync:', err);
+      }
+    }
+
+    // 1. Send via direct WebRTC DataChannel if open
+    let sentDirect = false;
+    if (webrtcRef.current) {
+      sentDirect = webrtcRef.current.sendRoomStateSyncToPeer(targetPeerId, payloadToSend);
+    }
+
+    // 2. Also send via signaling relay if direct channel wasn't open or to guarantee delivery
+    if (!sentDirect && socketRef.current) {
+      try {
+        socketRef.current.emit('e2ee-relay', {
+          to: targetPeerId,
+          type: 'room-state-sync',
+          payload: payloadToSend
+        });
+      } catch (e) {}
+    }
+  }, [userProfile]);
+
+  // Handle incoming room state sync when joining an existing room
+  const handleIncomingRoomStateSync = useCallback(async (payload, fromPeerId) => {
+    if (!payload) return;
+    let data = payload;
+    if (typeof payload === 'string' || (payload.ciphertext && payload.iv)) {
+      try {
+        const decrypted = await decryptPayload(payload, cryptoKeyRef.current);
+        if (decrypted) data = decrypted;
+      } catch (err) {
+        console.warn('Failed to decrypt room-state-sync:', err);
+        return;
+      }
+    }
+
+    if (!data) return;
+
+    // 1. Inherit Wallpaper
+    if (data.wallpaper) {
+      const wall = data.wallpaper;
+      if (wall.wallpaperType) {
+        setWallpaperType(wall.wallpaperType);
+        try { localStorage.setItem('intekchat_wallpaper_type', wall.wallpaperType); } catch {}
+      }
+      if (wall.customImage !== undefined) {
+        setCustomWallpaper(wall.customImage);
+        try {
+          if (wall.customImage) localStorage.setItem('intekchat_wallpaper_custom', wall.customImage);
+          else localStorage.removeItem('intekchat_wallpaper_custom');
+        } catch {}
+      }
+      if (typeof wall.opacity === 'number') {
+        setWallpaperOpacity(wall.opacity);
+        try { localStorage.setItem('intekchat_wallpaper_opacity', String(wall.opacity)); } catch {}
+      }
+      if (typeof wall.blur === 'boolean') {
+        setWallpaperBlur(wall.blur);
+        try { localStorage.setItem('intekchat_wallpaper_blur', String(wall.blur)); } catch {}
+      }
+      setSyncedWallpaper(wall);
+    }
+
+    // 2. Inherit Theme
+    if (data.theme) {
+      const validThemes = ['sapphire', 'silk', 'cyberpunk', 'amber', 'amethyst', 'emerald', 'obsidian', 'frost'];
+      if (validThemes.includes(data.theme)) {
+        setCurrentTheme(data.theme);
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem('intekchat_theme', data.theme);
+            document.documentElement.setAttribute('data-theme', data.theme);
+          } catch {}
+        }
+      }
+    }
+
+    // 3. Inherit Chat Messages
+    if (Array.isArray(data.messages) && data.messages.length > 0) {
+      setMessages((prev) => {
+        const existingIds = new Set(prev.map((m) => m.id));
+        const incoming = data.messages.filter((m) => m && m.id && !existingIds.has(m.id));
+        if (incoming.length === 0) return prev;
+
+        const combined = [...prev, ...incoming].sort((a, b) => {
+          const timeA = a.timestamp || 0;
+          const timeB = b.timestamp || 0;
+          return timeA - timeB;
+        });
+
+        if (typeof window !== 'undefined' && roomNameRef.current) {
+          try {
+            const sanitized = combined.slice(-250).map((m) => {
+              if (m.dataUrl && m.dataUrl.length > 400000) {
+                return { ...m, dataUrl: '' };
+              }
+              return m;
+            });
+            localStorage.setItem(getRoomStorageKey(roomNameRef.current), JSON.stringify(sanitized));
+          } catch {}
+        }
+
+        sounds.playMessage();
+        return combined;
+      });
+    }
+  }, []);
+
   // Auto-clean expired typing indicators
   useEffect(() => {
     const interval = setInterval(() => {
@@ -464,6 +644,17 @@ export default function Home() {
         setPeers(filtered);
         setTotalParticipants(typeof totalCount === 'number' ? totalCount : filtered.length + 1);
 
+        // If joining an existing room where other peers are already present, request room state (chats, wallpaper, theme)
+        if (filtered.length > 0) {
+          const hostPeer = filtered[0];
+          try {
+            signaling.emit('e2ee-relay', {
+              to: hostPeer.id,
+              type: 'request-room-sync'
+            });
+          } catch (e) {}
+        }
+
         // Snapdrop deterministic single-offerer:
         // Only initiate offer if our ID is greater than remote peer's ID to prevent glare and collisions
         filtered.forEach((p) => {
@@ -492,15 +683,9 @@ export default function Home() {
         if (newPeer.id && userProfile?.id && userProfile.id > newPeer.id) {
           webrtcRef.current?.connectToPeer(newPeer.id);
         }
-        // Sync current room wallpaper to newly joined peer
-        if (syncedWallpaperRef.current && newPeer.id) {
-          try {
-            signaling.emit('e2ee-relay', {
-              to: newPeer.id,
-              type: 'room-wallpaper',
-              payload: syncedWallpaperRef.current
-            });
-          } catch (e) {}
+        // Send full active room state (messages, wallpaper, theme) to newly joined peer
+        if (newPeer.id) {
+          sendRoomStateToPeer(newPeer.id);
         }
       });
 
@@ -513,8 +698,20 @@ export default function Home() {
       signaling.on('peer-left', ({ id }) => {
         sounds.playLeave();
         setPeers((prev) => {
+          const departingPeer = prev.find((p) => p.id === id);
           const next = prev.filter((p) => p.id !== id);
           setTotalParticipants(Math.max(1, next.length + 1));
+          if (departingPeer) {
+            setMessages((mPrev) => [
+              ...mPrev,
+              {
+                id: `sys-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                system: true,
+                text: `👋 ${departingPeer.name || 'A participant'} left the room`,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              }
+            ]);
+          }
           return next;
         });
         setActiveTransfers((prev) => {
@@ -587,6 +784,10 @@ export default function Home() {
           handleIncomingMessageSeen(payload);
         } else if (type === 'room-wallpaper') {
           handleIncomingRoomWallpaper(payload);
+        } else if (type === 'room-state-sync') {
+          handleIncomingRoomStateSync(payload, from);
+        } else if (type === 'request-room-sync') {
+          sendRoomStateToPeer(from);
         } else if (type === 'file-relay-start') {
           // Initialize incoming relay transfer
           relayIncomingFilesRef.current.set(payload.id, {
@@ -710,12 +911,8 @@ export default function Home() {
       const webrtc = new WebRTCManager(signaling, userProfile, {
         onChannelOpen: (peerId) => {
           sounds.playJoin();
-          // Sync active room wallpaper over direct P2P data channel as soon as it opens
-          if (syncedWallpaperRef.current) {
-            try {
-              webrtc.sendRoomWallpaperToPeer(peerId, syncedWallpaperRef.current);
-            } catch (e) {}
-          }
+          // Send complete room state (messages, wallpaper, theme) to the newly connected peer
+          sendRoomStateToPeer(peerId);
         },
         onFileTransferStart: (meta) => {
           setActiveTransfers((prev) => ({
@@ -809,6 +1006,12 @@ export default function Home() {
         },
         onRoomWallpaper: (payload) => {
           handleIncomingRoomWallpaper(payload);
+        },
+        onRoomStateSync: (payload, fromPeerId) => {
+          handleIncomingRoomStateSync(payload, fromPeerId);
+        },
+        onRequestRoomSync: (fromPeerId) => {
+          sendRoomStateToPeer(fromPeerId);
         }
       });
       webrtcRef.current = webrtc;
@@ -906,6 +1109,24 @@ export default function Home() {
   // Handle Joining / Creating Room
   const handleCreateOrJoinRoom = (newRoom, password = '') => {
     const cleanRoom = (newRoom || '').trim().toLowerCase().replace(/[^a-z0-9-_]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    
+    // Clean previous room state so every new room starts completely fresh
+    setMessages([]);
+    setWallpaperType('doodles');
+    setCustomWallpaper(null);
+    setWallpaperOpacity(18);
+    setWallpaperBlur(false);
+    setSyncedWallpaper(null);
+    syncedWallpaperRef.current = null;
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('intekchat_wallpaper_custom');
+        localStorage.removeItem('intekchat_wallpaper_type');
+        localStorage.removeItem('intekchat_wallpaper_opacity');
+        localStorage.removeItem('intekchat_wallpaper_blur');
+      } catch {}
+    }
+
     setRoomName(cleanRoom);
     setRoomPassword(password || '');
     setIsRoomProtected(!!password);
@@ -932,7 +1153,6 @@ export default function Home() {
         console.warn('URL update warning:', e);
       }
     }
-    setMessages([]);
     sounds.playJoin();
   };
 
@@ -959,6 +1179,23 @@ export default function Home() {
 
     if (room) {
       const cleanRoom = room.trim().toLowerCase().replace(/\s+/g, '-');
+      // Clean previous room state so scanned room starts fresh or inherits from active peers
+      setMessages([]);
+      setWallpaperType('doodles');
+      setCustomWallpaper(null);
+      setWallpaperOpacity(18);
+      setWallpaperBlur(false);
+      setSyncedWallpaper(null);
+      syncedWallpaperRef.current = null;
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.removeItem('intekchat_wallpaper_custom');
+          localStorage.removeItem('intekchat_wallpaper_type');
+          localStorage.removeItem('intekchat_wallpaper_opacity');
+          localStorage.removeItem('intekchat_wallpaper_blur');
+        } catch {}
+      }
+
       setRoomName(cleanRoom);
       setRoomPassword(pwd || '');
       setIsRoomProtected(!!pwd);
@@ -973,7 +1210,6 @@ export default function Home() {
         url.searchParams.delete('pair');
         window.history.pushState({}, '', url.toString());
       }
-      setMessages([]);
       sounds.playJoin();
     }
   };
@@ -1043,22 +1279,68 @@ export default function Home() {
   };
 
   const handleLeaveRoom = () => {
+    // 1. Wipe chat messages for this room from local storage and memory
     if (typeof window !== 'undefined' && roomName) {
       try {
         localStorage.removeItem(getRoomStorageKey(roomName));
       } catch {}
     }
+    setMessages([]);
+
+    // 2. Wipe wallpaper completely and reset to clean defaults
+    setWallpaperType('doodles');
+    setCustomWallpaper(null);
+    setWallpaperOpacity(18);
+    setWallpaperBlur(false);
+    setSyncedWallpaper(null);
+    syncedWallpaperRef.current = null;
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('intekchat_wallpaper_custom');
+        localStorage.removeItem('intekchat_wallpaper_type');
+        localStorage.removeItem('intekchat_wallpaper_opacity');
+        localStorage.removeItem('intekchat_wallpaper_blur');
+      } catch {}
+    }
+
+    // 3. Reset theme to default sapphire
+    setCurrentTheme('sapphire');
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('intekchat_theme', 'sapphire');
+        document.documentElement.setAttribute('data-theme', 'sapphire');
+      } catch {}
+    }
+
+    // 4. Reset room metadata
     setRoomName('');
     setRoomPassword('');
     setIsRoomProtected(false);
     setTotalParticipants(1);
+    setPeers([]);
+
+    // 5. Clean URL query parameters
     if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href);
-      url.searchParams.delete('room');
-      url.searchParams.delete('pwd');
-      window.history.pushState({}, '', url.toString());
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('room');
+        url.searchParams.delete('pwd');
+        window.history.pushState({}, '', url.toString());
+      } catch {}
     }
-    setMessages([]);
+
+    // 6. Notify signaling server and clean up WebRTC
+    try {
+      socketRef.current?.emit('leave-room');
+    } catch {}
+    try {
+      webrtcRef.current?.destroy();
+    } catch {}
+
+    // 7. Reset active file transfers and typing indicators
+    setActiveTransfers({});
+    setTypingUsers([]);
+
     sounds.playLeave();
   };
 

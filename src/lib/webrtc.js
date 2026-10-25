@@ -345,6 +345,20 @@ export class WebRTCManager {
         break;
       }
 
+      case 'room-state-sync': {
+        if (this.callbacks.onRoomStateSync) {
+          this.callbacks.onRoomStateSync(msg.payload, fromPeerId);
+        }
+        break;
+      }
+
+      case 'request-room-sync': {
+        if (this.callbacks.onRequestRoomSync) {
+          this.callbacks.onRequestRoomSync(fromPeerId);
+        }
+        break;
+      }
+
       default:
         break;
     }
@@ -651,6 +665,37 @@ export class WebRTCManager {
         channel.send(JSON.stringify({
           type: 'room-wallpaper',
           payload
+        }));
+        return true;
+      } catch (e) {}
+    }
+    return false;
+  }
+
+  // Send complete room state (messages, wallpaper, theme) to a newly joined peer
+  sendRoomStateSyncToPeer(peerId, payload) {
+    const channel = this.channels.get(peerId);
+    if (channel && channel.readyState === 'open') {
+      try {
+        channel.send(JSON.stringify({
+          type: 'room-state-sync',
+          payload
+        }));
+        return true;
+      } catch (e) {
+        console.warn('Failed to send room-state-sync on data channel:', e);
+      }
+    }
+    return false;
+  }
+
+  // Request room state sync from an existing peer in the room
+  requestRoomSyncFromPeer(peerId) {
+    const channel = this.channels.get(peerId);
+    if (channel && channel.readyState === 'open') {
+      try {
+        channel.send(JSON.stringify({
+          type: 'request-room-sync'
         }));
         return true;
       } catch (e) {}

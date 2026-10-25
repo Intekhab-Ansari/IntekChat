@@ -515,6 +515,16 @@ export default function ChatView({
     });
   }, []);
 
+  const handleTriggerLeave = useCallback(() => {
+    sounds.playClick();
+    if (window.confirm(`Leave room #${roomName} and return to Local Wi-Fi?`)) {
+      setInputText('');
+      setReplyingTo(null);
+      setIsStealthTextMode(false);
+      onLeaveRoom?.();
+    }
+  }, [roomName, onLeaveRoom]);
+
   const [selectedMessageForOptions, setSelectedMessageForOptions] = useState(null);
   const [copyToast, setCopyToast] = useState(null);
   const copyToastTimerRef = useRef(null);
@@ -839,7 +849,7 @@ export default function ChatView({
     }
   };
 
-  // Sync room wallpaper when received from another peer in the room
+  // Sync room wallpaper when received from another peer in the room or reset
   useEffect(() => {
     if (syncedWallpaper && syncedWallpaper.wallpaperType) {
       setWallpaperType(syncedWallpaper.wallpaperType);
@@ -860,8 +870,13 @@ export default function ChatView({
           }
         } catch (e) {}
       }
+    } else if (syncedWallpaper === null) {
+      setWallpaperType(propWallpaperType || 'doodles');
+      setCustomWallpaper(propCustomWallpaper || null);
+      setWallpaperOpacity(propWallpaperOpacity !== undefined ? propWallpaperOpacity : 18);
+      setWallpaperBlur(propWallpaperBlur !== undefined ? propWallpaperBlur : false);
     }
-  }, [syncedWallpaper]);
+  }, [syncedWallpaper, propWallpaperType, propCustomWallpaper, propWallpaperOpacity, propWallpaperBlur]);
 
   // Real-time Seen Receipts: Detect incoming messages viewed by the current user
   useEffect(() => {
@@ -1479,12 +1494,7 @@ export default function ChatView({
             <button 
               type="button" 
               className="sidebar-action-btn leave-btn"
-              onClick={() => {
-                sounds.playClick();
-                if (window.confirm(`Leave room #${roomName} and return to Local Wi-Fi?`)) {
-                  onLeaveRoom?.();
-                }
-              }}
+              onClick={handleTriggerLeave}
               title="Leave room and return to local network"
             >
               <LogOut size={14} />
@@ -1653,12 +1663,7 @@ export default function ChatView({
               <button
                 type="button"
                 className="shelf-tool-chip chip-leave"
-                onClick={() => {
-                  sounds.playClick();
-                  if (window.confirm(`Leave room #${roomName} and return to Local Wi-Fi?`)) {
-                    onLeaveRoom?.();
-                  }
-                }}
+                onClick={handleTriggerLeave}
                 title="Leave room and return to local network"
               >
                 <LogOut size={14} className="chip-icon" />
