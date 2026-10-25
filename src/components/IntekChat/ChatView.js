@@ -44,7 +44,8 @@ import {
   Edit3,
   QrCode,
   LogOut,
-  Palette
+  Palette,
+  SlidersHorizontal
 } from 'lucide-react';
 import { formatBytes, getAvatarColor } from '@/lib/peer';
 import { sounds } from '@/lib/sound';
@@ -491,7 +492,29 @@ export default function ChatView({
     }
     return true;
   });
-  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
+  const [isToolsOpen, setIsToolsOpen] = useState(false);
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('intekchat_tools_open');
+      if (saved !== null) {
+        setIsToolsOpen(saved === 'true');
+      } else {
+        setIsToolsOpen(window.innerWidth > 860);
+      }
+    }
+  }, []);
+
+  const handleToggleTools = useCallback(() => {
+    sounds.playClick();
+    setIsToolsOpen(prev => {
+      const next = !prev;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('intekchat_tools_open', String(next));
+      }
+      return next;
+    });
+  }, []);
+
   const [selectedMessageForOptions, setSelectedMessageForOptions] = useState(null);
   const [copyToast, setCopyToast] = useState(null);
   const copyToastTimerRef = useRef(null);
@@ -1474,179 +1497,179 @@ export default function ChatView({
       {/* Main Conversation Column */}
       <section className="chat-main-pane">
         {/* Chat Sub-Header (Collapsible on toggle basis to maximize chat space) */}
-        {isHeaderCollapsed ? (
-          <div className="collapsed-header-bar">
-            <button
-              type="button"
-              className="btn-expand-header"
-              onClick={() => {
-                sounds.playClick();
-                setIsHeaderCollapsed(false);
-              }}
-              title="Show room options and toolbar"
-            >
-              <div className="collapsed-expand-inner">
-                {isRoomProtected ? <Lock size={13} className="text-pink" /> : <Lock size={13} className="text-accent" />}
-                <span className="collapsed-room-name">#{roomName}</span>
-                <span className="collapsed-peer-pill">
-                  <span className="realtime-live-dot" />
-                  <span>{peerCount === 0 ? '1 in room' : `${peerCount + 1} online`}</span>
-                </span>
-                <ChevronDown size={14} className="collapsed-chevron" />
-                <span className="collapsed-text">Show Options</span>
-              </div>
-            </button>
-          </div>
-        ) : (
-          <div className="chat-header">
-            <div className="header-left">
-              {!isSidebarOpen && (
-                <button 
-                  type="button"
-                  className="btn-sidebar-open" 
-                  onClick={() => setIsSidebarOpen(true)}
-                  title="Show Room Details & Participants"
-                >
-                  <PanelLeft size={15} className="flex-shrink-0" />
-                  <span className="btn-sidebar-label">Details</span>
-                </button>
-              )}
-
-              <div 
-                className="chat-room-badge clickable-room-badge"
-                onClick={onOpenRoomModal}
-                title="Click to manage room or switch rooms"
-              >
-                {isRoomProtected ? <Lock size={15} className="text-pink" /> : <Lock size={14} className="text-accent" />}
-                <span className="room-title">#{roomName}</span>
-                {isRoomProtected && <span className="room-protected-pill">Protected</span>}
-              </div>
-
+        {/* Chat Sub-Header (Always cleanly visible, uncrowded and spacious) */}
+        <div className="chat-header">
+          <div className="header-left">
+            {!isSidebarOpen && (
               <button 
-                type="button" 
-                className="btn-edit-room-quick"
-                onClick={onOpenEditRoom || onOpenRoomModal}
-                title="Edit Room ID and Password Protection"
+                type="button"
+                className="btn-sidebar-open" 
+                onClick={() => setIsSidebarOpen(true)}
+                title="Show Room Details & Participants"
               >
-                <Edit3 size={13} />
-                <span>Edit Room</span>
+                <PanelLeft size={15} className="flex-shrink-0" />
+                <span className="btn-sidebar-label">Details</span>
               </button>
+            )}
 
-              <span className="chat-peer-status" title="Real-time participants in this room">
-                <span className="realtime-live-dot" />
+            <div 
+              className="chat-room-badge clickable-room-badge"
+              onClick={onOpenRoomModal}
+              title="Click to manage room or switch rooms"
+            >
+              {isRoomProtected ? <Lock size={15} className="text-pink" /> : <Lock size={14} className="text-accent" />}
+              <span className="room-title">#{roomName}</span>
+              {isRoomProtected && <span className="room-protected-pill">Protected</span>}
+            </div>
+
+            <button 
+              type="button" 
+              className="btn-edit-room-quick desktop-only-edit"
+              onClick={onOpenEditRoom || onOpenRoomModal}
+              title="Edit Room ID and Password Protection"
+            >
+              <Edit3 size={13} />
+              <span>Edit Room</span>
+            </button>
+
+            <span className="chat-peer-status" title="Real-time participants in this room">
+              <span className="realtime-live-dot" />
+              <span className="peer-status-text">
                 {peerCount === 0 
                   ? '1 in room (Waiting for others)' 
                   : `${totalParticipants || (peerCount + 1)} in room (${peerCount} other${peerCount === 1 ? '' : 's'} + You)`}
               </span>
-            </div>
-
-            <div className="header-right">
-              {/* Collapse Toolbar Button to maximize chat viewport */}
-              <button
-                type="button"
-                className="btn-collapse-header"
-                onClick={() => {
-                  sounds.playClick();
-                  setIsHeaderCollapsed(true);
-                }}
-                title="Hide options bar to maximize space for chatting"
-              >
-                <ChevronUp size={15} />
-                <span>Hide</span>
-              </button>
-
-              {/* Switch to Text / Stealth Privacy Toggle */}
-              <button
-                type="button"
-                className={`btn-stealth ${isStealthTextMode ? 'stealth-active' : ''}`}
-                onClick={() => setIsStealthTextMode(!isStealthTextMode)}
-                title="Switch between Rich Media Mode and Discreet Text-Only Mode (Stealth Privacy)"
-              >
-                {isStealthTextMode ? (
-                  <>
-                    <LayoutGrid size={15} />
-                    <span>Rich Media Mode</span>
-                  </>
-                ) : (
-                  <>
-                    <Type size={15} />
-                    <span>Switch to Text</span>
-                  </>
-                )}
-              </button>
-
-              {/* Chat Wallpaper Button */}
-              <button
-                type="button"
-                className="btn-wallpaper"
-                onClick={() => {
-                  sounds.playClick();
-                  if (onOpenAppearance) {
-                    onOpenAppearance('wallpaper');
-                  } else {
-                    setIsWallpaperModalOpen(true);
-                  }
-                }}
-                title="Theme & Chat Wallpaper"
-              >
-                <Palette size={15} />
-                <span>Appearance</span>
-              </button>
-
-              {/* Share Room QR Code Button */}
-              <button
-                type="button"
-                className="btn-wallpaper"
-                onClick={() => {
-                  sounds.playClick();
-                  onOpenQr?.();
-                }}
-                title="Share Room QR Code & Credentials"
-              >
-                <QrCode size={15} />
-                <span>Room QR</span>
-              </button>
-
-              {/* Clear Chat Button */}
-              <button 
-                type="button"
-                className="btn-clear-chat" 
-                onClick={() => {
-                  sounds.playClick();
-                  if (window.confirm('Clear all chat messages from this session?')) {
-                    onClearChat();
-                  }
-                }}
-                title="Instant wipe of chat history (Zero Trace)"
-              >
-                <Trash2 size={15} />
-                <span>Clear Chat</span>
-              </button>
-
-              {/* Quick Leave Room Button */}
-              {roomName && (
-                <button 
-                  type="button"
-                  className="btn-leave-chat" 
-                  onClick={() => {
-                    sounds.playClick();
-                    if (window.confirm(`Leave room #${roomName} and return to Local Wi-Fi?`)) {
-                      onLeaveRoom?.();
-                    }
-                  }}
-                  title="Leave room and return to local network"
-                >
-                  <LogOut size={14} />
-                  <span>Leave</span>
-                </button>
-              )}
-            </div>
+            </span>
           </div>
-        )}
 
-        {/* Mobile Identity & Presence Strip (Shown when options bar is open) */}
-        {!isHeaderCollapsed && (
-          <div className="mobile-identity-strip">
+          <div className="header-right">
+            {/* Ambient Quick Tools Animated Toggle Button */}
+            <button
+              type="button"
+              className={`btn-tools-toggle ${isToolsOpen ? 'is-active' : ''}`}
+              onClick={handleToggleTools}
+              title={isToolsOpen ? "Hide Quick Tools shelf" : "Show Quick Tools shelf (Appearance, Stealth, QR, Clear)"}
+              aria-expanded={isToolsOpen}
+            >
+              <SlidersHorizontal size={14} className="tools-toggle-icon" />
+              <span className="tools-toggle-label">Tools</span>
+              {isStealthTextMode && <span className="tools-active-dot" title="Discreet Text Mode Active" />}
+              <ChevronDown size={14} className={`tools-toggle-chevron ${isToolsOpen ? 'is-flipped' : ''}`} />
+            </button>
+          </div>
+        </div>
+
+        {/* Ambient Sliding Quick Tools Shelf */}
+        <div className={`chat-tools-shelf ${isToolsOpen ? 'tools-shelf-open' : ''}`}>
+          <div className="tools-shelf-track">
+            {/* 1. Edit Room Chip */}
+            <button
+              type="button"
+              className="shelf-tool-chip chip-edit"
+              onClick={() => {
+                sounds.playClick();
+                if (onOpenEditRoom) onOpenEditRoom();
+                else onOpenRoomModal?.();
+              }}
+              title="Edit Room ID and Password Protection"
+            >
+              <Edit3 size={14} className="chip-icon" />
+              <span className="chip-label">Edit Room</span>
+            </button>
+
+            {/* 2. Switch to Text / Rich Media */}
+            <button
+              type="button"
+              className={`shelf-tool-chip chip-stealth ${isStealthTextMode ? 'is-stealth-active' : ''}`}
+              onClick={() => {
+                sounds.playClick();
+                setIsStealthTextMode(!isStealthTextMode);
+              }}
+              title="Switch between Rich Media Mode and Discreet Text-Only Mode (Stealth Privacy)"
+            >
+              {isStealthTextMode ? (
+                <>
+                  <LayoutGrid size={14} className="chip-icon" />
+                  <span className="chip-label">Rich Media Mode</span>
+                </>
+              ) : (
+                <>
+                  <Type size={14} className="chip-icon" />
+                  <span className="chip-label">Switch to Text</span>
+                </>
+              )}
+            </button>
+
+            {/* 3. Appearance / Wallpaper */}
+            <button
+              type="button"
+              className="shelf-tool-chip chip-appearance"
+              onClick={() => {
+                sounds.playClick();
+                if (onOpenAppearance) {
+                  onOpenAppearance('wallpaper');
+                } else {
+                  setIsWallpaperModalOpen(true);
+                }
+              }}
+              title="Theme & Chat Wallpaper"
+            >
+              <Palette size={14} className="chip-icon" />
+              <span className="chip-label">Appearance</span>
+            </button>
+
+            {/* 4. Room QR */}
+            <button
+              type="button"
+              className="shelf-tool-chip chip-qr"
+              onClick={() => {
+                sounds.playClick();
+                onOpenQr?.();
+              }}
+              title="Share Room QR Code & Credentials"
+            >
+              <QrCode size={14} className="chip-icon" />
+              <span className="chip-label">Room QR</span>
+            </button>
+
+            {/* 5. Clear Chat */}
+            <button
+              type="button"
+              className="shelf-tool-chip chip-clear"
+              onClick={() => {
+                sounds.playClick();
+                if (window.confirm('Clear all chat messages from this session?')) {
+                  onClearChat();
+                }
+              }}
+              title="Instant wipe of chat history (Zero Trace)"
+            >
+              <Trash2 size={14} className="chip-icon" />
+              <span className="chip-label">Clear Chat</span>
+            </button>
+
+            {/* 6. Leave Room */}
+            {roomName && (
+              <button
+                type="button"
+                className="shelf-tool-chip chip-leave"
+                onClick={() => {
+                  sounds.playClick();
+                  if (window.confirm(`Leave room #${roomName} and return to Local Wi-Fi?`)) {
+                    onLeaveRoom?.();
+                  }
+                }}
+                title="Leave room and return to local network"
+              >
+                <LogOut size={14} className="chip-icon" />
+                <span className="chip-label">Leave</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Mobile Identity & Presence Strip */}
+        <div className="mobile-identity-strip">
             <button 
               type="button" 
               className="mobile-id-tag user-tag"
@@ -1675,7 +1698,6 @@ export default function ChatView({
               </span>
             </button>
           </div>
-        )}
 
         {/* Dynamic Wallpaper Background Canvas Layer */}
         {activeWallpaperType !== 'none' && (

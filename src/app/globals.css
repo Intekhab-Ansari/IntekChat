@@ -5604,47 +5604,42 @@ body {
   color: #7c3aed !important;
 }
 
-[data-theme="silk"] .collapsed-header-bar {
+[data-theme="silk"] .btn-tools-toggle {
   background: #ffffff !important;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.3) !important;
-  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05) !important;
-}
-
-[data-theme="silk"] .btn-expand-header {
-  background: #f8fafc !important;
-  border: 1px solid rgba(148, 163, 184, 0.38) !important;
+  border: 1px solid rgba(148, 163, 184, 0.45) !important;
   color: #0f172a !important;
   box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06) !important;
 }
 
-[data-theme="silk"] .btn-expand-header:hover {
-  background: #f1f5f9 !important;
+[data-theme="silk"] .btn-tools-toggle:hover {
+  background: #f8fafc !important;
+  border-color: #7c3aed !important;
+  color: #7c3aed !important;
+  box-shadow: 0 3px 12px rgba(124, 58, 237, 0.15) !important;
+}
+
+[data-theme="silk"] .btn-tools-toggle.is-active {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.1) 0%, rgba(79, 70, 229, 0.12) 100%) !important;
   border-color: #7c3aed !important;
   color: #7c3aed !important;
 }
 
-[data-theme="silk"] .collapsed-room-name {
-  color: #0f172a !important;
+[data-theme="silk"] .chat-tools-shelf {
+  background: #ffffff !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.3) !important;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06) !important;
 }
 
-[data-theme="silk"] .btn-expand-header:hover .collapsed-room-name {
-  color: #7c3aed !important;
-}
-
-[data-theme="silk"] .collapsed-text {
-  color: #64748b !important;
-}
-
-[data-theme="silk"] .btn-collapse-header {
+[data-theme="silk"] .shelf-tool-chip {
   background: #f8fafc !important;
   border: 1px solid rgba(148, 163, 184, 0.38) !important;
   color: #334155 !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
 }
 
-[data-theme="silk"] .btn-collapse-header:hover {
-  background: rgba(124, 58, 237, 0.1) !important;
-  border-color: #7c3aed !important;
-  color: #7c3aed !important;
+[data-theme="silk"] .shelf-tool-chip:hover {
+  background: #ffffff !important;
+  color: #0f172a !important;
 }
 
 [data-theme="silk"] .mobile-menu-toggle-btn {
@@ -6395,49 +6390,52 @@ body {
     font-size: 0.76rem;
   }
 
-  .btn-edit-room-quick {
-    width: 28px;
-    height: 28px;
-    padding: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 6px;
-  }
-
-  .btn-edit-room-quick span {
-    display: none;
+  .desktop-only-edit {
+    display: none !important;
   }
 
   .chat-peer-status {
-    display: none;
+    display: inline-flex !important;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.72rem;
+  }
+
+  .chat-peer-status .peer-status-text {
+    max-width: 90px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .header-right {
-    gap: 0.2rem;
+    gap: 0.35rem;
     display: flex;
     align-items: center;
     flex-shrink: 0;
   }
 
-  .btn-stealth,
-  .btn-wallpaper,
-  .btn-clear-chat,
-  .btn-leave-chat {
-    width: 28px;
-    height: 28px;
-    padding: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 6px;
+  .btn-tools-toggle {
+    height: 28px !important;
+    padding: 0.25rem 0.65rem !important;
+    font-size: 0.73rem !important;
+    gap: 0.35rem !important;
   }
 
-  .btn-stealth span,
-  .btn-wallpaper span,
-  .btn-clear-chat span,
-  .btn-leave-chat span {
-    display: none;
+  .chat-tools-shelf {
+    padding: 0 0.65rem !important;
+  }
+
+  .chat-tools-shelf.tools-shelf-open {
+    padding: 0.38rem 0.65rem !important;
+    max-height: 58px !important;
+  }
+
+  .shelf-tool-chip {
+    height: 28px !important;
+    padding: 0.26rem 0.65rem !important;
+    font-size: 0.72rem !important;
+    gap: 0.35rem !important;
   }
 
   .btn-sidebar-open {
@@ -8149,113 +8147,216 @@ body {
 }
 
 /* ============================================================
-   COLLAPSIBLE SUB-HEADER & CHAT EXPAND TOGGLE
+   AMBIENT CYBER QUICK-TOOLS ISLAND & SLIDING ACTION SHELF
    ============================================================ */
-.btn-collapse-header {
+.btn-tools-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.35rem 0.65rem;
+  gap: 0.45rem;
+  padding: 0.32rem 0.8rem;
   background: var(--bg-surface) !important;
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  border-radius: 9999px;
   color: var(--text-muted);
-  font-size: 0.75rem;
+  font-size: 0.76rem;
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap !important;
   flex-shrink: 0 !important;
   height: 30px;
-  transition: all 0.2s ease;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  user-select: none;
 }
 
-.btn-collapse-header:hover {
+.btn-tools-toggle:hover {
   color: #fff;
-  border-color: var(--border-bright);
-  background: var(--bg-card) !important;
+  border-color: rgba(99, 102, 241, 0.45);
+  background: var(--bg-card-hover) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.25);
 }
 
-.collapsed-header-bar {
+.btn-tools-toggle.is-active {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(168, 85, 247, 0.25) 100%) !important;
+  border-color: rgba(168, 85, 247, 0.55);
+  color: #fff;
+  box-shadow: 0 0 16px rgba(168, 85, 247, 0.3);
+}
+
+.tools-toggle-icon {
+  color: var(--accent-bright, #38bdf8);
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
+}
+
+.btn-tools-toggle:hover .tools-toggle-icon {
+  transform: rotate(30deg);
+}
+
+.tools-toggle-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.tools-active-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+  flex-shrink: 0;
+  animation: pulseDot 2s infinite ease-in-out;
+}
+
+.tools-toggle-chevron {
+  color: var(--text-dim);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.tools-toggle-chevron.is-flipped {
+  transform: rotate(180deg);
+  color: var(--accent-bright);
+}
+
+/* Sliding Quick-Tools Action Shelf */
+.chat-tools-shelf {
   position: relative;
-  z-index: 20;
+  z-index: 18;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(10, 15, 29, 0.95) 100%);
+  border-bottom: 1px solid var(--border-subtle);
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-8px);
+  overflow: hidden;
+  pointer-events: none;
+  transition: max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.24s ease,
+              transform 0.32s cubic-bezier(0.16, 1, 0.3, 1),
+              padding 0.28s ease,
+              border-color 0.2s ease;
+  padding: 0 1.25rem;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.45);
+  flex-shrink: 0;
+}
+
+.chat-tools-shelf.tools-shelf-open {
+  max-height: 65px;
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+  padding: 0.45rem 1.25rem;
+  border-bottom-color: rgba(99, 102, 241, 0.3);
+}
+
+.tools-shelf-track {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 0.35rem 0.85rem;
-  background: var(--bg-sidebar) !important;
-  border-bottom: 1px solid var(--border-subtle);
-  flex-shrink: 0;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  animation: fadeIn 0.2s ease-out;
+  gap: 0.5rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  padding: 2px 0;
 }
 
-.btn-expand-header {
+.tools-shelf-track::-webkit-scrollbar {
+  display: none;
+}
+
+/* Individual Quick Tool Action Chips */
+.shelf-tool-chip {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  padding: 0.28rem 0.85rem;
-  background: var(--bg-surface) !important;
-  border: 1px solid var(--border-subtle);
+  padding: 0.35rem 0.85rem;
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 9999px;
-  color: var(--text-muted);
+  color: var(--text-muted, #cbd5e1);
   font-size: 0.75rem;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  height: 31px;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
 }
 
-.btn-expand-header:hover {
-  background: var(--bg-card) !important;
-  border-color: var(--border-bright);
-  color: var(--accent-bright, #fff);
-  transform: translateY(-1px);
-}
-
-.collapsed-expand-inner {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  max-width: 100%;
-}
-
-.collapsed-room-name {
-  color: var(--text-main, #fff);
-  font-weight: 800;
-  font-size: 0.82rem;
-  max-width: 140px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.collapsed-peer-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  background: rgba(16, 185, 129, 0.15);
-  border: 1px solid rgba(16, 185, 129, 0.3);
-  color: #34d399;
-  font-size: 0.68rem;
-  font-weight: 800;
-  padding: 0.1rem 0.45rem;
-  border-radius: 999px;
+.shelf-tool-chip .chip-icon {
   flex-shrink: 0;
-}
-
-.collapsed-chevron {
-  color: var(--accent);
   transition: transform 0.2s ease;
-  flex-shrink: 0;
 }
 
-.collapsed-text {
-  font-size: 0.72rem;
-  color: var(--text-dim);
-  white-space: nowrap;
-  flex-shrink: 0;
+.shelf-tool-chip:hover {
+  transform: translateY(-1.5px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.shelf-tool-chip:hover .chip-icon {
+  transform: scale(1.12);
+}
+
+.shelf-tool-chip.chip-edit:hover {
+  color: #60a5fa;
+  border-color: rgba(96, 165, 250, 0.5);
+  background: rgba(96, 165, 250, 0.15);
+}
+
+.shelf-tool-chip.chip-stealth {
+  border-color: rgba(14, 165, 233, 0.3);
+}
+
+.shelf-tool-chip.chip-stealth:hover {
+  color: #38bdf8;
+  border-color: rgba(14, 165, 233, 0.6);
+  background: rgba(14, 165, 233, 0.15);
+}
+
+.shelf-tool-chip.chip-stealth.is-stealth-active {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
+  border-color: #38bdf8 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.45);
+}
+
+.shelf-tool-chip.chip-appearance:hover {
+  color: #c084fc;
+  border-color: rgba(192, 132, 252, 0.5);
+  background: rgba(192, 132, 252, 0.15);
+}
+
+.shelf-tool-chip.chip-qr:hover {
+  color: #34d399;
+  border-color: rgba(52, 211, 153, 0.5);
+  background: rgba(52, 211, 153, 0.15);
+}
+
+.shelf-tool-chip.chip-clear {
+  border-color: rgba(244, 63, 94, 0.35);
+  color: #fda4af;
+}
+
+.shelf-tool-chip.chip-clear:hover {
+  color: #fff;
+  border-color: #f43f5e;
+  background: rgba(244, 63, 94, 0.85);
+  box-shadow: 0 0 14px rgba(244, 63, 94, 0.4);
+}
+
+.shelf-tool-chip.chip-leave {
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+}
+
+.shelf-tool-chip.chip-leave:hover {
+  color: #fff;
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.85);
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.4);
 }
 
 .msg-more-btn {
