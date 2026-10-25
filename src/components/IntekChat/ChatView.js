@@ -590,6 +590,8 @@ export default function ChatView({
   const activeWallpaperBlur = propWallpaperBlur !== undefined ? propWallpaperBlur : wallpaperBlur;
 
   const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
+  const isAutoScrollEnabledRef = useRef(true);
   const fileInputRef = useRef(null);
   const imageInputRef = useRef(null);
   const cameraInputRef = useRef(null);
@@ -690,9 +692,35 @@ export default function ChatView({
     }
   };
 
+  const scrollToBottom = useCallback((behavior = 'smooth') => {
+    const container = messagesContainerRef.current;
+    if (container) {
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior
+      });
+    }
+  }, []);
+
+  const handleMessagesScroll = useCallback(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    // Auto-scroll remains active when user is near bottom (within 120px)
+    const isAtBottom = scrollHeight - scrollTop - clientHeight < 120;
+    isAutoScrollEnabledRef.current = isAtBottom;
+  }, []);
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isStealthTextMode]);
+    if (isAutoScrollEnabledRef.current) {
+      scrollToBottom('smooth');
+    }
+  }, [messages, isStealthTextMode, scrollToBottom]);
+
+  // Initial instant scroll on room change
+  useEffect(() => {
+    scrollToBottom('instant');
+  }, [roomName, scrollToBottom]);
 
   const burnRef = useRef(null);
 
@@ -774,8 +802,13 @@ export default function ChatView({
   const scrollToMessage = (msgId) => {
     if (!msgId) return;
     const el = document.getElementById(`msg-${msgId}`);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const container = messagesContainerRef.current;
+    if (el && container) {
+      const containerRect = container.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+      const relativeTop = elRect.top - containerRect.top + container.scrollTop;
+      const targetScroll = relativeTop - (container.clientHeight / 2) + (el.clientHeight / 2);
+      container.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' });
       el.classList.add('msg-highlight-pulse');
       setTimeout(() => {
         el.classList.remove('msg-highlight-pulse');
@@ -878,6 +911,10 @@ export default function ChatView({
 
     onSendMessage(payload);
     setInputText('');
+    isAutoScrollEnabledRef.current = true;
+    setTimeout(() => {
+      scrollToBottom('smooth');
+    }, 30);
 
     // Crucial: keep virtual keyboard open continuously on mobile & desktop!
     if (textInputRef.current) {
@@ -889,6 +926,20 @@ export default function ChatView({
       }
     }, 10);
   };
+
+  const handleInputFocus = useCallback(() => {
+    // When virtual keyboard opens on mobile, smooth scroll messages up so latest message is visible above input
+    setTimeout(() => {
+      if (isAutoScrollEnabledRef.current) {
+        scrollToBottom('smooth');
+      }
+    }, 120);
+    setTimeout(() => {
+      if (isAutoScrollEnabledRef.current) {
+        scrollToBottom('smooth');
+      }
+    }, 320);
+  }, [scrollToBottom]);
 
   const handleCameraCaptureAndSend = ({ dataUrl, imageMode: captureMode, name, size }) => {
     sounds.playTransferStart();
@@ -1645,7 +1696,20 @@ export default function ChatView({
         </div>
 
         {/* Messages Feed Container */}
-        <div className="chat-messages-scroll">
+        <div 
+          className="chat-messages-scroll"
+          ref={messagesContainerRef}
+          onScroll={handleMessagesScroll}
+          onClick={(e) => {
+            // Dismiss mobile virtual keyboard if tapping empty feed space (WhatsApp style)
+            if (e.target.closest('button, a, input, textarea, .message-bubble-row, .message-attachment-bubble, .prompt-chip')) {
+              return;
+            }
+            if (document.activeElement === textInputRef.current) {
+              textInputRef.current.blur();
+            }
+          }}
+        >
           {messages.length === 0 && (
             <div className="chat-empty">
               <div className="empty-bubble">
@@ -1891,6 +1955,9 @@ export default function ChatView({
               placeholder={replyingTo ? `Replying to ${replyingTo.senderId === userProfile?.id ? 'yourself' : replyingTo.senderName}...` : "Type an encrypted message..."}
               value={inputText}
               onChange={handleInputChange}
+              onFocus={handleInputFocus}
+              autoComplete="off"
+              autoCorrect="on"
             />
 
             <button 

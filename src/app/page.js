@@ -67,6 +67,49 @@ export default function Home() {
     syncedWallpaperRef.current = syncedWallpaper;
   }, [syncedWallpaper]);
 
+  // Handle mobile visual viewport & virtual keyboard sticking (WhatsApp-like layout)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const updateVisualViewport = () => {
+      const vv = window.visualViewport;
+      const height = vv ? vv.height : window.innerHeight;
+      const offsetTop = vv ? vv.offsetTop : 0;
+      const keyboardHeight = Math.max(0, window.innerHeight - height);
+      const isKeyboardOpen = keyboardHeight > 100;
+
+      document.documentElement.style.setProperty('--visual-viewport-height', `${height}px`);
+      document.documentElement.style.setProperty('--visual-viewport-top', `${offsetTop}px`);
+      document.documentElement.style.setProperty('--keyboard-height', `${keyboardHeight}px`);
+
+      document.documentElement.classList.toggle('keyboard-open', isKeyboardOpen);
+      document.body.classList.toggle('keyboard-open', isKeyboardOpen);
+
+      // Lock window scroll at 0, 0 to prevent mobile browser rubber-banding/shifting
+      if (window.scrollY !== 0 || window.scrollX !== 0) {
+        window.scrollTo(0, 0);
+      }
+    };
+
+    updateVisualViewport();
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', updateVisualViewport);
+      window.visualViewport.addEventListener('scroll', updateVisualViewport);
+    }
+    window.addEventListener('resize', updateVisualViewport);
+    window.addEventListener('orientationchange', updateVisualViewport);
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', updateVisualViewport);
+        window.visualViewport.removeEventListener('scroll', updateVisualViewport);
+      }
+      window.removeEventListener('resize', updateVisualViewport);
+      window.removeEventListener('orientationchange', updateVisualViewport);
+    };
+  }, []);
+
   // 1. Initialize Profile, Theme & URL Room Params (including 1-scan QR auto join)
   useEffect(() => {
     const profile = getOrCreatePeerProfile();

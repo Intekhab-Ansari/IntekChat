@@ -70,7 +70,9 @@ export const viewport = {
   themeColor: "#070a12",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1
+  maximumScale: 1,
+  userScalable: false,
+  interactiveWidget: "resizes-content"
 };
 
 export default function RootLayout({ children }) {
