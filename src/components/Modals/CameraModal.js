@@ -15,6 +15,7 @@ import {
   FlipHorizontal
 } from 'lucide-react';
 import { sounds } from '@/lib/sound';
+import { compressChatImage } from '@/lib/media';
 
 export default function CameraModal({
   isOpen,
@@ -120,9 +121,22 @@ export default function CameraModal({
     setTimeout(() => setFlashAnimation(false), 300);
 
     const video = videoRef.current;
+    const maxDim = 1200;
+    let w = video.videoWidth || 1280;
+    let h = video.videoHeight || 720;
+    if (w > maxDim || h > maxDim) {
+      if (w >= h) {
+        h = Math.round((h * maxDim) / w);
+        w = maxDim;
+      } else {
+        w = Math.round((w * maxDim) / h);
+        h = maxDim;
+      }
+    }
+
     const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth || 1280;
-    canvas.height = video.videoHeight || 720;
+    canvas.width = Math.max(w, 1);
+    canvas.height = Math.max(h, 1);
     const ctx = canvas.getContext('2d');
 
     if (facingMode === 'user') {
@@ -131,8 +145,10 @@ export default function CameraModal({
       ctx.scale(-1, 1);
     }
 
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.78);
     setCapturedPhoto(dataUrl);
     stopCameraStream();
   };
@@ -145,17 +161,18 @@ export default function CameraModal({
   };
 
   // Native camera fallback file selection (Android / iOS camera app)
-  const handleNativeCameraCapture = (e) => {
+  const handleNativeCameraCapture = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = () => {
+    try {
       sounds.playCameraSnap();
-      setCapturedPhoto(reader.result);
+      const compressed = await compressChatImage(file, 1200, 0.75);
+      setCapturedPhoto(compressed);
       stopCameraStream();
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('Failed to compress native camera capture:', err);
+    }
   };
 
   // Send the captured photo

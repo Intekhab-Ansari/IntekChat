@@ -50,6 +50,7 @@ import {
 import { formatBytes, getAvatarColor } from '@/lib/peer';
 import { sounds } from '@/lib/sound';
 import { getWallpaperCss } from '@/lib/wallpapers';
+import { compressChatImage, isImageFile, isAudioFile, isVideoFile } from '@/lib/media';
 import WallpaperModal from '@/components/Modals/WallpaperModal';
 import CameraModal from '@/components/Modals/CameraModal';
 
@@ -402,7 +403,7 @@ function SwipeableMessageRow({
             </div>
           )}
 
-          {/* GENERIC FILE MESSAGE */}
+          {/* GENERIC FILE MESSAGE (With Smart Media Preview for Images, Audio, Video) */}
           {msg.type === 'file' && (
             <div className="msg-file-block">
               {isStealthTextMode ? (
@@ -416,6 +417,73 @@ function SwipeableMessageRow({
                   >
                     Save
                   </a>
+                </div>
+              ) : isImageFile(msg) && msg.dataUrl ? (
+                <div className="chat-file-image-card">
+                  <div 
+                    className="image-preview-card file-image-preview" 
+                    onClick={() => setViewOnceModalData(msg)}
+                    title="Click to expand fullscreen"
+                  >
+                    <img src={msg.dataUrl} alt={msg.name || 'Shared Image'} className="chat-img" />
+                    <div className="file-image-hover-overlay">
+                      <Eye size={15} />
+                      <span>View</span>
+                    </div>
+                  </div>
+                  <div className="file-image-footer">
+                    <div className="file-details">
+                      <span className="file-name" title={msg.name}>{msg.name}</span>
+                      <span className="file-size">{formatBytes(msg.size)}</span>
+                    </div>
+                    <a 
+                      href={msg.dataUrl} 
+                      download={msg.name} 
+                      className="file-download-btn"
+                      title="Download Photo"
+                    >
+                      <Download size={15} />
+                    </a>
+                  </div>
+                </div>
+              ) : isAudioFile(msg) && msg.dataUrl ? (
+                <div className="chat-file-audio-card">
+                  <div className="chat-file-card audio-file-header">
+                    <div className="file-icon-wrap">
+                      <FileAudio size={20} className="text-emerald" />
+                    </div>
+                    <div className="file-details">
+                      <span className="file-name" title={msg.name}>{msg.name}</span>
+                      <span className="file-size">{formatBytes(msg.size)}</span>
+                    </div>
+                    <a 
+                      href={msg.dataUrl} 
+                      download={msg.name} 
+                      className="file-download-btn"
+                      title="Download Audio"
+                    >
+                      <Download size={15} />
+                    </a>
+                  </div>
+                  <audio controls src={msg.dataUrl} className="chat-inline-audio" preload="metadata" />
+                </div>
+              ) : isVideoFile(msg) && msg.dataUrl ? (
+                <div className="chat-file-video-card">
+                  <video controls src={msg.dataUrl} className="chat-inline-video" preload="metadata" />
+                  <div className="file-image-footer">
+                    <div className="file-details">
+                      <span className="file-name" title={msg.name}>{msg.name}</span>
+                      <span className="file-size">{formatBytes(msg.size)}</span>
+                    </div>
+                    <a 
+                      href={msg.dataUrl} 
+                      download={msg.name} 
+                      className="file-download-btn"
+                      title="Download Video"
+                    >
+                      <Download size={15} />
+                    </a>
+                  </div>
                 </div>
               ) : (
                 <div className="chat-file-card">
@@ -616,6 +684,7 @@ export default function ChatView({
   const [wallpaperOpacity, setWallpaperOpacity] = useState(18);
   const [wallpaperBlur, setWallpaperBlur] = useState(false);
   const [replyingTo, setReplyingTo] = useState(null);
+  const [isInputFocused, setIsInputFocused] = useState(false);
 
   const activeWallpaperType = propWallpaperType !== undefined ? propWallpaperType : wallpaperType;
   const activeCustomWallpaper = propCustomWallpaper !== undefined ? propCustomWallpaper : customWallpaper;
@@ -979,14 +1048,25 @@ export default function ChatView({
     }, 320);
   }, [scrollToBottom]);
 
-  const handleCameraCaptureAndSend = ({ dataUrl, imageMode: captureMode, name, size }) => {
+  const handleCameraCaptureAndSend = async ({ dataUrl, imageMode: captureMode, name, size }) => {
     sounds.playTransferStart();
+    let finalDataUrl = dataUrl;
+    try {
+      finalDataUrl = await compressChatImage(dataUrl, 1200, 0.75);
+    } catch (e) {
+      console.warn('Camera snapshot compression failed, using original:', e);
+    }
+
+    const head = 'data:image/jpeg;base64,';
+    const base64Len = finalDataUrl.startsWith(head) ? finalDataUrl.length - head.length : finalDataUrl.length;
+    const finalSize = Math.round((base64Len * 3) / 4);
+
     const payload = {
       type: 'image',
-      dataUrl,
-      imageMode: captureMode,
+      dataUrl: finalDataUrl,
+      imageMode: captureMode || 'permanent',
       name: name || `camera_${Date.now()}.jpg`,
-      size: size || 60000
+      size: finalSize || size || 60000
     };
 
     if (replyingTo) {
@@ -1018,21 +1098,20 @@ export default function ChatView({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 25 * 1024 * 1024) {
-      alert('Photo exceeds 25MB. For large media and files, switch to the IntekDrop tab for lightning-fast direct P2P streaming!');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      const base64Data = reader.result;
+    try {
       sounds.playTransferStart();
+      // Auto-compress and scale to fit WebRTC (<64KB-256KB) and HiveMQ MQTT (<256KB) limits
+      const compressedDataUrl = await compressChatImage(file, 1200, 0.75);
+      const head = 'data:image/jpeg;base64,';
+      const base64Len = compressedDataUrl.startsWith(head) ? compressedDataUrl.length - head.length : compressedDataUrl.length;
+      const size = Math.round((base64Len * 3) / 4);
+
       const payload = {
         type: 'image',
-        dataUrl: base64Data,
-        imageMode,
-        name: file.name,
-        size: file.size
+        dataUrl: compressedDataUrl,
+        imageMode: imageMode || 'permanent',
+        name: file.name || `photo_${Date.now()}.jpg`,
+        size
       };
 
       if (replyingTo) {
@@ -1049,19 +1128,65 @@ export default function ChatView({
       }
 
       onSendMessage(payload);
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('Failed to process image:', err);
+      alert('Could not process this image. Please select another image.');
+    } finally {
+      if (imageInputRef.current) imageInputRef.current.value = '';
+    }
   };
 
-  const handleGenericFileChange = (e) => {
+  const handleGenericFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 25 * 1024 * 1024) {
-      alert('File exceeds 25MB. For large files (ZIP, video, ISO, etc.), use the IntekDrop tab for unlimited high-speed P2P transfer!');
+    // 1. If it's an image, auto-compress & deliver as an image card!
+    if (isImageFile(file)) {
+      try {
+        sounds.playTransferStart();
+        const compressedDataUrl = await compressChatImage(file, 1200, 0.75);
+        const head = 'data:image/jpeg;base64,';
+        const base64Len = compressedDataUrl.startsWith(head) ? compressedDataUrl.length - head.length : compressedDataUrl.length;
+        const size = Math.round((base64Len * 3) / 4);
+
+        const payload = {
+          type: 'image',
+          imageMode: 'permanent',
+          name: file.name,
+          dataUrl: compressedDataUrl,
+          size
+        };
+
+        if (replyingTo) {
+          payload.replyTo = {
+            id: replyingTo.id,
+            senderName: replyingTo.senderId === userProfile?.id ? 'You' : replyingTo.senderName,
+            senderColor: replyingTo.senderColor || 0,
+            text: replyingTo.type === 'text' 
+              ? (replyingTo.text.length > 80 ? replyingTo.text.slice(0, 80) + '...' : replyingTo.text)
+              : replyingTo.type === 'image' ? '📷 Photo' : `📎 ${replyingTo.name || 'File'}`,
+            type: replyingTo.type
+          };
+          setReplyingTo(null);
+        }
+
+        onSendMessage(payload);
+      } catch (err) {
+        console.error('Image compression failed:', err);
+      } finally {
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
       return;
     }
 
+    // 2. Non-image files: ensure size fits inline single-message constraints (~220KB)
+    if (file.size > 220 * 1024) {
+      alert(`"${file.name}" is ${formatBytes(file.size)}. Inline chat messages support quick files up to 200 KB. For large documents, videos, APKs, or ZIP archives, switch to the IntekDrop tab for unlimited ultra-fast direct P2P streaming!`);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    // 3. Small non-image file
     const reader = new FileReader();
     reader.onload = () => {
       sounds.playTransferStart();
@@ -1069,7 +1194,7 @@ export default function ChatView({
         type: 'file',
         name: file.name,
         size: file.size,
-        mimeType: file.type,
+        mimeType: file.type || 'application/octet-stream',
         dataUrl: reader.result
       };
 
@@ -1089,6 +1214,7 @@ export default function ChatView({
       onSendMessage(payload);
     };
     reader.readAsDataURL(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleOpenViewOnce = (msg) => {
@@ -1151,9 +1277,52 @@ export default function ChatView({
               <ArrowRight size={14} />
               <span>Join Room</span>
             </button>
+
+            <button
+              type="button"
+              className="hero-tab hero-tab-scan"
+              onClick={() => {
+                sounds.playClick();
+                if (onOpenQr) onOpenQr('scan');
+              }}
+              title="Scan Room QR Code with Camera"
+            >
+              <QrCode size={14} className="text-cyan animate-pulse" />
+              <span>Scan QR</span>
+            </button>
           </div>
 
           <form className="hero-form" onSubmit={handleHeroSubmit}>
+            {/* Quick QR Camera Scanner Option for Joining */}
+            {heroTab === 'join' && (
+              <>
+                <div className="hero-scan-card">
+                  <button
+                    type="button"
+                    className="btn-hero-scan-qr"
+                    onClick={() => {
+                      sounds.playClick();
+                      if (onOpenQr) onOpenQr('scan');
+                    }}
+                    title="Scan Room QR Code with Camera or File"
+                  >
+                    <div className="hero-scan-icon-pulse">
+                      <QrCode size={20} className="text-cyan animate-pulse" />
+                    </div>
+                    <div className="hero-scan-text">
+                      <span className="hero-scan-main">Scan Room QR Code</span>
+                      <span className="hero-scan-sub">Scan another device&apos;s screen to join immediately</span>
+                    </div>
+                    <Camera size={16} className="text-accent flex-shrink-0" />
+                  </button>
+                </div>
+
+                <div className="hero-divider">
+                  <span>or enter room details manually</span>
+                </div>
+              </>
+            )}
+
             {/* Room Name Input with Prefix and Random Generator */}
             <div className="room-input-wrap">
               <span className="room-prefix desktop-prefix">intekchat.com/</span>
@@ -1296,7 +1465,7 @@ export default function ChatView({
   }
 
   return (
-    <div className="chat-layout-wrapper">
+    <div className={`chat-layout-wrapper ${isInputFocused ? 'chat-input-focused' : ''}`}>
       {/* Mobile Backdrop for Sidebar */}
       {isSidebarOpen && (
         <div 
@@ -1505,7 +1674,7 @@ export default function ChatView({
       </aside>
 
       {/* Main Conversation Column */}
-      <section className="chat-main-pane">
+      <section className={`chat-main-pane ${isInputFocused ? 'chat-input-focused' : ''}`}>
         {/* Chat Sub-Header (Collapsible on toggle basis to maximize chat space) */}
         {/* Chat Sub-Header (Always cleanly visible, uncrowded and spacious) */}
         <div className="chat-header">
@@ -1982,7 +2151,13 @@ export default function ChatView({
               placeholder={replyingTo ? `Replying to ${replyingTo.senderId === userProfile?.id ? 'yourself' : replyingTo.senderName}...` : "Type an encrypted message..."}
               value={inputText}
               onChange={handleInputChange}
-              onFocus={handleInputFocus}
+              onFocus={() => {
+                setIsInputFocused(true);
+                handleInputFocus();
+              }}
+              onBlur={() => {
+                setIsInputFocused(false);
+              }}
               autoComplete="off"
               autoCorrect="on"
             />

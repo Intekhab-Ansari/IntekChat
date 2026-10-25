@@ -9033,6 +9033,408 @@ body {
   color: var(--text-secondary, #94a3b8);
 }
 
+/* ==========================================================================
+   QR SCANNER JOIN CARD & HERO STYLES
+   ========================================================================== */
+.hero-tab-scan {
+  border-color: rgba(6, 182, 212, 0.4) !important;
+  color: var(--cyan, #06b6d4) !important;
+}
 
+.hero-tab-scan:hover {
+  background: rgba(6, 182, 212, 0.12) !important;
+  border-color: var(--cyan, #06b6d4) !important;
+}
 
+.hero-scan-card {
+  width: 100%;
+  margin-bottom: 0.75rem;
+}
 
+.btn-hero-scan-qr {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.12) 0%, rgba(99, 102, 241, 0.1) 100%);
+  border: 1.5px solid rgba(6, 182, 212, 0.35);
+  box-shadow: 0 4px 18px rgba(6, 182, 212, 0.15);
+  cursor: pointer;
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: left;
+}
+
+.btn-hero-scan-qr:hover,
+.btn-hero-scan-qr:active {
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.2) 0%, rgba(99, 102, 241, 0.18) 100%);
+  border-color: var(--cyan, #06b6d4);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(6, 182, 212, 0.25);
+}
+
+.hero-scan-icon-pulse {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: rgba(6, 182, 212, 0.18);
+  border: 1px solid rgba(6, 182, 212, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.hero-scan-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.hero-scan-main {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+}
+
+[data-theme="silk"] .hero-scan-main {
+  color: #0f172a;
+}
+
+.hero-scan-sub {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  line-height: 1.3;
+}
+
+.hero-divider,
+.modal-form-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 0.65rem 0 0.85rem 0;
+  width: 100%;
+}
+
+.hero-divider::before,
+.hero-divider::after,
+.modal-form-divider::before,
+.modal-form-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.hero-divider span,
+.modal-form-divider span {
+  padding: 0 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+}
+
+.room-modal-scan-box {
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+.btn-modal-scan-qr {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(99, 102, 241, 0.08) 100%);
+  border: 1px solid rgba(6, 182, 212, 0.35);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.btn-modal-scan-qr:hover,
+.btn-modal-scan-qr:active {
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.18) 0%, rgba(99, 102, 241, 0.15) 100%);
+  border-color: var(--cyan, #06b6d4);
+  transform: translateY(-1px);
+}
+
+.btn-modal-scan-icon-pulse {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(6, 182, 212, 0.16);
+  border: 1px solid rgba(6, 182, 212, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.btn-modal-scan-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.btn-modal-scan-text strong {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+[data-theme="silk"] .btn-modal-scan-text strong {
+  color: #0f172a;
+}
+
+.btn-modal-scan-text span {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+   SMART MEDIA PREVIEWS FOR INLINE IMAGES, AUDIO & VIDEO
+   ========================================================================== */
+.chat-file-image-card {
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border-subtle);
+  max-width: 280px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.file-image-preview {
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  max-height: 240px;
+}
+
+.file-image-preview img.chat-img {
+  width: 100%;
+  height: auto;
+  max-height: 240px;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.25s ease;
+}
+
+.file-image-preview:hover img.chat-img {
+  transform: scale(1.02);
+}
+
+.file-image-hover-overlay {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  pointer-events: none;
+}
+
+.file-image-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.65rem;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.file-image-footer .file-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.file-image-footer .file-name {
+  max-width: 170px;
+}
+
+/* Audio Player Card in Chat */
+.chat-file-audio-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.55rem 0.75rem;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  min-width: 240px;
+  max-width: 310px;
+}
+
+.audio-file-header {
+  border: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+  min-width: 0 !important;
+}
+
+.chat-inline-audio {
+  width: 100%;
+  height: 32px;
+  border-radius: 8px;
+  outline: none;
+}
+
+/* Video Player Card in Chat */
+.chat-file-video-card {
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border-subtle);
+  max-width: 280px;
+}
+
+.chat-inline-video {
+  width: 100%;
+  max-height: 220px;
+  background: #000;
+  display: block;
+}
+
+/* ==========================================================================
+   WHATSAPP-LIKE MOBILE KEYBOARD LAYOUT OPTIMIZATIONS
+   Maximizes chat conversation area when virtual keyboard is active
+   ========================================================================== */
+@media (max-width: 768px) {
+  /* When virtual keyboard opens on mobile, hide non-essential banners & toolbars */
+  html.keyboard-open .security-banner,
+  body.keyboard-open .security-banner,
+  .chat-layout-wrapper.chat-input-focused .security-banner {
+    display: none !important;
+  }
+
+  html.keyboard-open .mobile-identity-strip,
+  body.keyboard-open .mobile-identity-strip,
+  .chat-layout-wrapper.chat-input-focused .mobile-identity-strip {
+    display: none !important;
+  }
+
+  html.keyboard-open .chat-tools-shelf,
+  body.keyboard-open .chat-tools-shelf,
+  .chat-layout-wrapper.chat-input-focused .chat-tools-shelf {
+    display: none !important;
+  }
+
+  /* Compact Navbar when keyboard is active to free up vertical chat space */
+  html.keyboard-open .navbar-wrapper,
+  body.keyboard-open .navbar-wrapper,
+  .keyboard-open .navbar-wrapper {
+    min-height: 42px !important;
+    height: 42px !important;
+    padding: 0.2rem 0.65rem !important;
+  }
+
+  html.keyboard-open .navbar-brand .brand-logo,
+  body.keyboard-open .navbar-brand .brand-logo {
+    width: 24px !important;
+    height: 24px !important;
+  }
+
+  html.keyboard-open .navbar-brand .brand-name,
+  body.keyboard-open .navbar-brand .brand-name {
+    font-size: 0.95rem !important;
+  }
+
+  /* Compact Chat Header when keyboard is active */
+  html.keyboard-open .chat-header,
+  body.keyboard-open .chat-header,
+  .chat-layout-wrapper.chat-input-focused .chat-header {
+    min-height: 38px !important;
+    padding: 0.25rem 0.65rem !important;
+  }
+
+  html.keyboard-open .chat-peer-status,
+  body.keyboard-open .chat-peer-status,
+  .chat-layout-wrapper.chat-input-focused .chat-peer-status {
+    display: none !important;
+  }
+
+  /* Ensure messages feed has room to expand and scroll smoothly */
+  html.keyboard-open .chat-messages-scroll,
+  body.keyboard-open .chat-messages-scroll,
+  .chat-layout-wrapper.chat-input-focused .chat-messages-scroll {
+    padding: 0.35rem 0.55rem !important;
+    flex: 1 1 0% !important;
+    min-height: 120px !important;
+  }
+
+  /* Streamline the input bar to sit cleanly directly above the virtual keyboard */
+  html.keyboard-open .chat-input-wrapper,
+  body.keyboard-open .chat-input-wrapper,
+  .chat-layout-wrapper.chat-input-focused .chat-input-wrapper {
+    padding: 0.25rem 0.45rem 0.35rem 0.45rem !important;
+    background: var(--bg-surface) !important;
+  }
+
+  html.keyboard-open .chat-input-bar,
+  body.keyboard-open .chat-input-bar,
+  .chat-layout-wrapper.chat-input-focused .chat-input-bar {
+    gap: 0.22rem !important;
+    padding: 0.22rem 0.35rem !important;
+    border-radius: 12px !important;
+  }
+
+  html.keyboard-open .chat-action-btn,
+  body.keyboard-open .chat-action-btn,
+  .chat-layout-wrapper.chat-input-focused .chat-action-btn {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+    border-radius: 8px !important;
+  }
+
+  html.keyboard-open .chat-action-btn svg,
+  body.keyboard-open .chat-action-btn svg,
+  .chat-layout-wrapper.chat-input-focused .chat-action-btn svg {
+    width: 15px !important;
+    height: 15px !important;
+  }
+
+  html.keyboard-open .chat-text-input,
+  body.keyboard-open .chat-text-input,
+  .chat-layout-wrapper.chat-input-focused .chat-text-input {
+    font-size: 15px !important;
+    padding: 0.32rem 0.45rem !important;
+  }
+
+  html.keyboard-open .chat-send-btn,
+  body.keyboard-open .chat-send-btn,
+  .chat-layout-wrapper.chat-input-focused .chat-send-btn {
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    min-height: 34px !important;
+    border-radius: 8px !important;
+  }
+}

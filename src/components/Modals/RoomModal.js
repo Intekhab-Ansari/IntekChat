@@ -20,7 +20,9 @@ import {
   Settings,
   AlertCircle,
   RefreshCw,
-  ShieldAlert
+  ShieldAlert,
+  QrCode,
+  Camera
 } from 'lucide-react';
 import { sounds } from '@/lib/sound';
 
@@ -34,6 +36,7 @@ export default function RoomModal({
   onJoinRoom,
   onLeaveRoom,
   onEditRoom,
+  onOpenQr,
   initialTab = null
 }) {
   const [modalTab, setModalTab] = useState(initialTab || (currentRoom ? 'edit' : 'create')); // 'create' | 'join' | 'edit'
@@ -759,6 +762,33 @@ export default function RoomModal({
         {/* ============================================================== */}
         {modalTab === 'join' && (
           <form onSubmit={handleJoinSubmit} className="room-form">
+            {/* Quick QR Camera Scanner Option */}
+            <div className="room-modal-scan-box">
+              <button
+                type="button"
+                className="btn-modal-scan-qr"
+                onClick={() => {
+                  sounds.playClick();
+                  onClose();
+                  if (onOpenQr) onOpenQr('scan');
+                }}
+                title="Scan room QR code from another screen or paper"
+              >
+                <div className="btn-modal-scan-icon-pulse">
+                  <QrCode size={20} className="text-cyan animate-pulse" />
+                </div>
+                <div className="btn-modal-scan-text">
+                  <strong>Scan Room QR Code</strong>
+                  <span>Use camera to scan another screen & join instantly</span>
+                </div>
+                <Camera size={16} className="text-accent flex-shrink-0" />
+              </button>
+            </div>
+
+            <div className="modal-form-divider">
+              <span>or enter room name manually</span>
+            </div>
+
             <div className="input-group">
               <label className="input-label">Enter Room Name to Join:</label>
               <div className="room-input-row">

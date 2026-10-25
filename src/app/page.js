@@ -1884,6 +1884,10 @@ export default function Home() {
         onJoinRoom={handleCreateOrJoinRoom}
         onLeaveRoom={handleLeaveRoom}
         onEditRoom={handleEditRoom}
+        onOpenQr={(mode = 'show') => {
+          setQrModalMode(mode);
+          setIsQrModalOpen(true);
+        }}
         initialTab={roomModalInitialTab}
       />
 

@@ -234,4 +234,4 @@ export function compressWallpaperImage(fileOrDataUrl, maxDim = 900, quality = 0.
     }
   });
 }
-
+export { compressChatImage } from './media';
