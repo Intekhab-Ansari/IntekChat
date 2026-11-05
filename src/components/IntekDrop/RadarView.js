@@ -17,7 +17,9 @@ import {
   Camera,
   Zap,
   Radio,
-  Check
+  Check,
+  Sparkles,
+  ExternalLink
 } from 'lucide-react';
 import { getAvatarColor, formatBytes } from '@/lib/peer';
 import { sounds } from '@/lib/sound';
@@ -276,6 +278,32 @@ export default function RadarView({
           </div>
         );
       })}
+
+      {/* On-Page Top Actions: Radar Status HUD & Connected IntekEdit Tool */}
+      <div className="radar-page-top-left">
+        <div className="radar-status-pill-page">
+          <Radio size={14} className="text-cyan animate-pulse" />
+          <span className="radar-status-title">Nearby Radar</span>
+          <span className="radar-status-chip">
+            <span className="realtime-live-dot" />
+            <span>{peers.length > 0 ? `${peers.length} Discovered` : 'Searching'}</span>
+          </span>
+        </div>
+
+        <a
+          href="https://intekedit.vercel.app"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="radar-intekedit-badge"
+          onClick={() => sounds.playClick()}
+          title="Open IntekEdit: 100% Private Document & Photo Suite (Zero Uploads)"
+        >
+          <span className="intekedit-pulse-dot" />
+          <Sparkles size={13} className="text-emerald" />
+          <span className="intekedit-name">IntekEdit Suite</span>
+          <ExternalLink size={11} className="intekedit-arrow" />
+        </a>
+      </div>
 
       {/* Persistent floating scan/pair button always available on radar */}
       <button

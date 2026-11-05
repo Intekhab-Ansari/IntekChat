@@ -174,44 +174,11 @@ export default function Navbar({
               <span className="tab-pill pill-chat">Chat</span>
             </button>
           </div>
-
-          {/* IntekEdit Ecosystem Companion Button */}
-          <a
-            href="https://intekedit.vercel.app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="nav-intekedit-badge"
-            title="Open IntekEdit: 100% Private Document & Photo Suite (Zero Uploads)"
-          >
-            <span className="intekedit-pulse-dot" />
-            <Sparkles size={13} className="intekedit-sparkle-icon" />
-            <span className="intekedit-name">IntekEdit</span>
-            <span className="intekedit-tag">Suite</span>
-            <ExternalLink size={11} className="intekedit-arrow" />
-          </a>
         </div>
 
         <div className="nav-right">
-          {/* Network / Room Status Badge */}
-          {activeTab === 'drop' ? (
-            <div 
-              className="network-pill intekdrop-pill" 
-              title="IntekDrop Nearby Radar Active"
-            >
-              <Radio size={14} className="text-cyan animate-pulse" />
-              <span className="room-label desktop-radar-label">Nearby Radar</span>
-              <span className="room-label mobile-radar-label">Radar</span>
-              <span className="peer-badge" title="Nearby devices discovered">
-                <span className="realtime-live-dot" />
-                <span className="desktop-peer-text">
-                  {peerCount > 0 ? `${peerCount} nearby` : 'Searching'}
-                </span>
-                <span className="mobile-peer-badge-count">
-                  {peerCount}
-                </span>
-              </span>
-            </div>
-          ) : (
+          {/* Network / Room Status Badge: Shown in IntekChat or when joined in a Room */}
+          {(activeTab === 'chat' || roomName) && (
             <button 
               type="button"
               className="network-pill interactive-pill" 
