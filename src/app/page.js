@@ -71,6 +71,10 @@ export default function Home() {
   });
   const sendQueueRef = useRef([]);
   const isSendingFileRef = useRef(false);
+  const departedPeersRef = useRef(new Set());
+  const knownPeersRef = useRef(new Set());
+  const visitedRoomsRef = useRef(new Set());
+  const lastSelfJoinRef = useRef(0);
 
   useEffect(() => {
     syncedWallpaperRef.current = syncedWallpaper;
@@ -316,12 +320,42 @@ export default function Home() {
     const storageKey = getRoomStorageKey(roomName);
     try {
       const saved = localStorage.getItem(storageKey);
+      let list = [];
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setMessages(parsed);
+          list = parsed;
         }
       }
+
+      // If in a custom room, show self join / rejoin message
+      if (roomName && roomName.trim()) {
+        const now = Date.now();
+        // Prevent duplicate self-join message within 6 seconds
+        if (now - lastSelfJoinRef.current > 6000) {
+          lastSelfJoinRef.current = now;
+          const isRejoin = list.length > 0 || visitedRoomsRef.current.has(roomName);
+          visitedRoomsRef.current.add(roomName);
+
+          const selfJoinMsg = {
+            id: `sys-self-join-${now}-${Math.random().toString(36).substring(2, 6)}`,
+            system: true,
+            action: 'join',
+            timestamp: now,
+            text: isRejoin
+              ? `⚡ You rejoined room #${roomName}`
+              : `✨ You joined room #${roomName}`,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          };
+
+          const lastMsg = list[list.length - 1];
+          if (!lastMsg || !lastMsg.id?.startsWith('sys-self-join') || (now - (lastMsg.timestamp || 0) > 6000)) {
+            list = [...list, selfJoinMsg];
+          }
+        }
+      }
+
+      setMessages(list);
     } catch (e) {
       console.warn('Failed to restore messages from localStorage:', e);
     }
@@ -673,12 +707,49 @@ export default function Home() {
 
       signaling.on('peer-joined', (newPeer) => {
         sounds.playJoin();
+        const peerId = newPeer?.id;
+        const peerName = newPeer?.name || 'A participant';
+        const isRejoin = Boolean(newPeer?.isRejoin || (peerId && departedPeersRef.current.has(peerId)));
+
+        if (peerId) {
+          departedPeersRef.current.delete(peerId);
+          knownPeersRef.current.add(peerId);
+        }
+
         setPeers((prev) => {
-          if (prev.some((p) => p.id === newPeer.id)) return prev;
-          const next = [...prev, newPeer];
+          const exists = prev.some((p) => p.id === peerId);
+          const next = exists
+            ? prev.map((p) => (p.id === peerId ? { ...p, ...newPeer } : p))
+            : [...prev, newPeer];
           setTotalParticipants(next.length + 1);
           return next;
         });
+
+        // Always display join / rejoin notification in room chat (unless it's an internal welcome reply)
+        if (!newPeer?.isWelcome) {
+          setMessages((mPrev) => {
+            // Deduplicate within 4 seconds for the same peer to prevent duplicate packets
+            const recentJoin = mPrev.slice(-4).find(
+              (m) => m.system && m.peerId === peerId && m.action === 'join' && (Date.now() - (m.timestamp || 0) < 4000)
+            );
+            if (recentJoin) return mPrev;
+
+            return [
+              ...mPrev,
+              {
+                id: `sys-join-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                system: true,
+                action: 'join',
+                peerId: peerId,
+                timestamp: Date.now(),
+                text: isRejoin
+                  ? `⚡ ${peerName} rejoined the room`
+                  : `✨ ${peerName} joined the room`,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              }
+            ];
+          });
+        }
 
         // Connect to newly joined peer (deterministic single offerer)
         const mySignalingId = signaling.id || signaling.selfId || userProfile?.id || '';
@@ -699,6 +770,9 @@ export default function Home() {
 
       signaling.on('peer-left', ({ id }) => {
         sounds.playLeave();
+        if (id) {
+          departedPeersRef.current.add(id);
+        }
         setPeers((prev) => {
           const departingPeer = prev.find((p) => p.id === id);
           const next = prev.filter((p) => p.id !== id);
@@ -707,8 +781,11 @@ export default function Home() {
             setMessages((mPrev) => [
               ...mPrev,
               {
-                id: `sys-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                id: `sys-left-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
                 system: true,
+                action: 'leave',
+                peerId: id,
+                timestamp: Date.now(),
                 text: `👋 ${departingPeer.name || 'A participant'} left the room`,
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
               }
@@ -1162,7 +1239,30 @@ export default function Home() {
       } catch {}
     }
 
-    setRoomName(cleanRoom);
+    if (cleanRoom && cleanRoom === roomName) {
+      const storageKey = getRoomStorageKey(cleanRoom);
+      let list = [];
+      try {
+        const saved = localStorage.getItem(storageKey);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) list = parsed;
+        }
+      } catch {}
+      const now = Date.now();
+      const rejoinMsg = {
+        id: `sys-self-join-${now}-${Math.random().toString(36).substring(2, 6)}`,
+        system: true,
+        action: 'join',
+        timestamp: now,
+        text: `⚡ You rejoined room #${cleanRoom}`,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages([...list, rejoinMsg]);
+    } else {
+      setMessages([]);
+      setRoomName(cleanRoom);
+    }
     setRoomPassword(password || '');
     setIsRoomProtected(!!password);
     setTotalParticipants(1);
@@ -1231,7 +1331,30 @@ export default function Home() {
         } catch {}
       }
 
-      setRoomName(cleanRoom);
+      if (cleanRoom && cleanRoom === roomName) {
+        const storageKey = getRoomStorageKey(cleanRoom);
+        let list = [];
+        try {
+          const saved = localStorage.getItem(storageKey);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed)) list = parsed;
+          }
+        } catch {}
+        const now = Date.now();
+        const rejoinMsg = {
+          id: `sys-self-join-${now}-${Math.random().toString(36).substring(2, 6)}`,
+          system: true,
+          action: 'join',
+          timestamp: now,
+          text: `⚡ You rejoined room #${cleanRoom}`,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages([...list, rejoinMsg]);
+      } else {
+        setMessages([]);
+        setRoomName(cleanRoom);
+      }
       setRoomPassword(pwd || '');
       setIsRoomProtected(!!pwd);
       setTotalParticipants(1);

@@ -5340,6 +5340,21 @@ body {
   overflow: hidden;
 }
 
+.message-system-pill.pill-join {
+  border-color: rgba(0, 245, 155, 0.25);
+  background: rgba(0, 245, 155, 0.05);
+}
+
+.message-system-pill.pill-rejoin {
+  border-color: rgba(245, 158, 11, 0.3);
+  background: rgba(245, 158, 11, 0.06);
+}
+
+.message-system-pill.pill-leave {
+  border-color: rgba(239, 68, 68, 0.25);
+  background: rgba(239, 68, 68, 0.05);
+}
+
 .message-system-pill span:not(.system-time) {
   white-space: nowrap !important;
   overflow: hidden;

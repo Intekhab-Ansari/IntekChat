@@ -19,6 +19,7 @@ export class CloudSignalingAdapter {
     this.client = null;
     this.listeners = new Map();
     this.knownPeers = new Map();
+    this.departedPeers = new Set();
     this.heartbeatInterval = null;
     this.cleanupInterval = null;
     this.connected = false;
@@ -141,6 +142,7 @@ export class CloudSignalingAdapter {
           for (const [peerId, peerData] of this.knownPeers.entries()) {
             if (now - peerData.lastSeen > 25000) {
               this.knownPeers.delete(peerId);
+              if (this.departedPeers) this.departedPeers.add(peerId);
               this.emitLocal('peer-left', { id: peerId });
               this.broadcastCount();
             }
@@ -225,7 +227,30 @@ export class CloudSignalingAdapter {
     if (!senderId || senderId === this.selfId) return; // Ignore own messages
 
     if (topic === this.presenceTopic) {
-      if (data.action === 'announce' || data.action === 'welcome' || data.action === 'heartbeat') {
+      if (data.action === 'announce') {
+        if (data.peerInfo && data.peerInfo.id) {
+          const isRejoin = this.knownPeers.has(data.peerInfo.id) || Boolean(this.departedPeers && this.departedPeers.has(data.peerInfo.id));
+          this.knownPeers.set(data.peerInfo.id, {
+            ...data.peerInfo,
+            lastSeen: Date.now()
+          });
+          if (this.departedPeers) this.departedPeers.delete(data.peerInfo.id);
+
+          this.emitLocal('peer-joined', {
+            ...data.peerInfo,
+            isRejoin: Boolean(isRejoin)
+          });
+          this.broadcastCount();
+
+          // Reply with welcome so the joining peer immediately learns about us
+          this.broadcastPresence('welcome', { targetId: data.peerInfo.id });
+          this.sendDirect(data.peerInfo.id, {
+            type: 'welcome',
+            senderId: this.selfId,
+            peerInfo: { ...this.userProfile, id: this.selfId }
+          });
+        }
+      } else if (data.action === 'welcome' || data.action === 'heartbeat') {
         if (data.peerInfo && data.peerInfo.id) {
           const isNew = !this.knownPeers.has(data.peerInfo.id);
           this.knownPeers.set(data.peerInfo.id, {
@@ -234,18 +259,11 @@ export class CloudSignalingAdapter {
           });
 
           if (isNew) {
-            this.emitLocal('peer-joined', data.peerInfo);
-            this.broadcastCount();
-          }
-
-          if (data.action === 'announce') {
-            // Reply with welcome so the joining peer immediately learns about us
-            this.broadcastPresence('welcome', { targetId: data.peerInfo.id });
-            this.sendDirect(data.peerInfo.id, {
-              type: 'welcome',
-              senderId: this.selfId,
-              peerInfo: { ...this.userProfile, id: this.selfId }
+            this.emitLocal('peer-joined', {
+              ...data.peerInfo,
+              isWelcome: data.action === 'welcome'
             });
+            this.broadcastCount();
           }
         }
       } else if (data.action === 'query') {
@@ -254,6 +272,7 @@ export class CloudSignalingAdapter {
       } else if (data.action === 'bye') {
         if (this.knownPeers.has(senderId)) {
           this.knownPeers.delete(senderId);
+          if (this.departedPeers) this.departedPeers.add(senderId);
           this.emitLocal('peer-left', { id: senderId });
           this.broadcastCount();
         }
@@ -274,7 +293,10 @@ export class CloudSignalingAdapter {
             lastSeen: Date.now()
           });
           if (isNew) {
-            this.emitLocal('peer-joined', data.peerInfo);
+            this.emitLocal('peer-joined', {
+              ...data.peerInfo,
+              isWelcome: true
+            });
             this.broadcastCount();
           }
         }

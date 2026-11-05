@@ -39,6 +39,7 @@ import {
   Reply,
   Info,
   Key,
+  Zap,
   DatabaseZap,
   Paintbrush,
   Edit3,
@@ -1998,10 +1999,18 @@ export default function ChatView({
 
           {messages.map((msg) => {
             if (msg.system) {
+              const isLeave = msg.action === 'leave' || msg.text?.includes('left');
+              const isRejoin = msg.action === 'join' ? msg.text?.includes('rejoined') : msg.text?.includes('rejoined');
               return (
                 <div key={msg.id} className="message-system-row">
-                  <div className="message-system-pill">
-                    <Sparkles size={13} className="text-accent" />
+                  <div className={`message-system-pill ${isLeave ? 'pill-leave' : isRejoin ? 'pill-rejoin' : 'pill-join'}`}>
+                    {isLeave ? (
+                      <LogOut size={13} className="text-pink flex-shrink-0" />
+                    ) : isRejoin ? (
+                      <Zap size={13} className="text-amber flex-shrink-0" />
+                    ) : (
+                      <Sparkles size={13} className="text-accent flex-shrink-0" />
+                    )}
                     <span>{msg.text}</span>
                     <span className="system-time">{msg.time}</span>
                   </div>
