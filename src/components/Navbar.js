@@ -17,9 +17,10 @@ import {
   MoreVertical,
   X,
   Sparkles,
-  ExternalLink
+  ExternalLink,
+  Clock
 } from 'lucide-react';
-import { getAvatarColor } from '@/lib/peer';
+import { getAvatarColor, formatRemainingTime } from '@/lib/peer';
 import { sounds } from '@/lib/sound';
 
 const THEME_COLORS = {
@@ -47,12 +48,21 @@ export default function Navbar({
   currentTheme = 'sapphire',
   onOpenAppearance,
   isRoomProtected = false,
-  onOpenRoomModal
+  onOpenRoomModal,
+  autoDeleteExpiresAt = null
 }) {
   const [copied, setCopied] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [, setTimeTick] = useState(0);
   const mobileMenuRef = useRef(null);
   const avatarStyle = getAvatarColor(userProfile?.colorIndex || 0);
+
+  // Smooth live countdown update
+  useEffect(() => {
+    if (!autoDeleteExpiresAt) return;
+    const interval = setInterval(() => setTimeTick((t) => t + 1), 1000);
+    return () => clearInterval(interval);
+  }, [autoDeleteExpiresAt]);
 
   // Close mobile menu when clicking outside or pressing Escape
   useEffect(() => {
@@ -213,6 +223,15 @@ export default function Navbar({
                   <Lock size={14} className={isRoomProtected ? 'text-pink' : 'text-accent'} />
                   <span className="room-label">#{roomName}</span>
                   {isRoomProtected && <span className="room-mini-badge">🔒</span>}
+                  {autoDeleteExpiresAt && (
+                    <span 
+                      className="room-autodelete-badge" 
+                      title={`Room self-destructs in ${formatRemainingTime(autoDeleteExpiresAt)}`}
+                    >
+                      <Clock size={11} className="autodelete-clock text-amber" />
+                      <span className="autodelete-timer-text">{formatRemainingTime(autoDeleteExpiresAt)}</span>
+                    </span>
+                  )}
                 </>
               ) : (
                 <>

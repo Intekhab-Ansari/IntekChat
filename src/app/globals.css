@@ -5484,6 +5484,146 @@ body {
 }
 
 /* ==========================================================================
+   ROOM AUTO-DELETE / SELF-DESTRUCT LIFETIME STYLES
+   ========================================================================== */
+.auto-delete-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.edit-auto-delete-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-bright);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+}
+
+.auto-delete-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.auto-delete-preview-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  padding: 1.5px 8px;
+  border-radius: 9999px;
+  font-family: var(--font-mono);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
+}
+
+.auto-delete-pills {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.35rem;
+}
+
+.auto-delete-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.25rem;
+  border-radius: 9px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted, #94a3b8);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+}
+
+.auto-delete-pill:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.auto-delete-pill.active {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.22) 0%, rgba(244, 63, 94, 0.18) 100%);
+  border-color: #f59e0b;
+  color: #fbbf24;
+  box-shadow: 0 0 14px rgba(245, 158, 11, 0.3);
+}
+
+.pill-clock-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #fbbf24;
+  box-shadow: 0 0 6px #fbbf24;
+  flex-shrink: 0;
+}
+
+/* Navbar Self-Destruct Countdown Badge */
+.room-autodelete-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.18);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  padding: 1px 6px;
+  border-radius: 9999px;
+  margin-left: 0.2rem;
+  font-family: var(--font-mono);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.25);
+  animation: autodeleteBadgeGlow 2.5s infinite ease-in-out;
+}
+
+@keyframes autodeleteBadgeGlow {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.5);
+  }
+}
+
+.autodelete-clock {
+  animation: clockTick 1.5s infinite ease-in-out;
+  flex-shrink: 0;
+}
+
+@keyframes clockTick {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.18); opacity: 1; }
+}
+
+/* Chat Header Self-Destruct Pill */
+.chat-autodelete-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.73rem;
+  font-weight: 700;
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  padding: 0.2rem 0.65rem;
+  border-radius: 9999px;
+  font-family: var(--font-mono);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.18);
+}
+
+@media (max-width: 600px) {
+  .auto-delete-pills {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ==========================================================================
    SILK DAYLIGHT THEME: EXECUTIVE LIGHT MODE REFINEMENTS
    ========================================================================== */
 [data-theme="silk"] {
@@ -5551,6 +5691,30 @@ body {
   background: rgba(5, 150, 105, 0.08) !important;
   border-color: rgba(5, 150, 105, 0.3) !important;
   color: #065f46 !important;
+}
+
+[data-theme="silk"] .auto-delete-pill {
+  background: #f1f5f9;
+  border-color: rgba(148, 163, 184, 0.35);
+  color: #334155;
+}
+
+[data-theme="silk"] .auto-delete-pill.active {
+  background: rgba(245, 158, 11, 0.16);
+  border-color: #d97706;
+  color: #b45309;
+}
+
+[data-theme="silk"] .room-autodelete-badge {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #b45309;
+}
+
+[data-theme="silk"] .chat-autodelete-pill {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #b45309;
 }
 
 [data-theme="silk"] .modal-backdrop {

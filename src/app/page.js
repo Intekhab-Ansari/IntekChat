@@ -27,6 +27,11 @@ export default function Home() {
   const [roomName, setRoomName] = useState('');
   const [roomPassword, setRoomPassword] = useState('');
   const [isRoomProtected, setIsRoomProtected] = useState(false);
+  const [autoDeleteExpiresAt, setAutoDeleteExpiresAt] = useState(null);
+  const autoDeleteExpiresAtRef = useRef(null);
+  useEffect(() => {
+    autoDeleteExpiresAtRef.current = autoDeleteExpiresAt;
+  }, [autoDeleteExpiresAt]);
   const [totalParticipants, setTotalParticipants] = useState(1);
   const [dropPairId, setDropPairId] = useState('');
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
@@ -670,9 +675,17 @@ export default function Home() {
       });
 
       // Room Peers Update
-      signaling.on('room-peers', ({ peers: initialPeers, selfId, isProtected, totalCount }) => {
+      signaling.on('room-peers', ({ peers: initialPeers, selfId, isProtected, totalCount, autoDeleteExpiresAt: serverExpiresAt }) => {
         if (typeof isProtected === 'boolean') {
           setIsRoomProtected(isProtected);
+        }
+        if (typeof serverExpiresAt === 'number') {
+          setAutoDeleteExpiresAt(serverExpiresAt);
+          if (typeof window !== 'undefined' && roomNameRef.current) {
+            try {
+              localStorage.setItem(`intekchat_room_expires_${roomNameRef.current}`, String(serverExpiresAt));
+            } catch {}
+          }
         }
         const filtered = (initialPeers || []).filter((p) => p.id !== selfId);
         setPeers(filtered);
@@ -818,6 +831,16 @@ export default function Home() {
         }
         setRoomName(newRoom);
         setIsRoomProtected(isProtected);
+        if (typeof autoDeleteExpiresAt !== 'undefined') {
+          setAutoDeleteExpiresAt(autoDeleteExpiresAt);
+          if (typeof window !== 'undefined' && newRoom) {
+            if (autoDeleteExpiresAt) {
+              localStorage.setItem(`intekchat_room_expires_${newRoom}`, String(autoDeleteExpiresAt));
+            } else {
+              localStorage.removeItem(`intekchat_room_expires_${newRoom}`);
+            }
+          }
+        }
         if (typeof window !== 'undefined') {
           const url = new URL(window.location.href);
           url.searchParams.set('room', newRoom);
@@ -834,13 +857,26 @@ export default function Home() {
         ]);
       });
 
-      // Room Deleted by Host / Moderator
+      // Synchronize auto-delete timer across cloud/mesh peers
+      signaling.on('room-auto-delete-synced', ({ autoDeleteExpiresAt: syncedExp }) => {
+        if (syncedExp && (!autoDeleteExpiresAtRef.current || syncedExp < autoDeleteExpiresAtRef.current)) {
+          setAutoDeleteExpiresAt(syncedExp);
+          if (typeof window !== 'undefined' && roomNameRef.current) {
+            try {
+              localStorage.setItem(`intekchat_room_expires_${roomNameRef.current}`, String(syncedExp));
+            } catch {}
+          }
+        }
+      });
+
+      // Room Deleted by Host / Moderator or Auto-Delete Expiration
       signaling.on('room-deleted', ({ room, message }) => {
         sounds.playBurn();
         const deletedRoom = (room || roomNameRef.current || '').trim().toLowerCase();
         if (deletedRoom && typeof window !== 'undefined') {
           try {
             localStorage.removeItem(getRoomStorageKey(deletedRoom));
+            localStorage.removeItem(`intekchat_room_expires_${deletedRoom}`);
             localStorage.removeItem('intekchat_wallpaper_custom');
             localStorage.removeItem('intekchat_wallpaper_type');
             localStorage.removeItem('intekchat_wallpaper_opacity');
@@ -851,13 +887,14 @@ export default function Home() {
             window.history.pushState({}, '', url.toString());
           } catch {}
         }
+        setAutoDeleteExpiresAt(null);
         setMessages([]);
         setRoomName('');
         setRoomPassword('');
         setIsRoomProtected(false);
         setTotalParticipants(1);
         setIsRoomModalOpen(false);
-        alert(message || `Room #${deletedRoom} was permanently deleted by its host.`);
+        alert(message || `Room #${deletedRoom} was permanently deleted.`);
       });
 
       // Encrypted Relay Fallback
@@ -1138,7 +1175,9 @@ export default function Home() {
     // If on Vercel and no custom server URL configured, use CloudSignalingAdapter directly
     if (isVercel && !customServerUrl) {
       usingCloudFallback = true;
-      activeSignaling = new CloudSignalingAdapter(effectiveRoom, userProfile);
+      activeSignaling = new CloudSignalingAdapter(effectiveRoom, userProfile, {
+        autoDeleteExpiresAt: autoDeleteExpiresAtRef.current
+      });
       initWebRTC(activeSignaling);
       setupSignalingListeners(activeSignaling);
     } else {
@@ -1164,7 +1203,8 @@ export default function Home() {
         socket.emit('join-network', {
           room: effectiveRoom,
           passwordHash,
-          peerInfo: userProfile
+          peerInfo: userProfile,
+          autoDeleteExpiresAt: autoDeleteExpiresAtRef.current
         });
       });
 
@@ -1173,7 +1213,9 @@ export default function Home() {
         if (!socket.connected && !usingCloudFallback) {
           usingCloudFallback = true;
           try { socket.disconnect(); } catch {}
-          activeSignaling = new CloudSignalingAdapter(effectiveRoom, userProfile);
+          activeSignaling = new CloudSignalingAdapter(effectiveRoom, userProfile, {
+            autoDeleteExpiresAt: autoDeleteExpiresAtRef.current
+          });
           initWebRTC(activeSignaling);
           setupSignalingListeners(activeSignaling);
         }
@@ -1184,7 +1226,9 @@ export default function Home() {
           usingCloudFallback = true;
           clearTimeout(fallbackTimer);
           try { socket.disconnect(); } catch {}
-          activeSignaling = new CloudSignalingAdapter(effectiveRoom, userProfile);
+          activeSignaling = new CloudSignalingAdapter(effectiveRoom, userProfile, {
+            autoDeleteExpiresAt: autoDeleteExpiresAtRef.current
+          });
           initWebRTC(activeSignaling);
           setupSignalingListeners(activeSignaling);
         }
@@ -1219,9 +1263,33 @@ export default function Home() {
   };
 
   // Handle Joining / Creating Room
-  const handleCreateOrJoinRoom = (newRoom, password = '') => {
+  const handleCreateOrJoinRoom = (newRoom, password = '', autoDeleteMinutes = 0) => {
     const cleanRoom = (newRoom || '').trim().toLowerCase().replace(/[^a-z0-9-_]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
     
+    // Auto-Delete Lifetime
+    if (typeof autoDeleteMinutes === 'number' && autoDeleteMinutes > 0) {
+      const exp = Date.now() + autoDeleteMinutes * 60 * 1000;
+      setAutoDeleteExpiresAt(exp);
+      if (typeof window !== 'undefined' && cleanRoom) {
+        try {
+          localStorage.setItem(`intekchat_room_expires_${cleanRoom}`, String(exp));
+        } catch {}
+      }
+    } else {
+      let foundExp = null;
+      if (typeof window !== 'undefined' && cleanRoom) {
+        try {
+          const saved = localStorage.getItem(`intekchat_room_expires_${cleanRoom}`);
+          if (saved) {
+            const p = parseInt(saved, 10);
+            if (p > Date.now()) foundExp = p;
+            else localStorage.removeItem(`intekchat_room_expires_${cleanRoom}`);
+          }
+        } catch {}
+      }
+      setAutoDeleteExpiresAt(foundExp);
+    }
+
     // Clean previous room state so every new room starts completely fresh
     setMessages([]);
     setWallpaperType('doodles');
@@ -1372,8 +1440,8 @@ export default function Home() {
     }
   };
 
-  // Handle Editing Room Details (Rename, Add Password, Change Password, or Remove Password)
-  const handleEditRoom = async ({ oldRoom, newRoom, currentPassword, newPassword, isRemovingPassword }) => {
+  // Handle Editing Room Details (Rename, Add Password, Change Password, or Remove Password, Auto-Delete Lifetime)
+  const handleEditRoom = async ({ oldRoom, newRoom, currentPassword, newPassword, isRemovingPassword, autoDeleteMinutes }) => {
     if (!socketRef.current) throw new Error('Not connected to signaling server');
 
     const effectiveOldPass = currentPassword || roomPassword || null;
@@ -1398,13 +1466,24 @@ export default function Home() {
           newRoom,
           oldPasswordHash,
           newPasswordHash,
-          isProtected
+          isProtected,
+          autoDeleteMinutes
         },
         (res) => {
           if (res && res.success) {
             const cleanNew = res.newRoom;
             setRoomName(cleanNew);
             setIsRoomProtected(res.isProtected);
+            if (typeof res.autoDeleteExpiresAt !== 'undefined') {
+              setAutoDeleteExpiresAt(res.autoDeleteExpiresAt);
+              if (typeof window !== 'undefined' && cleanNew) {
+                if (res.autoDeleteExpiresAt) {
+                  localStorage.setItem(`intekchat_room_expires_${cleanNew}`, String(res.autoDeleteExpiresAt));
+                } else {
+                  localStorage.removeItem(`intekchat_room_expires_${cleanNew}`);
+                }
+              }
+            }
             if (isRemovingPassword) {
               setRoomPassword('');
             } else if (newPassword) {
@@ -1422,7 +1501,7 @@ export default function Home() {
               {
                 id: `sys-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
                 system: true,
-                text: `Room details updated to #${cleanNew} (${res.isProtected ? 'Password Protected 🔒' : 'Open Room 🔓'})`,
+                text: `Room details updated to #${cleanNew} (${res.isProtected ? 'Password Protected 🔒' : 'Open Room 🔓'}${res.autoDeleteExpiresAt ? ' • Auto-Delete Active ⏱' : ''})`,
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
               }
             ]);
@@ -1441,9 +1520,11 @@ export default function Home() {
     if (typeof window !== 'undefined' && roomName) {
       try {
         localStorage.removeItem(getRoomStorageKey(roomName));
+        localStorage.removeItem(`intekchat_room_expires_${roomName}`);
       } catch {}
     }
     setMessages([]);
+    setAutoDeleteExpiresAt(null);
 
     // 2. Wipe wallpaper completely and reset to clean defaults
     setWallpaperType('doodles');
@@ -1526,6 +1607,7 @@ export default function Home() {
             if (typeof window !== 'undefined') {
               try {
                 localStorage.removeItem(getRoomStorageKey(cleanRoom));
+                localStorage.removeItem(`intekchat_room_expires_${cleanRoom}`);
                 localStorage.removeItem('intekchat_wallpaper_custom');
                 localStorage.removeItem('intekchat_wallpaper_type');
                 localStorage.removeItem('intekchat_wallpaper_opacity');
@@ -1536,6 +1618,7 @@ export default function Home() {
                 window.history.pushState({}, '', url.toString());
               } catch {}
             }
+            setAutoDeleteExpiresAt(null);
             setMessages([]);
             setRoomName('');
             setRoomPassword('');
@@ -1554,6 +1637,7 @@ export default function Home() {
         if (typeof window !== 'undefined') {
           try {
             localStorage.removeItem(getRoomStorageKey(cleanRoom));
+            localStorage.removeItem(`intekchat_room_expires_${cleanRoom}`);
             localStorage.removeItem('intekchat_wallpaper_custom');
             localStorage.removeItem('intekchat_wallpaper_type');
             localStorage.removeItem('intekchat_wallpaper_opacity');
@@ -1564,6 +1648,7 @@ export default function Home() {
             window.history.pushState({}, '', url.toString());
           } catch {}
         }
+        setAutoDeleteExpiresAt(null);
         setMessages([]);
         setRoomName('');
         setRoomPassword('');
@@ -1574,6 +1659,24 @@ export default function Home() {
       }
     });
   };
+
+  // Room Auto-Delete (Self-Destruct) Countdown Watcher
+  useEffect(() => {
+    if (!roomName || !autoDeleteExpiresAt) return;
+
+    const checkAutoDelete = () => {
+      const now = Date.now();
+      if (now >= autoDeleteExpiresAt) {
+        const expiringRoom = roomName;
+        handleDeleteRoom(expiringRoom, roomPassword);
+        alert(`⏱ Room #${expiringRoom} was automatically deleted because its auto-delete lifetime expired.`);
+      }
+    };
+
+    checkAutoDelete();
+    const timer = setInterval(checkAutoDelete, 1000);
+    return () => clearInterval(timer);
+  }, [roomName, autoDeleteExpiresAt, roomPassword]);
 
   const handlePasswordPromptSubmit = (enteredPassword) => {
     setPasswordPromptError('');
@@ -2023,6 +2126,7 @@ export default function Home() {
         onOpenAppearance={handleOpenAppearance}
         isRoomProtected={isRoomProtected}
         onOpenRoomModal={() => handleOpenRoomModal()}
+        autoDeleteExpiresAt={autoDeleteExpiresAt}
       />
 
       {/* Main View Area */}
@@ -2080,6 +2184,7 @@ export default function Home() {
             onClearCustomWallpaper={handleClearCustomWallpaper}
             onChangeWallpaperOpacity={handleChangeWallpaperOpacity}
             onToggleWallpaperBlur={handleToggleWallpaperBlur}
+            autoDeleteExpiresAt={autoDeleteExpiresAt}
           />
         )}
       </main>
@@ -2130,6 +2235,7 @@ export default function Home() {
           setIsQrModalOpen(true);
         }}
         initialTab={roomModalInitialTab}
+        autoDeleteExpiresAt={autoDeleteExpiresAt}
       />
 
       {/* Password Prompt Modal for Unlocking Protected Rooms */}

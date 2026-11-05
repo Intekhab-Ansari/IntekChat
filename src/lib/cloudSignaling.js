@@ -16,6 +16,7 @@ export class CloudSignalingAdapter {
     this.selfId = safeId;
     this.userProfile = { ...(userProfile || {}), id: safeId };
     this.options = options;
+    this.autoDeleteExpiresAt = options.autoDeleteExpiresAt || null;
     this.client = null;
     this.listeners = new Map();
     this.knownPeers = new Map();
@@ -207,6 +208,7 @@ export class CloudSignalingAdapter {
       action,
       senderId: this.selfId,
       peerInfo: { ...this.userProfile, id: this.selfId },
+      autoDeleteExpiresAt: this.autoDeleteExpiresAt,
       timestamp: Date.now(),
       ...extra
     };
@@ -280,8 +282,23 @@ export class CloudSignalingAdapter {
         this.emitLocal('room-deleted', {
           room: data.room || this.roomName,
           senderId: data.senderId,
-          message: `Room #${data.room || this.roomName} was permanently deleted by its host.`
+          message: data.message || `Room #${data.room || this.roomName} was permanently deleted by its host.`
         });
+      } else if (data.action === 'room-details-updated') {
+        if (data.autoDeleteExpiresAt) {
+          this.autoDeleteExpiresAt = data.autoDeleteExpiresAt;
+        }
+        this.emitLocal('room-details-updated', {
+          oldRoom: data.oldRoom,
+          newRoom: data.newRoom,
+          isProtected: data.isProtected,
+          autoDeleteExpiresAt: data.autoDeleteExpiresAt,
+          message: data.message
+        });
+      }
+
+      if (data.autoDeleteExpiresAt) {
+        this.emitLocal('room-auto-delete-synced', { autoDeleteExpiresAt: data.autoDeleteExpiresAt });
       }
     } else if (topic === this.myDirectTopic) {
       // Direct message sent to this specific peer
@@ -399,6 +416,36 @@ export class CloudSignalingAdapter {
 
     if (event === 'leave-room') {
       this.broadcastPresence('bye');
+      return;
+    }
+
+    if (event === 'edit-room') {
+      const cleanOld = (data?.oldRoom || '').trim().toLowerCase();
+      const cleanNew = (data?.newRoom || '').trim().toLowerCase();
+      let autoDelExp = this.autoDeleteExpiresAt;
+      if (typeof data?.autoDeleteMinutes === 'number') {
+        autoDelExp = data.autoDeleteMinutes > 0 ? Date.now() + data.autoDeleteMinutes * 60 * 1000 : null;
+        this.autoDeleteExpiresAt = autoDelExp;
+      }
+      try {
+        this.client?.publish(this.presenceTopic, JSON.stringify({
+          action: 'room-details-updated',
+          oldRoom: cleanOld,
+          newRoom: cleanNew,
+          isProtected: data?.isProtected,
+          autoDeleteExpiresAt: autoDelExp,
+          message: `Room details updated: #${cleanOld} -> #${cleanNew}`
+        }), { qos: 1 });
+      } catch {}
+      if (typeof callback === 'function') {
+        callback({
+          success: true,
+          oldRoom: cleanOld,
+          newRoom: cleanNew,
+          isProtected: data?.isProtected,
+          autoDeleteExpiresAt: autoDelExp
+        });
+      }
       return;
     }
 

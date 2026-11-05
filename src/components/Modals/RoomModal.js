@@ -23,9 +23,18 @@ import {
   ShieldAlert,
   QrCode,
   Camera,
-  Trash2
+  Trash2,
+  Clock
 } from 'lucide-react';
 import { sounds } from '@/lib/sound';
+
+const AUTO_DELETE_OPTIONS = [
+  { value: 0, label: 'Off (Manual)' },
+  { value: 15, label: '15 Mins' },
+  { value: 60, label: '1 Hour' },
+  { value: 360, label: '6 Hours' },
+  { value: 1440, label: '24 Hours' }
+];
 
 export default function RoomModal({
   isOpen,
@@ -39,7 +48,8 @@ export default function RoomModal({
   onDeleteRoom,
   onEditRoom,
   onOpenQr,
-  initialTab = null
+  initialTab = null,
+  autoDeleteExpiresAt = null
 }) {
   const [modalTab, setModalTab] = useState(initialTab || (currentRoom ? 'edit' : 'create')); // 'create' | 'join' | 'edit'
   const [showBannerPassword, setShowBannerPassword] = useState(false);
@@ -49,6 +59,7 @@ export default function RoomModal({
   const [enablePassword, setEnablePassword] = useState(false);
   const [createPassword, setCreatePassword] = useState('');
   const [showCreatePassword, setShowCreatePassword] = useState(false);
+  const [createAutoDelete, setCreateAutoDelete] = useState(0);
 
   // Join Room state
   const [joinRoomName, setJoinRoomName] = useState('');
@@ -63,6 +74,7 @@ export default function RoomModal({
   const [editAddPassword, setEditAddPassword] = useState(false);
   const [editNewPassword, setEditNewPassword] = useState('');
   const [showEditNewPassword, setShowEditNewPassword] = useState(false);
+  const [editAutoDelete, setEditAutoDelete] = useState(0);
   const [editError, setEditError] = useState('');
   const [editSuccess, setEditSuccess] = useState('');
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
@@ -97,6 +109,13 @@ export default function RoomModal({
       setDeleteError('');
       setIsDeletingRoom(false);
 
+      if (autoDeleteExpiresAt && autoDeleteExpiresAt > Date.now()) {
+        const remMins = Math.max(1, Math.round((autoDeleteExpiresAt - Date.now()) / (60 * 1000)));
+        setEditAutoDelete(remMins);
+      } else {
+        setEditAutoDelete(0);
+      }
+
       const handleKeyDown = (e) => {
         if (e.key === 'Escape') {
           onClose();
@@ -105,7 +124,7 @@ export default function RoomModal({
       window.addEventListener('keydown', handleKeyDown);
       return () => window.removeEventListener('keydown', handleKeyDown);
     }
-  }, [isOpen, initialTab, currentRoom, onClose]);
+  }, [isOpen, initialTab, currentRoom, autoDeleteExpiresAt, onClose]);
 
   if (!isOpen) return null;
 
@@ -130,7 +149,7 @@ export default function RoomModal({
     if (!createRoomName.trim()) return;
     sounds.playSuccess();
     const cleanName = createRoomName.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '-');
-    onCreateRoom(cleanName, enablePassword ? createPassword.trim() : null);
+    onCreateRoom(cleanName, enablePassword ? createPassword.trim() : null, createAutoDelete);
     onClose();
   };
 
@@ -203,7 +222,8 @@ export default function RoomModal({
         newRoom: cleanNewName,
         currentPassword: editCurrentPassword.trim(),
         newPassword: newPass,
-        isRemovingPassword: isRemoving
+        isRemovingPassword: isRemoving,
+        autoDeleteMinutes: editAutoDelete
       });
 
       if (result && result.success === false) {
@@ -644,6 +664,42 @@ export default function RoomModal({
               </div>
             )}
 
+            {/* Auto-Delete Room (Self-Destruct) Settings */}
+            <div className="input-group auto-delete-group edit-auto-delete-card">
+              <div className="auto-delete-header-row">
+                <label className="input-label flex items-center gap-1.5">
+                  <Clock size={14} className="text-amber" />
+                  <span>Auto-Delete Room (Self-Destruct):</span>
+                </label>
+                {editAutoDelete > 0 && (
+                  <span className="auto-delete-preview-badge">
+                    {editAutoDelete < 60 ? `${editAutoDelete}m` : `${Math.round((editAutoDelete / 60) * 10) / 10}h`}
+                  </span>
+                )}
+              </div>
+              <div className="auto-delete-pills">
+                {AUTO_DELETE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    className={`auto-delete-pill ${editAutoDelete === opt.value ? 'active' : ''}`}
+                    onClick={() => {
+                      sounds.playClick();
+                      setEditAutoDelete(opt.value);
+                    }}
+                  >
+                    {opt.value > 0 && <span className="pill-clock-dot" />}
+                    <span>{opt.label}</span>
+                  </button>
+                ))}
+              </div>
+              <span className="input-hint">
+                {editAutoDelete > 0
+                  ? `Room will automatically self-destruct and wipe all data in ${editAutoDelete < 60 ? `${editAutoDelete} minutes` : `${Math.round((editAutoDelete / 60) * 10) / 10} hours`}.`
+                  : 'Auto-delete is off. Room stays active until manually deleted or empty.'}
+              </span>
+            </div>
+
             {/* Leave Room Option in Room Details Section */}
             <div className="leave-room-section-card">
               <div className="leave-room-section-info">
@@ -894,6 +950,42 @@ export default function RoomModal({
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* Auto-Delete Room (Self-Destruct) Settings */}
+            <div className="input-group auto-delete-group">
+              <div className="auto-delete-header-row">
+                <label className="input-label flex items-center gap-1.5">
+                  <Clock size={14} className="text-amber" />
+                  <span>Auto-Delete Room (Self-Destruct):</span>
+                </label>
+                {createAutoDelete > 0 && (
+                  <span className="auto-delete-preview-badge">
+                    {createAutoDelete < 60 ? `${createAutoDelete}m` : `${createAutoDelete / 60}h`}
+                  </span>
+                )}
+              </div>
+              <div className="auto-delete-pills">
+                {AUTO_DELETE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    className={`auto-delete-pill ${createAutoDelete === opt.value ? 'active' : ''}`}
+                    onClick={() => {
+                      sounds.playClick();
+                      setCreateAutoDelete(opt.value);
+                    }}
+                  >
+                    {opt.value > 0 && <span className="pill-clock-dot" />}
+                    <span>{opt.label}</span>
+                  </button>
+                ))}
+              </div>
+              <span className="input-hint">
+                {createAutoDelete > 0
+                  ? `Room and chats will automatically self-destruct after ${createAutoDelete < 60 ? `${createAutoDelete} minutes` : `${createAutoDelete / 60} hours`} if you forget to leave or delete.`
+                  : 'Stays active until manually deleted or until everyone leaves.'}
+              </span>
             </div>
 
             <div className="modal-footer">

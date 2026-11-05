@@ -51,7 +51,7 @@ app.prepare().then(() => {
     const rawIp = getClientIp(socket.request);
     let currentRoom = null;
 
-    socket.on('join-network', ({ room, peerInfo, passwordHash }) => {
+    socket.on('join-network', ({ room, peerInfo, passwordHash, autoDeleteMinutes, autoDeleteExpiresAt }) => {
       // Leave previous room if already joined
       if (currentRoom && rooms.has(currentRoom)) {
         socket.leave(currentRoom);
@@ -78,15 +78,22 @@ app.prepare().then(() => {
       if (isCustomRoom) {
         const existingMeta = roomsMeta.get(targetRoom);
         const isExpired = existingMeta && existingMeta.expiresAt && Date.now() > existingMeta.expiresAt;
+        const isAutoDeleted = existingMeta && existingMeta.autoDeleteExpiresAt && Date.now() > existingMeta.autoDeleteExpiresAt;
 
-        if (!existingMeta || isExpired) {
+        if (!existingMeta || isExpired || isAutoDeleted) {
+          const autoDelExp = (typeof autoDeleteMinutes === 'number' && autoDeleteMinutes > 0)
+            ? Date.now() + autoDeleteMinutes * 60 * 1000
+            : (typeof autoDeleteExpiresAt === 'number' && autoDeleteExpiresAt > Date.now() ? autoDeleteExpiresAt : null);
+
           // Creating this room: if passwordHash provided, protect it
           roomsMeta.set(targetRoom, {
             passwordHash: passwordHash || null,
             isProtected: Boolean(passwordHash),
             roomName: cleanRoom,
             createdAt: Date.now(),
-            expiresAt: null
+            expiresAt: null,
+            autoDeleteMinutes: autoDeleteMinutes || 0,
+            autoDeleteExpiresAt: autoDelExp
           });
         } else {
           // Room already exists: verify password
@@ -134,6 +141,7 @@ app.prepare().then(() => {
         room: targetRoom,
         roomName: cleanRoom,
         isProtected: meta?.isProtected || false,
+        autoDeleteExpiresAt: meta?.autoDeleteExpiresAt || null,
         peers: existingPeers,
         totalCount: roomPeers.size,
         selfId: socket.id,
@@ -211,8 +219,8 @@ app.prepare().then(() => {
       }
     });
 
-    // Edit Room Details (Rename room, add/change/remove password)
-    socket.on('edit-room', ({ oldRoom, newRoom, oldPasswordHash, newPasswordHash, isProtected }, callback) => {
+    // Edit Room Details (Rename room, add/change/remove password, update auto-delete lifetime)
+    socket.on('edit-room', ({ oldRoom, newRoom, oldPasswordHash, newPasswordHash, isProtected, autoDeleteMinutes }, callback) => {
       const cleanOld = (oldRoom || '').trim().toLowerCase();
       const cleanNew = (newRoom || '').trim().toLowerCase();
 
@@ -249,13 +257,20 @@ app.prepare().then(() => {
         }
       }
 
+      let autoDelExp = existingMeta?.autoDeleteExpiresAt || null;
+      if (typeof autoDeleteMinutes === 'number') {
+        autoDelExp = autoDeleteMinutes > 0 ? Date.now() + autoDeleteMinutes * 60 * 1000 : null;
+      }
+
       // Build updated metadata
       const updatedMeta = {
         passwordHash: isProtected ? newPasswordHash : null,
         isProtected: Boolean(isProtected && newPasswordHash),
         roomName: cleanNew,
         createdAt: existingMeta?.createdAt || Date.now(),
-        expiresAt: null
+        expiresAt: null,
+        autoDeleteMinutes: typeof autoDeleteMinutes === 'number' ? autoDeleteMinutes : (existingMeta?.autoDeleteMinutes || 0),
+        autoDeleteExpiresAt: autoDelExp
       };
 
       // Remove old meta, set new meta
@@ -285,6 +300,7 @@ app.prepare().then(() => {
         oldRoom: cleanOld,
         newRoom: cleanNew,
         isProtected: updatedMeta.isProtected,
+        autoDeleteExpiresAt: updatedMeta.autoDeleteExpiresAt,
         message: `Room details updated: #${cleanOld} -> #${cleanNew}`
       });
 
@@ -293,7 +309,8 @@ app.prepare().then(() => {
           success: true,
           oldRoom: cleanOld,
           newRoom: cleanNew,
-          isProtected: updatedMeta.isProtected
+          isProtected: updatedMeta.isProtected,
+          autoDeleteExpiresAt: updatedMeta.autoDeleteExpiresAt
         });
       }
     });
@@ -382,6 +399,32 @@ app.prepare().then(() => {
       }
     });
   });
+
+  // Background interval: auto-delete expired rooms
+  setInterval(() => {
+    const now = Date.now();
+    for (const [roomKey, meta] of roomsMeta.entries()) {
+      if (meta.autoDeleteExpiresAt && now >= meta.autoDeleteExpiresAt) {
+        const cleanRoom = meta.roomName || roomKey.replace(/^room:/, '');
+        console.log(`[Auto-Delete] Room #${cleanRoom} auto-delete timer expired. Purging.`);
+
+        io.to(roomKey).emit('room-deleted', {
+          room: cleanRoom,
+          message: `⏱ Room #${cleanRoom} was automatically deleted (Auto-Delete timer reached).`
+        });
+
+        const roomPeers = rooms.get(roomKey);
+        if (roomPeers) {
+          for (const [peerSocketId] of roomPeers.entries()) {
+            const peerSocket = io.sockets.sockets.get(peerSocketId);
+            if (peerSocket) peerSocket.leave(roomKey);
+          }
+        }
+        rooms.delete(roomKey);
+        roomsMeta.delete(roomKey);
+      }
+    }
+  }, 10000);
 
   server.listen(port, (err) => {
     if (err) throw err;

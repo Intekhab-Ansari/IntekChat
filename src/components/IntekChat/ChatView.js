@@ -47,9 +47,10 @@ import {
   LogOut,
   Palette,
   SlidersHorizontal,
-  ExternalLink
+  ExternalLink,
+  Clock
 } from 'lucide-react';
-import { formatBytes, getAvatarColor } from '@/lib/peer';
+import { formatBytes, getAvatarColor, formatRemainingTime } from '@/lib/peer';
 import { sounds } from '@/lib/sound';
 import { getWallpaperCss } from '@/lib/wallpapers';
 import { compressChatImage, isImageFile, isAudioFile, isVideoFile } from '@/lib/media';
@@ -549,10 +550,19 @@ export default function ChatView({
   onUploadCustomWallpaper: propOnUploadCustomWallpaper,
   onClearCustomWallpaper: propOnClearCustomWallpaper,
   onChangeWallpaperOpacity: propOnChangeWallpaperOpacity,
-  onToggleWallpaperBlur: propOnToggleWallpaperBlur
+  onToggleWallpaperBlur: propOnToggleWallpaperBlur,
+  autoDeleteExpiresAt = null
 }) {
   const avatarStyle = getAvatarColor(userProfile?.colorIndex || 0);
   const [inputText, setInputText] = useState('');
+  const [, setChatTick] = useState(0);
+
+  // Live countdown update
+  useEffect(() => {
+    if (!autoDeleteExpiresAt) return;
+    const interval = setInterval(() => setChatTick((t) => t + 1), 1000);
+    return () => clearInterval(interval);
+  }, [autoDeleteExpiresAt]);
   const [imageMode, setImageMode] = useState('permanent');
   const [showImageModePicker, setShowImageModePicker] = useState(false);
   const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
@@ -1574,6 +1584,12 @@ export default function ChatView({
               <span className="spec-value">{isRoomProtected ? '🔒 Password Protected' : '🔓 Open Room'}</span>
             </div>
             <div className="spec-row">
+              <span className="spec-label">Auto-Delete:</span>
+              <span className={`spec-value font-mono ${autoDeleteExpiresAt ? 'text-amber font-semibold' : ''}`}>
+                {autoDeleteExpiresAt ? `${formatRemainingTime(autoDeleteExpiresAt)} (Self-Destruct)` : 'Off (Manual)'}
+              </span>
+            </div>
+            <div className="spec-row">
               <span className="spec-label">Online In Room:</span>
               <span className="spec-value text-emerald font-bold">
                 {totalParticipants <= 1 ? '1 Person (You)' : `${totalParticipants} Connected`}
@@ -1740,6 +1756,16 @@ export default function ChatView({
               <Edit3 size={13} />
               <span>Edit Room</span>
             </button>
+
+            {autoDeleteExpiresAt && (
+              <div 
+                className="chat-autodelete-pill" 
+                title="This room will automatically self-destruct and wipe all data when countdown finishes"
+              >
+                <Clock size={12} className="autodelete-clock text-amber" />
+                <span>Self-destruct: {formatRemainingTime(autoDeleteExpiresAt)}</span>
+              </div>
+            )}
 
             <span className="chat-peer-status" title="Real-time participants in this room">
               <span className="realtime-live-dot" />
