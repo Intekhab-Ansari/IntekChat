@@ -657,8 +657,9 @@ export default function Home() {
 
         // Snapdrop deterministic single-offerer:
         // Only initiate offer if our ID is greater than remote peer's ID to prevent glare and collisions
+        const mySignalingId = selfId || signaling.id || signaling.selfId || userProfile?.id || '';
         filtered.forEach((p) => {
-          if (p.id && selfId && selfId > p.id) {
+          if (p.id && mySignalingId && mySignalingId > p.id) {
             webrtcRef.current?.connectToPeer(p.id);
           }
         });
@@ -680,7 +681,8 @@ export default function Home() {
         });
 
         // Connect to newly joined peer (deterministic single offerer)
-        if (newPeer.id && userProfile?.id && userProfile.id > newPeer.id) {
+        const mySignalingId = signaling.id || signaling.selfId || userProfile?.id || '';
+        if (newPeer.id && mySignalingId && mySignalingId > newPeer.id) {
           webrtcRef.current?.connectToPeer(newPeer.id);
         }
         // Send full active room state (messages, wallpaper, theme) to newly joined peer
@@ -755,6 +757,32 @@ export default function Home() {
         ]);
       });
 
+      // Room Deleted by Host / Moderator
+      signaling.on('room-deleted', ({ room, message }) => {
+        sounds.playBurn();
+        const deletedRoom = (room || roomNameRef.current || '').trim().toLowerCase();
+        if (deletedRoom && typeof window !== 'undefined') {
+          try {
+            localStorage.removeItem(getRoomStorageKey(deletedRoom));
+            localStorage.removeItem('intekchat_wallpaper_custom');
+            localStorage.removeItem('intekchat_wallpaper_type');
+            localStorage.removeItem('intekchat_wallpaper_opacity');
+            localStorage.removeItem('intekchat_wallpaper_blur');
+            const url = new URL(window.location.href);
+            url.searchParams.delete('room');
+            url.searchParams.delete('pwd');
+            window.history.pushState({}, '', url.toString());
+          } catch {}
+        }
+        setMessages([]);
+        setRoomName('');
+        setRoomPassword('');
+        setIsRoomProtected(false);
+        setTotalParticipants(1);
+        setIsRoomModalOpen(false);
+        alert(message || `Room #${deletedRoom} was permanently deleted by its host.`);
+      });
+
       // Encrypted Relay Fallback
       signaling.on('e2ee-relay', async ({ from, payload, type }) => {
         if (type === 'chat') {
@@ -789,6 +817,13 @@ export default function Home() {
         } else if (type === 'request-room-sync') {
           sendRoomStateToPeer(from);
         } else if (type === 'file-relay-start') {
+          // Clean up any stale uncompleted transfer from this sender
+          for (const [existingId, record] of relayIncomingFilesRef.current.entries()) {
+            if (record.senderId === from) {
+              relayIncomingFilesRef.current.delete(existingId);
+            }
+          }
+
           // Initialize incoming relay transfer
           relayIncomingFilesRef.current.set(payload.id, {
             id: payload.id,
@@ -1344,6 +1379,79 @@ export default function Home() {
     sounds.playLeave();
   };
 
+  const handleDeleteRoom = async (targetRoom, password) => {
+    const cleanRoom = (targetRoom || roomName || '').trim().toLowerCase();
+    if (!cleanRoom) return { success: false, error: 'No active room specified to delete' };
+
+    let pHash = null;
+    const effectivePass = password || roomPassword || null;
+    if (effectivePass) {
+      pHash = await hashPassword(effectivePass);
+    }
+
+    return new Promise((resolve) => {
+      if (!socketRef.current) {
+        resolve({ success: false, error: 'Signaling connection is closed' });
+        return;
+      }
+
+      // If Socket.IO
+      if (typeof socketRef.current.emit === 'function' && !socketRef.current.client) {
+        socketRef.current.emit('delete-room', { room: cleanRoom, passwordHash: pHash }, (res) => {
+          if (res && res.success) {
+            sounds.playBurn();
+            if (typeof window !== 'undefined') {
+              try {
+                localStorage.removeItem(getRoomStorageKey(cleanRoom));
+                localStorage.removeItem('intekchat_wallpaper_custom');
+                localStorage.removeItem('intekchat_wallpaper_type');
+                localStorage.removeItem('intekchat_wallpaper_opacity');
+                localStorage.removeItem('intekchat_wallpaper_blur');
+                const url = new URL(window.location.href);
+                url.searchParams.delete('room');
+                url.searchParams.delete('pwd');
+                window.history.pushState({}, '', url.toString());
+              } catch {}
+            }
+            setMessages([]);
+            setRoomName('');
+            setRoomPassword('');
+            setIsRoomProtected(false);
+            setTotalParticipants(1);
+            setIsRoomModalOpen(false);
+            resolve({ success: true, room: cleanRoom });
+          } else {
+            resolve({ success: false, error: res?.error || 'Failed to delete room.' });
+          }
+        });
+      } else {
+        // Cloud signaling adapter fallback
+        socketRef.current.emit('delete-room', { room: cleanRoom });
+        sounds.playBurn();
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.removeItem(getRoomStorageKey(cleanRoom));
+            localStorage.removeItem('intekchat_wallpaper_custom');
+            localStorage.removeItem('intekchat_wallpaper_type');
+            localStorage.removeItem('intekchat_wallpaper_opacity');
+            localStorage.removeItem('intekchat_wallpaper_blur');
+            const url = new URL(window.location.href);
+            url.searchParams.delete('room');
+            url.searchParams.delete('pwd');
+            window.history.pushState({}, '', url.toString());
+          } catch {}
+        }
+        setMessages([]);
+        setRoomName('');
+        setRoomPassword('');
+        setIsRoomProtected(false);
+        setTotalParticipants(1);
+        setIsRoomModalOpen(false);
+        resolve({ success: true, room: cleanRoom });
+      }
+    });
+  };
+
   const handlePasswordPromptSubmit = (enteredPassword) => {
     setPasswordPromptError('');
     setIsPasswordPromptOpen(false);
@@ -1364,8 +1472,20 @@ export default function Home() {
   const sendFileViaRelay = async (peerId, file, onProgress, transferId) => {
     if (!socketRef.current) throw new Error('Signaling connection is closed');
 
-    const RELAY_CHUNK_SIZE = 32 * 1024; // 32KB chunking
+    const RELAY_CHUNK_SIZE = 16 * 1024; // 16KB chunking for maximum broker & socket stability
     const totalChunks = Math.ceil(file.size / RELAY_CHUNK_SIZE);
+
+    // Fast binary to base64 converter: avoids slow single-char string loops that choke the event loop
+    const toBase64Fast = (bytes) => {
+      let binary = '';
+      const len = bytes.byteLength;
+      const subChunk = 0x4000; // 16KB sub-slices for apply() safety
+      for (let i = 0; i < len; i += subChunk) {
+        const sub = bytes.subarray(i, Math.min(i + subChunk, len));
+        binary += String.fromCharCode.apply(null, sub);
+      }
+      return btoa(binary);
+    };
 
     // 1. Send file metadata header via encrypted relay
     socketRef.current.emit('e2ee-relay', {
@@ -1383,7 +1503,7 @@ export default function Home() {
 
     sounds.playTransferStart();
 
-    // 2. Stream binary slices
+    // 2. Stream binary slices with non-blocking steady pacing
     let offset = 0;
     let sentBytes = 0;
     let lastTime = Date.now();
@@ -1397,12 +1517,7 @@ export default function Home() {
       const slice = file.slice(offset, offset + RELAY_CHUNK_SIZE);
       const buffer = await slice.arrayBuffer();
       const bytes = new Uint8Array(buffer);
-      let binary = '';
-      const chunkLen = bytes.byteLength;
-      for (let b = 0; b < chunkLen; b++) {
-        binary += String.fromCharCode(bytes[b]);
-      }
-      const base64Chunk = btoa(binary);
+      const base64Chunk = toBase64Fast(bytes);
 
       socketRef.current.emit('e2ee-relay', {
         to: peerId,
@@ -1415,8 +1530,8 @@ export default function Home() {
         }
       });
 
-      offset += chunkLen;
-      sentBytes += chunkLen;
+      offset += bytes.byteLength;
+      sentBytes += bytes.byteLength;
 
       const now = Date.now();
       if (now - lastTime > 150 || sentBytes >= file.size) {
@@ -1432,10 +1547,8 @@ export default function Home() {
         }
       }
 
-      // Small yield to prevent socket overflow and keep UI smooth
-      if (index % 4 === 0) {
-        await new Promise((r) => setTimeout(r, 10));
-      }
+      // 12ms pacing yield prevents socket buffer overflow and MQTT broker disconnection
+      await new Promise((r) => setTimeout(r, 12));
     }
 
     // 3. Send transfer complete
@@ -1545,9 +1658,12 @@ export default function Home() {
         await executeSendFile(task.peerId, task.file);
       } catch (e) {
         console.error('File send task error:', e);
+      } finally {
+        isSendingFileRef.current = false;
       }
+    } else {
+      isSendingFileRef.current = false;
     }
-    isSendingFileRef.current = false;
     if (sendQueueRef.current.length > 0) {
       setTimeout(processSendQueue, 50);
     }
@@ -1825,6 +1941,7 @@ export default function Home() {
               setIsQrModalOpen(true);
             }}
             onLeaveRoom={handleLeaveRoom}
+            onDeleteRoom={handleDeleteRoom}
             typingUsers={typingUsers}
             onTypingChange={handleTypingChange}
             syncedWallpaper={syncedWallpaper}
@@ -1883,6 +2000,7 @@ export default function Home() {
         onCreateRoom={handleCreateOrJoinRoom}
         onJoinRoom={handleCreateOrJoinRoom}
         onLeaveRoom={handleLeaveRoom}
+        onDeleteRoom={handleDeleteRoom}
         onEditRoom={handleEditRoom}
         onOpenQr={(mode = 'show') => {
           setQrModalMode(mode);

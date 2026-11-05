@@ -22,7 +22,8 @@ import {
   RefreshCw,
   ShieldAlert,
   QrCode,
-  Camera
+  Camera,
+  Trash2
 } from 'lucide-react';
 import { sounds } from '@/lib/sound';
 
@@ -35,6 +36,7 @@ export default function RoomModal({
   onCreateRoom,
   onJoinRoom,
   onLeaveRoom,
+  onDeleteRoom,
   onEditRoom,
   onOpenQr,
   initialTab = null
@@ -65,6 +67,13 @@ export default function RoomModal({
   const [editSuccess, setEditSuccess] = useState('');
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
 
+  // Delete Room state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [showDeletePassword, setShowDeletePassword] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const [isDeletingRoom, setIsDeletingRoom] = useState(false);
+
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -83,6 +92,10 @@ export default function RoomModal({
       setEditAction('keep');
       setEditError('');
       setEditSuccess('');
+      setShowDeleteConfirm(false);
+      setDeletePassword('');
+      setDeleteError('');
+      setIsDeletingRoom(false);
 
       const handleKeyDown = (e) => {
         if (e.key === 'Escape') {
@@ -220,6 +233,36 @@ export default function RoomModal({
     }
   };
 
+  const handleDeleteRoomSubmit = async (e) => {
+    if (e) e.preventDefault();
+    setDeleteError('');
+    if (!onDeleteRoom) {
+      setDeleteError('Room deletion is not configured.');
+      return;
+    }
+
+    const effectivePass = deletePassword.trim() || editCurrentPassword.trim() || roomPassword || null;
+    if (isRoomProtected && !effectivePass) {
+      setDeleteError('Room password is required to verify deletion authorization.');
+      return;
+    }
+
+    setIsDeletingRoom(true);
+    try {
+      const result = await onDeleteRoom(currentRoom, effectivePass);
+      if (result && result.success === false) {
+        setDeleteError(result.error || 'Failed to delete room.');
+        setIsDeletingRoom(false);
+      } else {
+        sounds.playBurn();
+        onClose();
+      }
+    } catch (err) {
+      setDeleteError(err.message || 'An error occurred while deleting room.');
+      setIsDeletingRoom(false);
+    }
+  };
+
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-card room-modal-card" onClick={(e) => e.stopPropagation()}>
@@ -310,6 +353,20 @@ export default function RoomModal({
               >
                 <LogOut size={13} />
                 <span>Leave</span>
+              </button>
+
+              <button 
+                type="button" 
+                className="btn-delete-room-banner"
+                onClick={() => {
+                  sounds.playClick();
+                  setModalTab('edit');
+                  setShowDeleteConfirm(true);
+                }}
+                title="Permanently delete this room"
+              >
+                <Trash2 size={13} />
+                <span>Delete</span>
               </button>
             </div>
           </div>
@@ -606,13 +663,111 @@ export default function RoomModal({
                   onLeaveRoom();
                   onClose();
                 }}
-                disabled={isSubmittingEdit}
+                disabled={isSubmittingEdit || isDeletingRoom}
                 title="Leave room and return to default network"
               >
                 <LogOut size={13} />
                 <span>Leave Room</span>
               </button>
             </div>
+
+            {/* Danger Zone: Delete Room Section */}
+            <div className="delete-room-section-card">
+              <div className="delete-room-section-info">
+                <div className="delete-room-icon-wrap">
+                  <Trash2 size={16} className="text-pink" />
+                </div>
+                <div className="delete-room-text">
+                  <span className="delete-room-title">Danger Zone: Delete Room</span>
+                  <span className="delete-room-desc">Permanently wipe room #{currentRoom}, evict all peers & destroy chat</span>
+                </div>
+              </div>
+
+              {!showDeleteConfirm ? (
+                <button
+                  type="button"
+                  className="btn-delete-room-action"
+                  onClick={() => {
+                    sounds.playClick();
+                    setShowDeleteConfirm(true);
+                    setDeleteError('');
+                  }}
+                  disabled={isSubmittingEdit || isDeletingRoom}
+                  title="Permanently delete room"
+                >
+                  <Trash2 size={13} />
+                  <span>Delete Room</span>
+                </button>
+              ) : null}
+            </div>
+
+            {/* Delete Room Confirmation Box */}
+            {showDeleteConfirm && (
+              <div className="delete-room-confirm-panel">
+                <div className="confirm-warning-header">
+                  <AlertCircle size={17} className="text-pink flex-shrink-0" />
+                  <div className="confirm-warning-text">
+                    <strong>Permanently delete room #{currentRoom}?</strong>
+                    <p>All active participants will be ejected immediately. Messages, wallpapers, and encryption keys for this room will be destroyed forever.</p>
+                  </div>
+                </div>
+
+                {deleteError && (
+                  <div className="room-form-alert alert-error mt-2">
+                    <AlertCircle size={15} />
+                    <span>{deleteError}</span>
+                  </div>
+                )}
+
+                {isRoomProtected && !roomPassword && !editCurrentPassword && (
+                  <div className="input-group mt-2">
+                    <label className="input-label">Enter Room Password to authorize deletion:</label>
+                    <div className="password-input-wrap">
+                      <Key size={15} className="input-lock-icon" />
+                      <input
+                        type={showDeletePassword ? 'text' : 'password'}
+                        className="modal-text-input password-text-input"
+                        placeholder="Current room password..."
+                        value={deletePassword}
+                        onChange={(e) => setDeletePassword(e.target.value)}
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        className="btn-toggle-eye"
+                        onClick={() => setShowDeletePassword(!showDeletePassword)}
+                        tabIndex={-1}
+                      >
+                        {showDeletePassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="confirm-buttons-row">
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => {
+                      setShowDeleteConfirm(false);
+                      setDeleteError('');
+                    }}
+                    disabled={isDeletingRoom}
+                  >
+                    <span>Cancel</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-delete-room-confirm"
+                    onClick={handleDeleteRoomSubmit}
+                    disabled={isDeletingRoom}
+                  >
+                    {isDeletingRoom ? <RefreshCw size={14} className="spin-animation" /> : <Trash2 size={14} />}
+                    <span>{isDeletingRoom ? 'Deleting...' : 'Yes, Delete Room Permanently'}</span>
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="modal-footer">
               <button type="button" className="btn-secondary" onClick={onClose} disabled={isSubmittingEdit}>

@@ -257,6 +257,12 @@ export class CloudSignalingAdapter {
           this.emitLocal('peer-left', { id: senderId });
           this.broadcastCount();
         }
+      } else if (data.action === 'room-deleted') {
+        this.emitLocal('room-deleted', {
+          room: data.room || this.roomName,
+          senderId: data.senderId,
+          message: `Room #${data.room || this.roomName} was permanently deleted by its host.`
+        });
       }
     } else if (topic === this.myDirectTopic) {
       // Direct message sent to this specific peer
@@ -371,6 +377,19 @@ export class CloudSignalingAdapter {
 
     if (event === 'leave-room') {
       this.broadcastPresence('bye');
+      return;
+    }
+
+    if (event === 'delete-room') {
+      const cleanRoom = (data?.room || this.roomName || '').trim().toLowerCase();
+      try {
+        this.client?.publish(this.presenceTopic, JSON.stringify({
+          action: 'room-deleted',
+          room: cleanRoom,
+          senderId: this.selfId,
+          timestamp: Date.now()
+        }), { qos: 1 });
+      } catch {}
       return;
     }
   }

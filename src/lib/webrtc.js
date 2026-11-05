@@ -12,11 +12,11 @@ const ICE_SERVERS = {
   iceCandidatePoolSize: 10
 };
 
-// 64 KB chunk size: Optimal for modern browser WebRTC engines
-const CHUNK_SIZE = 64 * 1024;
-// Buffer thresholds calibrated for multi-gigabit wire speed on local WiFi LAN
-const BUFFERED_AMOUNT_LOW_THRESHOLD = 512 * 1024; // 512 KB
-const BUFFERED_AMOUNT_MAX = 8 * 1024 * 1024; // 8 MB flow window for full LAN saturation
+// 16 KB chunk size: RFC 8831 WebRTC SCTP standard to prevent MTU fragmentation drops & stalls
+const CHUNK_SIZE = 16 * 1024;
+// Buffer thresholds calibrated for high-throughput LAN with non-blocking flow control
+const BUFFERED_AMOUNT_LOW_THRESHOLD = 64 * 1024; // 64 KB
+const BUFFERED_AMOUNT_MAX = 1024 * 1024; // 1 MB queue window to prevent browser memory/SCTP buffer chokes
 
 export class WebRTCManager {
   constructor(socket, selfPeerInfo, callbacks = {}) {
@@ -151,7 +151,8 @@ export class WebRTCManager {
       const pc = this.getOrCreatePeer(from);
 
       // WebRTC Perfect Negotiation / Glare handling
-      const isPolite = (this.selfPeer?.id || '') > from;
+      const myId = this.socket?.id || this.socket?.selfId || this.selfPeer?.id || '';
+      const isPolite = myId > from;
       const isOfferCollision = pc.signalingState !== 'stable';
 
       if (isOfferCollision) {
@@ -233,12 +234,26 @@ export class WebRTCManager {
       }
     } else if (data instanceof ArrayBuffer) {
       this.handleBinaryChunk(fromPeerId, data);
+    } else if (data instanceof Blob) {
+      // Safari / iOS WebKit occasionally delivers data channel packets as Blobs
+      data.arrayBuffer().then((buf) => {
+        this.handleBinaryChunk(fromPeerId, buf);
+      }).catch((err) => {
+        console.warn('Failed to parse incoming blob chunk:', err);
+      });
     }
   }
 
   handleControlMessage(fromPeerId, msg) {
     switch (msg.type) {
       case 'file-meta': {
+        // Clean up any previous stale/abandoned transfer from this peer to avoid chunk pollution
+        for (const [existingId, record] of this.incomingFiles.entries()) {
+          if (record.senderId === fromPeerId) {
+            this.incomingFiles.delete(existingId);
+          }
+        }
+
         // Incoming file header
         this.incomingFiles.set(msg.id, {
           id: msg.id,
@@ -406,7 +421,7 @@ export class WebRTCManager {
   }
 
   // Ensure data channel is ready before transfer, auto-initiating peer connection if needed
-  async ensureChannelReady(remoteId, timeoutMs = 12000) {
+  async ensureChannelReady(remoteId, timeoutMs = 6000) {
     const existing = this.channels.get(remoteId);
     if (existing && existing.readyState === 'open') {
       return existing;
@@ -433,9 +448,9 @@ export class WebRTCManager {
 
         if (Date.now() - startTime > timeoutMs) {
           clearInterval(checkInterval);
-          reject(new Error('Peer connection data channel is not open'));
+          reject(new Error('Peer connection data channel timed out'));
         }
-      }, 100);
+      }, 80);
     });
   }
 
@@ -443,7 +458,7 @@ export class WebRTCManager {
   async sendFile(remoteId, file, onProgress, onCancelCheck) {
     let channel = this.channels.get(remoteId);
     if (!channel || channel.readyState !== 'open') {
-      channel = await this.ensureChannelReady(remoteId, 12000);
+      channel = await this.ensureChannelReady(remoteId, 6000);
     }
 
     const transferId = `file-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
@@ -463,30 +478,84 @@ export class WebRTCManager {
     channel.send(JSON.stringify(meta));
     sounds.playTransferStart();
 
-    // 2. Stream binary slices with backpressure flow control
+    // 2. Stream binary slices with non-blocking backpressure flow control
     let offset = 0;
     let sentBytes = 0;
     let lastTime = Date.now();
     let lastBytes = 0;
 
     const waitForBufferDrain = () => {
-      return new Promise((resolve) => {
-        if (channel.bufferedAmount <= BUFFERED_AMOUNT_LOW_THRESHOLD) {
-          resolve();
-        } else {
-          const listener = () => {
-            channel.removeEventListener('bufferedamountlow', listener);
-            resolve();
-          };
-          channel.addEventListener('bufferedamountlow', listener);
+      return new Promise((resolve, reject) => {
+        if (!channel || channel.readyState !== 'open') {
+          return reject(new Error('DataChannel closed during transfer'));
         }
+        if (channel.bufferedAmount <= BUFFERED_AMOUNT_LOW_THRESHOLD) {
+          return resolve();
+        }
+
+        let pollInterval = null;
+        let hardTimer = null;
+
+        const cleanup = () => {
+          channel.removeEventListener('bufferedamountlow', onDrain);
+          channel.removeEventListener('close', onClose);
+          channel.removeEventListener('error', onError);
+          if (pollInterval) clearInterval(pollInterval);
+          if (hardTimer) clearTimeout(hardTimer);
+        };
+
+        const onDrain = () => {
+          cleanup();
+          resolve();
+        };
+
+        const onClose = () => {
+          cleanup();
+          reject(new Error('DataChannel closed while waiting for buffer drain'));
+        };
+
+        const onError = (err) => {
+          cleanup();
+          reject(err || new Error('DataChannel error while waiting for buffer drain'));
+        };
+
+        channel.addEventListener('bufferedamountlow', onDrain);
+        channel.addEventListener('close', onClose);
+        channel.addEventListener('error', onError);
+
+        // Fallback polling every 25ms in case the browser misses bufferedamountlow event
+        pollInterval = setInterval(() => {
+          if (channel.readyState !== 'open') {
+            cleanup();
+            reject(new Error('DataChannel closed'));
+          } else if (channel.bufferedAmount <= BUFFERED_AMOUNT_LOW_THRESHOLD) {
+            cleanup();
+            resolve();
+          }
+        }, 25);
+
+        // Safety timeout to guarantee it never hangs permanently
+        hardTimer = setTimeout(() => {
+          cleanup();
+          if (channel.readyState === 'open') {
+            resolve();
+          } else {
+            reject(new Error('Buffer drain timeout'));
+          }
+        }, 6000);
       });
     };
 
     while (offset < file.size) {
       if (onCancelCheck && onCancelCheck(transferId)) {
-        channel.send(JSON.stringify({ type: 'file-cancel', id: transferId }));
+        try {
+          channel.send(JSON.stringify({ type: 'file-cancel', id: transferId }));
+        } catch {}
         return { cancelled: true };
+      }
+
+      if (channel.readyState !== 'open') {
+        throw new Error('DataChannel disconnected during transfer');
       }
 
       // Check backpressure
@@ -497,8 +566,15 @@ export class WebRTCManager {
       const slice = file.slice(offset, offset + CHUNK_SIZE);
       const buffer = await slice.arrayBuffer();
 
-      channel.send(buffer);
-      offset += CHUNK_SIZE;
+      try {
+        channel.send(buffer);
+      } catch (sendErr) {
+        // Momentary buffer saturation spike: wait for drain and retry once
+        await waitForBufferDrain();
+        channel.send(buffer);
+      }
+
+      offset += buffer.byteLength;
       sentBytes += buffer.byteLength;
 
       const now = Date.now();
@@ -526,8 +602,8 @@ export class WebRTCManager {
       }
     }
 
-    // Wait until last buffered bytes leave the socket
-    if (channel.bufferedAmount > 0) {
+    // Wait until buffered bytes drain below threshold before sending file-done
+    if (channel.bufferedAmount > BUFFERED_AMOUNT_LOW_THRESHOLD) {
       await waitForBufferDrain();
     }
 

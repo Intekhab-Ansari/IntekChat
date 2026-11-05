@@ -298,6 +298,59 @@ app.prepare().then(() => {
       }
     });
 
+    // Delete Room (Permanently destroy room, evict all peers, wipe metadata)
+    socket.on('delete-room', ({ room, passwordHash }, callback) => {
+      const cleanRoom = (room || '').trim().toLowerCase();
+      if (!cleanRoom) {
+        if (typeof callback === 'function') {
+          callback({ success: false, error: 'Room name is required to delete.' });
+        }
+        return;
+      }
+
+      const targetKey = `room:${cleanRoom}`;
+      const existingMeta = roomsMeta.get(targetKey);
+
+      // Verify authorization if room was password-protected
+      if (existingMeta && existingMeta.isProtected) {
+        if (!passwordHash || passwordHash !== existingMeta.passwordHash) {
+          if (typeof callback === 'function') {
+            callback({ success: false, error: 'Incorrect room password. Authorization failed.' });
+          }
+          return;
+        }
+      }
+
+      // Notify all connected sockets in that room that the room is deleted
+      io.to(targetKey).emit('room-deleted', {
+        room: cleanRoom,
+        message: `Room #${cleanRoom} was permanently deleted by its host.`
+      });
+
+      // Eject all sockets from targetKey
+      const roomPeers = rooms.get(targetKey);
+      if (roomPeers) {
+        for (const [peerSocketId] of roomPeers.entries()) {
+          const peerSocket = io.sockets.sockets.get(peerSocketId);
+          if (peerSocket) {
+            peerSocket.leave(targetKey);
+          }
+        }
+      }
+
+      // Wipe from server memory
+      rooms.delete(targetKey);
+      roomsMeta.delete(targetKey);
+
+      if (currentRoom === targetKey) {
+        currentRoom = null;
+      }
+
+      if (typeof callback === 'function') {
+        callback({ success: true, room: cleanRoom });
+      }
+    });
+
     // Profile update (name, avatar)
     socket.on('update-profile', (updatedInfo) => {
       if (currentRoom && rooms.has(currentRoom)) {

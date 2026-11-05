@@ -531,6 +531,7 @@ export default function ChatView({
   onOpenProfile,
   onOpenQr,
   onLeaveRoom,
+  onDeleteRoom,
   typingUsers = [],
   onTypingChange,
   syncedWallpaper,
@@ -592,6 +593,21 @@ export default function ChatView({
       onLeaveRoom?.();
     }
   }, [roomName, onLeaveRoom]);
+
+  const handleTriggerDelete = useCallback(async () => {
+    sounds.playClick();
+    if (!roomName) return;
+    if (window.confirm(`Are you sure you want to PERMANENTLY DELETE room #${roomName}? All participants will be disconnected and all chat history will be destroyed.`)) {
+      if (isRoomProtected && !roomPassword) {
+        onOpenRoomModal?.('edit');
+        return;
+      }
+      setInputText('');
+      setReplyingTo(null);
+      setIsStealthTextMode(false);
+      await onDeleteRoom?.(roomName, roomPassword);
+    }
+  }, [roomName, isRoomProtected, roomPassword, onDeleteRoom, onOpenRoomModal]);
 
   const [selectedMessageForOptions, setSelectedMessageForOptions] = useState(null);
   const [copyToast, setCopyToast] = useState(null);
@@ -1660,15 +1676,27 @@ export default function ChatView({
           </button>
 
           {roomName && (
-            <button 
-              type="button" 
-              className="sidebar-action-btn leave-btn"
-              onClick={handleTriggerLeave}
-              title="Leave room and return to local network"
-            >
-              <LogOut size={14} />
-              <span>Leave Room</span>
-            </button>
+            <>
+              <button 
+                type="button" 
+                className="sidebar-action-btn leave-btn"
+                onClick={handleTriggerLeave}
+                title="Leave room and return to local network"
+              >
+                <LogOut size={14} />
+                <span>Leave Room</span>
+              </button>
+
+              <button 
+                type="button" 
+                className="sidebar-action-btn delete-room-btn"
+                onClick={handleTriggerDelete}
+                title="Permanently delete this room"
+              >
+                <Trash2 size={14} />
+                <span>Delete Room</span>
+              </button>
+            </>
           )}
         </div>
       </aside>
@@ -1837,6 +1865,19 @@ export default function ChatView({
               >
                 <LogOut size={14} className="chip-icon" />
                 <span className="chip-label">Leave</span>
+              </button>
+            )}
+
+            {/* 7. Delete Room */}
+            {roomName && (
+              <button
+                type="button"
+                className="shelf-tool-chip chip-delete-room"
+                onClick={handleTriggerDelete}
+                title="Permanently delete this room"
+              >
+                <Trash2 size={14} className="chip-icon text-pink" />
+                <span className="chip-label text-pink">Delete</span>
               </button>
             )}
           </div>

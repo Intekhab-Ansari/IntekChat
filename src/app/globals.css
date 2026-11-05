@@ -4347,6 +4347,28 @@ body {
   color: #fff;
 }
 
+.btn-delete-room-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 7px;
+  background: rgba(244, 63, 94, 0.15);
+  border: 1px solid rgba(244, 63, 94, 0.4);
+  color: #fb7185;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-delete-room-banner:hover {
+  background: rgba(244, 63, 94, 0.32);
+  color: #fff;
+  border-color: #f43f5e;
+  transform: translateY(-1px);
+}
+
 .room-modal-tabs {
   display: flex;
   background: var(--bg-surface);
@@ -4526,6 +4548,169 @@ body {
   background: rgba(239, 68, 68, 0.25);
   color: #fff;
   border-color: #ef4444;
+}
+
+/* Delete Room Danger Zone Card */
+.delete-room-section-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0.95rem;
+  background: rgba(244, 63, 94, 0.08);
+  border: 1px dashed rgba(244, 63, 94, 0.38);
+  border-radius: 12px;
+  margin-top: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.delete-room-section-info {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.delete-room-icon-wrap {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: rgba(244, 63, 94, 0.18);
+  border: 1px solid rgba(244, 63, 94, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.delete-room-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.delete-room-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #fb7185;
+  white-space: nowrap;
+}
+
+.delete-room-desc {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-delete-room-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.8rem;
+  border-radius: 8px;
+  background: rgba(244, 63, 94, 0.22);
+  border: 1px solid rgba(244, 63, 94, 0.5);
+  color: #fecdd3;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.btn-delete-room-action:hover {
+  background: rgba(244, 63, 94, 0.4);
+  color: #fff;
+  border-color: #f43f5e;
+  transform: translateY(-1px);
+}
+
+.delete-room-confirm-panel {
+  background: rgba(244, 63, 94, 0.12);
+  border: 1px solid rgba(244, 63, 94, 0.45);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-top: -0.25rem;
+  margin-bottom: 0.85rem;
+  animation: fadeInModal 0.2s ease;
+}
+
+.confirm-warning-header {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.confirm-warning-text strong {
+  display: block;
+  font-size: 0.86rem;
+  color: #fb7185;
+  margin-bottom: 0.25rem;
+}
+
+.confirm-warning-text p {
+  font-size: 0.76rem;
+  color: var(--text-dim);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.confirm-buttons-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 0.85rem;
+}
+
+.btn-delete-room-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.95rem;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #e11d48, #be123c);
+  border: 1px solid #f43f5e;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(225, 29, 72, 0.35);
+  transition: all 0.2s ease;
+}
+
+.btn-delete-room-confirm:hover {
+  background: linear-gradient(135deg, #f43f5e, #e11d48);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(225, 29, 72, 0.5);
+}
+
+/* ChatView Sidebar & Shelf Delete Room Button */
+.sidebar-action-btn.delete-room-btn {
+  background: rgba(244, 63, 94, 0.1);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  color: #fb7185;
+}
+
+.sidebar-action-btn.delete-room-btn:hover {
+  background: rgba(244, 63, 94, 0.25);
+  border-color: #f43f5e;
+  color: #fff;
+}
+
+.shelf-tool-chip.chip-delete-room {
+  background: rgba(244, 63, 94, 0.12);
+  border-color: rgba(244, 63, 94, 0.35);
+}
+
+.shelf-tool-chip.chip-delete-room:hover {
+  background: rgba(244, 63, 94, 0.25);
+  border-color: #f43f5e;
 }
 
 .room-form {
@@ -6556,6 +6741,18 @@ body {
   }
 
   .btn-leave-room-action {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .delete-room-section-card {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.65rem !important;
+    padding: 0.7rem 0.85rem !important;
+  }
+
+  .btn-delete-room-action {
     width: 100% !important;
     justify-content: center !important;
   }
