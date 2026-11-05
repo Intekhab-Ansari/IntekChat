@@ -36,6 +36,21 @@ const AUTO_DELETE_OPTIONS = [
   { value: 1440, label: '24 Hours' }
 ];
 
+const AESTHETIC_ADJECTIVES = [
+  'aurora', 'velvet', 'cosmic', 'crystal', 'emerald', 'celestial', 'lunar',
+  'solar', 'serene', 'mystic', 'golden', 'sapphire', 'zenith', 'radiant',
+  'whisper', 'amber', 'neon', 'astral', 'quantum', 'oceanic', 'frost',
+  'silver', 'starlight', 'lotus', 'breeze', 'ember', 'harmony', 'oasis',
+  'stellar', 'twilight', 'solace', 'prism'
+];
+
+const AESTHETIC_NOUNS = [
+  'haven', 'oasis', 'sanctum', 'lounge', 'harbor', 'summit', 'realm',
+  'horizon', 'atrium', 'canyon', 'nebula', 'galaxy', 'meadow', 'lagoon',
+  'valley', 'island', 'retreat', 'grove', 'chamber', 'refuge', 'beacon',
+  'breeze', 'pavilion', 'matrix', 'vault', 'orbit', 'cove'
+];
+
 export default function RoomModal({
   isOpen,
   onClose,
@@ -90,14 +105,21 @@ export default function RoomModal({
 
   useEffect(() => {
     if (isOpen) {
+      const isCleanRoom = currentRoom && !currentRoom.startsWith('peer_');
       if (initialTab) {
         setModalTab(initialTab);
-      } else if (currentRoom) {
+      } else if (isCleanRoom) {
         setModalTab('edit');
       } else {
         setModalTab('create');
       }
-      setEditRoomName(currentRoom || '');
+      setEditRoomName(isCleanRoom ? currentRoom : '');
+      if (!createRoomName) {
+        const num = Math.floor(10 + Math.random() * 90);
+        const adj = AESTHETIC_ADJECTIVES[Math.floor(Math.random() * AESTHETIC_ADJECTIVES.length)];
+        const noun = AESTHETIC_NOUNS[Math.floor(Math.random() * AESTHETIC_NOUNS.length)];
+        setCreateRoomName(`${adj}-${noun}-${num}`);
+      }
       setEditCurrentPassword('');
       setEditNewPassword('');
       setEditAddPassword(false);
@@ -124,17 +146,15 @@ export default function RoomModal({
       window.addEventListener('keydown', handleKeyDown);
       return () => window.removeEventListener('keydown', handleKeyDown);
     }
-  }, [isOpen, initialTab, currentRoom, autoDeleteExpiresAt, onClose]);
+  }, [isOpen, initialTab, currentRoom, autoDeleteExpiresAt, onClose, createRoomName]);
 
   if (!isOpen) return null;
 
   const generateRandomRoomName = (target = 'create') => {
     sounds.playClick();
-    const adjectives = ['cyber', 'stealth', 'quantum', 'shadow', 'nexus', 'sonic', 'phantom', 'cosmic', 'hyper', 'aurora', 'solar', 'velvet'];
-    const nouns = ['vault', 'matrix', 'sanctum', 'bunker', 'haven', 'node', 'channel', 'relay', 'beacon', 'prism'];
-    const num = Math.floor(100 + Math.random() * 900);
-    const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
-    const noun = nouns[Math.floor(Math.random() * nouns.length)];
+    const num = Math.floor(10 + Math.random() * 90);
+    const adj = AESTHETIC_ADJECTIVES[Math.floor(Math.random() * AESTHETIC_ADJECTIVES.length)];
+    const noun = AESTHETIC_NOUNS[Math.floor(Math.random() * AESTHETIC_NOUNS.length)];
     const generated = `${adj}-${noun}-${num}`;
 
     if (target === 'create') {
@@ -283,6 +303,8 @@ export default function RoomModal({
     }
   };
 
+  const isCleanRoom = Boolean(currentRoom && !currentRoom.startsWith('peer_'));
+
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-card room-modal-card" onClick={(e) => e.stopPropagation()}>
@@ -307,7 +329,7 @@ export default function RoomModal({
         </div>
 
         {/* Current Active Room Status Card (if in a room) */}
-        {currentRoom ? (
+        {isCleanRoom ? (
           <div className="current-room-banner">
             <div className="current-room-info">
               <div className="current-room-icon-wrap">
@@ -406,9 +428,8 @@ export default function RoomModal({
         )}
 
         {/* Sub-Tabs: Edit Room (if active) | Create Room | Join Room */}
-        {/* Sub-Tabs: Edit Room (if active) | Create Room | Join Room */}
         <div className="room-modal-tabs">
-          {currentRoom && (
+          {isCleanRoom && (
             <button
               type="button"
               className={`room-modal-tab ${modalTab === 'edit' ? 'tab-active' : ''}`}
@@ -417,7 +438,7 @@ export default function RoomModal({
                 setModalTab('edit');
               }}
             >
-              <Edit3 size={14} className="flex-shrink-0" />
+              <Edit3 size={13} className="flex-shrink-0" />
               <span className="tab-text-full">Edit Room</span>
               <span className="tab-text-short">Edit</span>
               <span className="tab-chip-active">Active</span>
@@ -432,7 +453,7 @@ export default function RoomModal({
               setModalTab('create');
             }}
           >
-            <Sparkles size={14} className="flex-shrink-0" />
+            <Sparkles size={13} className="flex-shrink-0" />
             <span className="tab-text-full">Create Room</span>
             <span className="tab-text-short">Create</span>
           </button>
@@ -445,7 +466,7 @@ export default function RoomModal({
               setModalTab('join');
             }}
           >
-            <ArrowRight size={14} className="flex-shrink-0" />
+            <ArrowRight size={13} className="flex-shrink-0" />
             <span className="tab-text-full">Join Room</span>
             <span className="tab-text-short">Join</span>
           </button>
@@ -454,7 +475,7 @@ export default function RoomModal({
         {/* ============================================================== */}
         {/* Tab: Edit Room Details                                          */}
         {/* ============================================================== */}
-        {modalTab === 'edit' && currentRoom && (
+        {modalTab === 'edit' && isCleanRoom && (
           <form onSubmit={handleEditSubmit} className="room-form">
             {editError && (
               <div className="room-form-alert alert-error">
@@ -481,7 +502,7 @@ export default function RoomModal({
                 <input
                   type="text"
                   className="modal-text-input room-name-input"
-                  placeholder="e.g. secret-meeting-42"
+                  placeholder="e.g. aurora-haven-42"
                   value={editRoomName}
                   onChange={(e) => setEditRoomName(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
                   required
@@ -856,7 +877,7 @@ export default function RoomModal({
                 <input
                   type="text"
                   className="modal-text-input room-name-input"
-                  placeholder="e.g. secret-meeting-42"
+                  placeholder="e.g. aurora-haven-42"
                   value={createRoomName}
                   onChange={(e) => setCreateRoomName(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
                   required
@@ -875,14 +896,14 @@ export default function RoomModal({
               {/* Quick Presets */}
               <div className="room-preset-chips">
                 <span className="preset-label">Quick Ideas:</span>
-                {['cyber-vault', 'secret-drop', 'phantom-hub', 'dev-squad', 'stealth-zone'].map((preset) => (
+                {['aurora-haven', 'velvet-oasis', 'crystal-lounge', 'emerald-realm', 'serene-sanctum'].map((preset) => (
                   <button
                     key={preset}
                     type="button"
                     className="preset-chip"
                     onClick={() => {
                       sounds.playClick();
-                      const num = Math.floor(100 + Math.random() * 900);
+                      const num = Math.floor(10 + Math.random() * 90);
                       setCreateRoomName(`${preset}-${num}`);
                     }}
                   >

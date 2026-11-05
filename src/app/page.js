@@ -189,7 +189,7 @@ export default function Home() {
       if (pairParam) {
         const cleanPair = pairParam.trim().toLowerCase();
         setDropPairId(cleanPair);
-        setRoomName(cleanPair);
+        // Do not overwrite roomName with peer ID: pairParam is for IntekDrop direct peer pairing
         setActiveTab('drop');
       } else if (roomParam) {
         const cleanRoom = roomParam.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
@@ -1366,7 +1366,7 @@ export default function Home() {
       if (pair) {
         const cleanPair = pair.trim().toLowerCase();
         setDropPairId(cleanPair);
-        setRoomName(cleanPair);
+        // Do not overwrite roomName with peer ID: pair is for IntekDrop direct peer pairing
         if (typeof window !== 'undefined') {
           const url = new URL(window.location.href);
           url.searchParams.set('tab', 'drop');

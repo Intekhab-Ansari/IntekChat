@@ -3665,7 +3665,7 @@ body {
 }
 
 .room-modal-card {
-  max-width: 410px;
+  max-width: 485px;
   width: 95%;
   max-height: 88vh;
   overflow-y: auto;
@@ -4040,8 +4040,8 @@ body {
    ROOM MANAGER MODAL & PASSWORD PROMPT MODAL (ULTRA-PREMIUM GLASSMORPHISM)
    ========================================================================== */
 .room-modal-card {
-  max-width: 410px !important;
-  width: 94% !important;
+  max-width: 485px !important;
+  width: 95% !important;
   padding: 1.15rem 1.25rem !important;
   border-radius: 16px !important;
   background: linear-gradient(155deg, rgba(20, 26, 44, 0.96), rgba(11, 15, 26, 0.98)) !important;
@@ -4107,16 +4107,17 @@ body {
 }
 
 .room-modal-card .room-modal-tabs {
-  margin-bottom: 0.75rem !important;
-  padding: 2px !important;
-  gap: 3px !important;
+  margin-bottom: 0.85rem !important;
+  padding: 3px !important;
+  gap: 4px !important;
   border-radius: 10px !important;
 }
 
 .room-modal-card .room-modal-tab {
-  padding: 0.32rem 0.6rem !important;
-  font-size: 0.75rem !important;
-  height: 30px !important;
+  padding: 0.38rem 0.55rem !important;
+  font-size: 0.78rem !important;
+  height: 32px !important;
+  min-width: 0 !important;
 }
 
 .room-modal-card .input-group {
@@ -4493,23 +4494,22 @@ body {
 }
 
 .room-modal-tab {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.35rem;
-  padding: 0.5rem 0.6rem;
-  height: 36px;
-  border-radius: 7px;
+  padding: 0.4rem 0.55rem;
+  height: 34px;
+  border-radius: 8px;
   border: none;
   background: transparent;
   color: var(--text-muted);
   font-weight: 700;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   cursor: pointer;
-  white-space: nowrap !important;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: nowrap;
   transition: all 0.2s ease;
 }
 
@@ -4519,6 +4519,9 @@ body {
 
 .tab-text-full {
   display: inline;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .room-modal-tab:hover {
@@ -4533,16 +4536,17 @@ body {
 }
 
 .tab-chip-active {
-  font-size: 0.6rem;
-  padding: 1px 5px;
+  font-size: 0.56rem;
+  padding: 1px 4.5px;
   border-radius: 9999px;
   background: var(--accent-primary);
   color: #fff;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   white-space: nowrap;
   flex-shrink: 0;
+  line-height: 1.2;
 }
 
 /* Leave Room Card in Room Details Section */

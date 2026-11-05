@@ -1,15 +1,17 @@
 // Client device detection, anonymous codenames, and avatar generator
 
 const ADJECTIVES = [
-  'Cyber', 'Quantum', 'Neon', 'Solar', 'Phantom', 'Cosmic', 'Hyper',
-  'Astral', 'Shadow', 'Sonic', 'Vortex', 'Echo', 'Stealth', 'Nexus',
-  'Titan', 'Zenith', 'Chrono', 'Pulse', 'Mirage', 'Apex', 'Prism'
+  'Aurora', 'Velvet', 'Sapphire', 'Emerald', 'Celestial', 'Serene', 'Golden',
+  'Radiant', 'Stellar', 'Mystic', 'Lotus', 'Cyber', 'Quantum', 'Neon', 'Solar',
+  'Phantom', 'Cosmic', 'Hyper', 'Astral', 'Shadow', 'Sonic', 'Vortex', 'Echo',
+  'Stealth', 'Nexus', 'Titan', 'Zenith', 'Chrono', 'Pulse', 'Mirage', 'Apex', 'Prism'
 ];
 
 const NOUNS = [
-  'Falcon', 'Leopard', 'Panther', 'Phoenix', 'Viper', 'Lynx', 'Fox',
-  'Hawk', 'Wolf', 'Raven', 'Ghost', 'Matrix', 'Comet', 'Ranger',
-  'Voyager', 'Spectre', 'Drifter', 'Nova', 'Prowler', 'Eagle', 'Titan'
+  'Haven', 'Oasis', 'Harbor', 'Horizon', 'Nebula', 'Orion', 'Pegasus', 'Falcon',
+  'Leopard', 'Panther', 'Phoenix', 'Viper', 'Lynx', 'Fox', 'Hawk', 'Wolf',
+  'Raven', 'Ghost', 'Matrix', 'Comet', 'Ranger', 'Voyager', 'Spectre',
+  'Drifter', 'Nova', 'Prowler', 'Eagle', 'Titan'
 ];
 
 const AVATAR_COLORS = [
