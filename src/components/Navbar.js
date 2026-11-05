@@ -15,7 +15,9 @@ import {
   Palette,
   Plus,
   MoreVertical,
-  X
+  X,
+  Sparkles,
+  ExternalLink
 } from 'lucide-react';
 import { getAvatarColor } from '@/lib/peer';
 import { sounds } from '@/lib/sound';
@@ -162,6 +164,21 @@ export default function Navbar({
               <span className="tab-pill pill-chat">Chat</span>
             </button>
           </div>
+
+          {/* IntekEdit Ecosystem Companion Button */}
+          <a
+            href="https://intekedit.vercel.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="nav-intekedit-badge"
+            title="Open IntekEdit: 100% Private Document & Photo Suite (Zero Uploads)"
+          >
+            <span className="intekedit-pulse-dot" />
+            <Sparkles size={13} className="intekedit-sparkle-icon" />
+            <span className="intekedit-name">IntekEdit</span>
+            <span className="intekedit-tag">Suite</span>
+            <ExternalLink size={11} className="intekedit-arrow" />
+          </a>
         </div>
 
         <div className="nav-right">
@@ -365,6 +382,31 @@ export default function Navbar({
                   </div>
 
                   <div className="mobile-menu-divider" />
+
+                  {/* IntekEdit Companion Card in Mobile Menu */}
+                  <a
+                    href="https://intekedit.vercel.app"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mobile-intekedit-card"
+                    onClick={() => {
+                      sounds.playClick();
+                      setShowMobileMenu(false);
+                    }}
+                    title="Open IntekEdit: 100% Private Document & Photo Suite"
+                  >
+                    <div className="mobile-intekedit-left">
+                      <span className="intekedit-pulse-dot" />
+                      <Sparkles size={16} className="text-emerald" />
+                      <div className="mobile-intekedit-text-group">
+                        <span className="mobile-intekedit-title">
+                          IntekEdit <span className="mobile-intekedit-tag">Suite</span>
+                        </span>
+                        <span className="mobile-intekedit-sub">100% On-Device Photo & PDF Editor</span>
+                      </div>
+                    </div>
+                    <ExternalLink size={13} className="mobile-intekedit-ext text-emerald" />
+                  </a>
 
                   <div className="mobile-menu-items">
                     {/* Room Manager */}

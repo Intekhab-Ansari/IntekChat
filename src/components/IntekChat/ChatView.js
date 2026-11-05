@@ -46,7 +46,8 @@ import {
   QrCode,
   LogOut,
   Palette,
-  SlidersHorizontal
+  SlidersHorizontal,
+  ExternalLink
 } from 'lucide-react';
 import { formatBytes, getAvatarColor } from '@/lib/peer';
 import { sounds } from '@/lib/sound';
@@ -1881,6 +1882,20 @@ export default function ChatView({
                 <span className="chip-label text-pink">Delete</span>
               </button>
             )}
+
+            {/* 8. IntekEdit Suite Companion Tool */}
+            <a
+              href="https://intekedit.vercel.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shelf-tool-chip chip-intekedit"
+              onClick={() => sounds.playClick()}
+              title="Open IntekEdit: 100% Private Document & Photo Suite (Zero Uploads)"
+            >
+              <Sparkles size={14} className="chip-icon text-emerald" />
+              <span className="chip-label">IntekEdit Suite</span>
+              <ExternalLink size={11} className="chip-arrow text-emerald" />
+            </a>
           </div>
         </div>
 
