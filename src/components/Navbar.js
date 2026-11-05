@@ -174,6 +174,20 @@ export default function Navbar({
               <span className="tab-pill pill-chat">Chat</span>
             </button>
           </div>
+
+          {/* IntekEdit Suite Ecosystem Button in Header */}
+          <a
+            href="https://intekedit.vercel.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="nav-intekedit-badge"
+            title="Open IntekEdit: 100% Private Document & Photo Suite (Zero Uploads)"
+          >
+            <span className="intekedit-pulse-dot" />
+            <Sparkles size={13} className="intekedit-sparkle-icon" />
+            <span className="intekedit-name">IntekEdit Suite</span>
+            <ExternalLink size={11} className="intekedit-arrow" />
+          </a>
         </div>
 
         <div className="nav-right">
@@ -300,6 +314,19 @@ export default function Navbar({
 
           {/* MOBILE TOGGLE BUTTON: Single sleek trigger for all mobile options */}
           <div className="mobile-toggle-wrap" ref={mobileMenuRef}>
+            <a
+              href="https://intekedit.vercel.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mobile-header-intekedit-badge"
+              title="Open IntekEdit: 100% Private Document & Photo Suite (Zero Uploads)"
+            >
+              <span className="intekedit-pulse-dot" />
+              <Sparkles size={12} className="intekedit-sparkle-icon" />
+              <span className="intekedit-name">IntekEdit</span>
+              <ExternalLink size={10} className="intekedit-arrow" />
+            </a>
+
             <button
               type="button"
               className={`mobile-menu-toggle-btn ${showMobileMenu ? 'active' : ''}`}

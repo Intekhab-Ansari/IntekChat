@@ -279,7 +279,7 @@ export default function RadarView({
         );
       })}
 
-      {/* On-Page Top Actions: Radar Status HUD & Connected IntekEdit Tool */}
+      {/* On-Page Top Actions: Radar Status HUD */}
       <div className="radar-page-top-left">
         <div className="radar-status-pill-page">
           <Radio size={14} className="text-cyan animate-pulse" />
@@ -289,20 +289,6 @@ export default function RadarView({
             <span>{peers.length > 0 ? `${peers.length} Discovered` : 'Searching'}</span>
           </span>
         </div>
-
-        <a
-          href="https://intekedit.vercel.app"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="radar-intekedit-badge"
-          onClick={() => sounds.playClick()}
-          title="Open IntekEdit: 100% Private Document & Photo Suite (Zero Uploads)"
-        >
-          <span className="intekedit-pulse-dot" />
-          <Sparkles size={13} className="text-emerald" />
-          <span className="intekedit-name">IntekEdit Suite</span>
-          <ExternalLink size={11} className="intekedit-arrow" />
-        </a>
       </div>
 
       {/* Persistent floating scan/pair button always available on radar */}
