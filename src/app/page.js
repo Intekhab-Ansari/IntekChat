@@ -934,12 +934,13 @@ export default function Home() {
           // Clean up any stale uncompleted transfer from this sender
           for (const [existingId, record] of relayIncomingFilesRef.current.entries()) {
             if (record.senderId === from) {
+              if (record.watchdog) clearTimeout(record.watchdog);
               relayIncomingFilesRef.current.delete(existingId);
             }
           }
 
-          // Initialize incoming relay transfer
-          relayIncomingFilesRef.current.set(payload.id, {
+          // Initialize incoming relay transfer with 25s watchdog
+          const relayRecord = {
             id: payload.id,
             name: payload.name,
             size: payload.size,
@@ -951,8 +952,21 @@ export default function Home() {
             receivedBytes: 0,
             startTime: Date.now(),
             lastTelemetryTime: Date.now(),
-            lastTelemetryBytes: 0
-          });
+            lastTelemetryBytes: 0,
+            watchdog: null
+          };
+
+          relayRecord.watchdog = setTimeout(() => {
+            console.warn(`Relay transfer ${payload.id} timed out (no chunks for 25s)`);
+            relayIncomingFilesRef.current.delete(payload.id);
+            setActiveTransfers((prev) => {
+              const next = { ...prev };
+              delete next[payload.id];
+              return next;
+            });
+          }, 25000);
+
+          relayIncomingFilesRef.current.set(payload.id, relayRecord);
           sounds.playTransferStart();
           setActiveTransfers((prev) => ({
             ...prev,
@@ -971,20 +985,35 @@ export default function Home() {
           const record = relayIncomingFilesRef.current.get(payload.id);
           if (record) {
             try {
-              const binaryStr = atob(payload.chunk);
-              const len = binaryStr.length;
-              const bytes = new Uint8Array(len);
-              for (let i = 0; i < len; i++) {
-                bytes[i] = binaryStr.charCodeAt(i);
-              }
               if (
                 typeof payload.index === 'number' &&
                 payload.index >= 0 &&
                 payload.index < (record.totalChunks || 100000)
               ) {
-                record.chunks[payload.index] = bytes.buffer;
-                record.receivedBytes += len;
+                // Prevent duplicate chunk count on retransmission
+                if (!record.chunks[payload.index]) {
+                  const binaryStr = atob(payload.chunk);
+                  const len = binaryStr.length;
+                  const bytes = new Uint8Array(len);
+                  for (let i = 0; i < len; i++) {
+                    bytes[i] = binaryStr.charCodeAt(i);
+                  }
+                  record.chunks[payload.index] = bytes.buffer;
+                  record.receivedBytes += len;
+                }
               }
+
+              // Reset watchdog timer
+              if (record.watchdog) clearTimeout(record.watchdog);
+              record.watchdog = setTimeout(() => {
+                console.warn(`Relay transfer ${record.id} timed out (no chunks for 25s)`);
+                relayIncomingFilesRef.current.delete(record.id);
+                setActiveTransfers((prev) => {
+                  const next = { ...prev };
+                  delete next[record.id];
+                  return next;
+                });
+              }, 25000);
 
               const now = Date.now();
               if (now - record.lastTelemetryTime > 150 || record.receivedBytes >= record.size) {
@@ -1015,7 +1044,9 @@ export default function Home() {
         } else if (type === 'file-relay-done') {
           const record = relayIncomingFilesRef.current.get(payload.id);
           if (record) {
-            const blob = new Blob(record.chunks, {
+            if (record.watchdog) clearTimeout(record.watchdog);
+            const validChunks = record.chunks.filter(Boolean);
+            const blob = new Blob(validChunks, {
               type: record.mimeType || 'application/octet-stream'
             });
             const url = URL.createObjectURL(blob);
@@ -1051,6 +1082,17 @@ export default function Home() {
               autoDownloaded: autoSaved
             });
             relayIncomingFilesRef.current.delete(payload.id);
+          }
+        } else if (type === 'file-cancel') {
+          if (relayIncomingFilesRef.current.has(payload?.id)) {
+            const rec = relayIncomingFilesRef.current.get(payload.id);
+            if (rec?.watchdog) clearTimeout(rec.watchdog);
+            relayIncomingFilesRef.current.delete(payload.id);
+            setActiveTransfers((prev) => {
+              const next = { ...prev };
+              delete next[payload.id];
+              return next;
+            });
           }
         }
       });
@@ -1698,7 +1740,7 @@ export default function Home() {
   const sendFileViaRelay = async (peerId, file, onProgress, transferId) => {
     if (!socketRef.current) throw new Error('Signaling connection is closed');
 
-    const RELAY_CHUNK_SIZE = 16 * 1024; // 16KB chunking for maximum broker & socket stability
+    const RELAY_CHUNK_SIZE = 32 * 1024; // 32KB chunking for optimal throughput & broker stability
     const totalChunks = Math.ceil(file.size / RELAY_CHUNK_SIZE);
 
     // Fast binary to base64 converter: avoids slow single-char string loops that choke the event loop
@@ -1737,6 +1779,13 @@ export default function Home() {
 
     for (let index = 0; index < totalChunks; index++) {
       if (cancelTokensRef.current.has(transferId)) {
+        try {
+          socketRef.current.emit('e2ee-relay', {
+            to: peerId,
+            type: 'file-cancel',
+            payload: { id: transferId }
+          });
+        } catch {}
         throw new Error('Transfer cancelled by user');
       }
 
@@ -1773,8 +1822,13 @@ export default function Home() {
         }
       }
 
-      // 12ms pacing yield prevents socket buffer overflow and MQTT broker disconnection
-      await new Promise((r) => setTimeout(r, 12));
+      // Cooperative yield every 4 chunks to keep browser UI responsive
+      if (index % 4 === 0) {
+        await new Promise((r) => setTimeout(r, 0));
+      }
+
+      // 15ms pacing yield prevents socket buffer overflow and MQTT broker disconnection
+      await new Promise((r) => setTimeout(r, 15));
     }
 
     // 3. Send transfer complete
@@ -1823,7 +1877,8 @@ export default function Home() {
             };
           });
         },
-        (id) => cancelTokensRef.current.has(id)
+        (id) => cancelTokensRef.current.has(id),
+        transferId
       );
 
       // Clean up on completion

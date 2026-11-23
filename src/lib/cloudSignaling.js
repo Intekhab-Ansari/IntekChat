@@ -403,13 +403,14 @@ export class CloudSignalingAdapter {
 
     if (event === 'e2ee-relay') {
       const targetTopic = data.to ? `${this.baseTopic}/peer/${data.to}` : `${this.baseTopic}/relay`;
+      const isControl = data.type === 'file-relay-start' || data.type === 'file-relay-done' || data.type === 'file-cancel' || data.type === 'chat' || data.type === 'clear' || data.type === 'room-state-sync';
       try {
         this.client?.publish(targetTopic, JSON.stringify({
           type: 'e2ee-relay',
           from: this.selfId,
           relayType: data.type,
           payload: data.payload
-        }), { qos: 1 });
+        }), { qos: isControl ? 1 : 0 });
       } catch {}
       return;
     }

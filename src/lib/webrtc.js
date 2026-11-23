@@ -7,7 +7,16 @@ const ICE_SERVERS = {
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
     { urls: 'stun:stun3.l.google.com:19302' },
-    { urls: 'stun:stun.cloudflare.com:3478' }
+    { urls: 'stun:stun.cloudflare.com:3478' },
+    {
+      urls: [
+        'turn:openrelay.metered.ca:80',
+        'turn:openrelay.metered.ca:443',
+        'turn:openrelay.metered.ca:443?transport=tcp'
+      ],
+      username: 'openrelay',
+      credential: 'openrelay'
+    }
   ],
   iceCandidatePoolSize: 10
 };
@@ -16,7 +25,7 @@ const ICE_SERVERS = {
 const CHUNK_SIZE = 16 * 1024;
 // Buffer thresholds calibrated for high-throughput LAN with non-blocking flow control
 const BUFFERED_AMOUNT_LOW_THRESHOLD = 64 * 1024; // 64 KB
-const BUFFERED_AMOUNT_MAX = 1024 * 1024; // 1 MB queue window to prevent browser memory/SCTP buffer chokes
+const BUFFERED_AMOUNT_MAX = 256 * 1024; // 256 KB queue window to prevent browser memory/SCTP buffer chokes
 
 export class WebRTCManager {
   constructor(socket, selfPeerInfo, callbacks = {}) {
@@ -61,7 +70,11 @@ export class WebRTCManager {
 
   getOrCreatePeer(remoteId) {
     if (this.peers.has(remoteId)) {
-      return this.peers.get(remoteId);
+      const existingPc = this.peers.get(remoteId);
+      if (existingPc.connectionState !== 'failed' && existingPc.connectionState !== 'closed') {
+        return existingPc;
+      }
+      this.closePeer(remoteId);
     }
 
     const pc = new RTCPeerConnection(ICE_SERVERS);
@@ -250,9 +263,23 @@ export class WebRTCManager {
         // Clean up any previous stale/abandoned transfer from this peer to avoid chunk pollution
         for (const [existingId, record] of this.incomingFiles.entries()) {
           if (record.senderId === fromPeerId) {
+            if (record.watchdog) clearTimeout(record.watchdog);
             this.incomingFiles.delete(existingId);
           }
         }
+
+        const resetWatchdog = (id) => {
+          const rec = this.incomingFiles.get(id);
+          if (!rec) return;
+          if (rec.watchdog) clearTimeout(rec.watchdog);
+          rec.watchdog = setTimeout(() => {
+            console.warn(`WebRTC transfer ${id} stalled (no chunks for 20s). Cleaning up...`);
+            this.incomingFiles.delete(id);
+            if (this.callbacks.onFileTransferCancel) {
+              this.callbacks.onFileTransferCancel(id);
+            }
+          }, 20000);
+        };
 
         // Incoming file header
         this.incomingFiles.set(msg.id, {
@@ -267,8 +294,10 @@ export class WebRTCManager {
           receivedBytes: 0,
           startTime: Date.now(),
           lastTelemetryTime: Date.now(),
-          lastTelemetryBytes: 0
+          lastTelemetryBytes: 0,
+          watchdog: null
         });
+        resetWatchdog(msg.id);
 
         sounds.playTransferStart();
 
@@ -281,6 +310,7 @@ export class WebRTCManager {
       case 'file-done': {
         const fileRecord = this.incomingFiles.get(msg.id);
         if (fileRecord) {
+          if (fileRecord.watchdog) clearTimeout(fileRecord.watchdog);
           const blob = new Blob(fileRecord.chunks, {
             type: fileRecord.mimeType || 'application/octet-stream'
           });
@@ -310,6 +340,8 @@ export class WebRTCManager {
 
       case 'file-cancel': {
         if (this.incomingFiles.has(msg.id)) {
+          const rec = this.incomingFiles.get(msg.id);
+          if (rec?.watchdog) clearTimeout(rec.watchdog);
           this.incomingFiles.delete(msg.id);
           if (this.callbacks.onFileTransferCancel) {
             this.callbacks.onFileTransferCancel(msg.id);
@@ -391,6 +423,18 @@ export class WebRTCManager {
 
     if (!activeRecord) return;
 
+    // Reset watchdog on each incoming binary chunk
+    if (activeRecord.watchdog) {
+      clearTimeout(activeRecord.watchdog);
+    }
+    activeRecord.watchdog = setTimeout(() => {
+      console.warn(`WebRTC transfer ${activeRecord.id} stalled (no chunks for 20s). Cleaning up...`);
+      this.incomingFiles.delete(activeRecord.id);
+      if (this.callbacks.onFileTransferCancel) {
+        this.callbacks.onFileTransferCancel(activeRecord.id);
+      }
+    }, 20000);
+
     activeRecord.chunks.push(buffer);
     activeRecord.receivedBytes += buffer.byteLength;
 
@@ -421,19 +465,22 @@ export class WebRTCManager {
   }
 
   // Ensure data channel is ready before transfer, auto-initiating peer connection if needed
-  async ensureChannelReady(remoteId, timeoutMs = 6000) {
+  async ensureChannelReady(remoteId, timeoutMs = 7000) {
     const existing = this.channels.get(remoteId);
     if (existing && existing.readyState === 'open') {
       return existing;
     }
 
-    // If channel doesn't exist or is closed/closing, initiate peer offer
-    if (!existing || existing.readyState === 'closed') {
-      try {
-        await this.connectToPeer(remoteId);
-      } catch (err) {
-        console.warn('Auto-initiate connectToPeer error:', err);
-      }
+    // If channel doesn't exist or is closed/closing, or peer connection is stale/failed, re-initiate
+    const existingPc = this.peers.get(remoteId);
+    if (!existingPc || existingPc.connectionState === 'failed' || existingPc.connectionState === 'closed') {
+      this.closePeer(remoteId);
+    }
+
+    try {
+      await this.connectToPeer(remoteId);
+    } catch (err) {
+      console.warn('Auto-initiate connectToPeer error:', err);
     }
 
     return new Promise((resolve, reject) => {
@@ -450,18 +497,18 @@ export class WebRTCManager {
           clearInterval(checkInterval);
           reject(new Error('Peer connection data channel timed out'));
         }
-      }, 80);
+      }, 60);
     });
   }
 
   // Ultra-Fast File Sending with Adaptive Backpressure & Buffer Monitoring
-  async sendFile(remoteId, file, onProgress, onCancelCheck) {
+  async sendFile(remoteId, file, onProgress, onCancelCheck, customTransferId) {
     let channel = this.channels.get(remoteId);
     if (!channel || channel.readyState !== 'open') {
-      channel = await this.ensureChannelReady(remoteId, 6000);
+      channel = await this.ensureChannelReady(remoteId, 7000);
     }
 
-    const transferId = `file-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const transferId = customTransferId || `file-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
 
     // 1. Send file metadata header
@@ -523,7 +570,7 @@ export class WebRTCManager {
         channel.addEventListener('close', onClose);
         channel.addEventListener('error', onError);
 
-        // Fallback polling every 25ms in case the browser misses bufferedamountlow event
+        // Fallback polling every 20ms in case the browser misses bufferedamountlow event
         pollInterval = setInterval(() => {
           if (channel.readyState !== 'open') {
             cleanup();
@@ -532,7 +579,7 @@ export class WebRTCManager {
             cleanup();
             resolve();
           }
-        }, 25);
+        }, 20);
 
         // Safety timeout to guarantee it never hangs permanently
         hardTimer = setTimeout(() => {
@@ -542,10 +589,11 @@ export class WebRTCManager {
           } else {
             reject(new Error('Buffer drain timeout'));
           }
-        }, 6000);
+        }, 7000);
       });
     };
 
+    let chunkCounter = 0;
     while (offset < file.size) {
       if (onCancelCheck && onCancelCheck(transferId)) {
         try {
@@ -558,24 +606,37 @@ export class WebRTCManager {
         throw new Error('DataChannel disconnected during transfer');
       }
 
-      // Check backpressure
-      if (channel.bufferedAmount > BUFFERED_AMOUNT_MAX) {
+      // Check backpressure before reading slice into memory
+      if (channel.bufferedAmount >= BUFFERED_AMOUNT_MAX) {
         await waitForBufferDrain();
       }
 
       const slice = file.slice(offset, offset + CHUNK_SIZE);
       const buffer = await slice.arrayBuffer();
 
-      try {
-        channel.send(buffer);
-      } catch (sendErr) {
-        // Momentary buffer saturation spike: wait for drain and retry once
-        await waitForBufferDrain();
-        channel.send(buffer);
+      // Retry send with backpressure drain if buffer is temporarily saturated
+      let sent = false;
+      let retries = 0;
+      while (!sent && retries < 4) {
+        try {
+          channel.send(buffer);
+          sent = true;
+        } catch (sendErr) {
+          retries++;
+          if (retries >= 4) throw sendErr;
+          await waitForBufferDrain();
+          await new Promise((r) => setTimeout(r, 20));
+        }
       }
 
       offset += buffer.byteLength;
       sentBytes += buffer.byteLength;
+      chunkCounter++;
+
+      // Yield cooperative slice to event loop every 8 chunks so SCTP ACKs drain smoothly
+      if (chunkCounter % 8 === 0) {
+        await new Promise((r) => setTimeout(r, 0));
+      }
 
       const now = Date.now();
       if (now - lastTime > 150 || sentBytes >= file.size) {
@@ -784,6 +845,16 @@ export class WebRTCManager {
     if (this.pendingIceCandidates) {
       this.pendingIceCandidates.delete(remoteId);
     }
+    // Clean up any pending incoming file transfers for this peer
+    for (const [id, rec] of this.incomingFiles.entries()) {
+      if (rec.senderId === remoteId) {
+        if (rec.watchdog) clearTimeout(rec.watchdog);
+        this.incomingFiles.delete(id);
+        if (this.callbacks.onFileTransferCancel) {
+          this.callbacks.onFileTransferCancel(id);
+        }
+      }
+    }
     if (this.channels.has(remoteId)) {
       try {
         this.channels.get(remoteId).close();
@@ -801,6 +872,9 @@ export class WebRTCManager {
   destroy() {
     for (const peerId of this.peers.keys()) {
       this.closePeer(peerId);
+    }
+    for (const rec of this.incomingFiles.values()) {
+      if (rec?.watchdog) clearTimeout(rec.watchdog);
     }
     this.incomingFiles.clear();
   }
