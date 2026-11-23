@@ -23,7 +23,21 @@ const getRoomStorageKey = (rName) => {
 };
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState('drop'); // 'drop' | 'chat'
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab');
+      if (tabParam === 'chat' || tabParam === 'drop') return tabParam;
+      if (params.get('pair')) return 'drop';
+      if (params.get('room')) return 'chat';
+      if (window.location.hash === '#chat') return 'chat';
+      if (window.location.hash === '#drop') return 'drop';
+      const host = window.location.hostname.toLowerCase();
+      if (host.includes('intekchat') || host.includes('chat')) return 'chat';
+      if (host.includes('intekdrop') || host.includes('drop')) return 'drop';
+    }
+    return 'drop';
+  });
   const [roomName, setRoomName] = useState('');
   const [roomPassword, setRoomPassword] = useState('');
   const [isRoomProtected, setIsRoomProtected] = useState(false);
@@ -213,6 +227,15 @@ export default function Home() {
         setRoomName('');
       }
 
+      // Domain-aware default tab check (intekchat -> chat, intekdrop -> drop)
+      let defaultTabForDomain = 'drop';
+      const host = window.location.hostname.toLowerCase();
+      if (host.includes('intekchat') || host.includes('chat')) {
+        defaultTabForDomain = 'chat';
+      } else if (host.includes('intekdrop') || host.includes('drop')) {
+        defaultTabForDomain = 'drop';
+      }
+
       const tabParam = params.get('tab');
       if (tabParam === 'chat' || tabParam === 'drop') {
         setActiveTab(tabParam);
@@ -222,9 +245,29 @@ export default function Home() {
         setActiveTab('chat');
       } else if (window.location.hash === '#chat') {
         setActiveTab('chat');
+      } else if (window.location.hash === '#drop') {
+        setActiveTab('drop');
+      } else {
+        setActiveTab(defaultTabForDomain);
       }
     }
   }, []);
+
+  // Sync document title dynamically with active domain & view
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const host = window.location.hostname.toLowerCase();
+    const isDropHost = host.includes('intekdrop') || host.includes('drop');
+    if (activeTab === 'drop' || isDropHost) {
+      document.title = activeTab === 'chat'
+        ? 'intekchat | Private Encrypted Room Chat'
+        : 'intekdrop | Direct P2P File Sharing & Local Drop';
+    } else {
+      document.title = activeTab === 'drop'
+        ? 'intekdrop | High-Speed File Transfer'
+        : 'intekchat | Next-Gen File Sharing & Private Encrypted Chat';
+    }
+  }, [activeTab]);
 
   const handleSelectTheme = (themeName) => {
     setCurrentTheme(themeName);

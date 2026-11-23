@@ -54,8 +54,21 @@ export default function Navbar({
   const [copied, setCopied] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [, setTimeTick] = useState(0);
+  const [brandSuffix, setBrandSuffix] = useState('chat');
   const mobileMenuRef = useRef(null);
   const avatarStyle = getAvatarColor(userProfile?.colorIndex || 0);
+
+  // Dynamic brand suffix based on domain (intekdrop vs intekchat)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const host = window.location.hostname.toLowerCase();
+      if (host.includes('intekdrop') || host.includes('drop')) {
+        setBrandSuffix('drop');
+      } else {
+        setBrandSuffix('chat');
+      }
+    }
+  }, []);
 
   // Smooth live countdown update
   useEffect(() => {
@@ -138,7 +151,7 @@ export default function Navbar({
               </svg>
             </div>
             <div className="logo-text-group">
-              <span className="logo-title">intek<span className="logo-accent">chat</span></span>
+              <span className="logo-title">intek<span className="logo-accent">{brandSuffix}</span></span>
             </div>
           </div>
 
