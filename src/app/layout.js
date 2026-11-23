@@ -63,6 +63,9 @@ export const metadata = {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
     apple: "/logo.png"
+  },
+  verification: {
+    google: "V8f0J8ZCCksA3QqysLVFYCU6PckCFFdtCt34JiR86vs"
   }
 };
 
