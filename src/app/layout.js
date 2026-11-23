@@ -31,7 +31,7 @@ export const metadata = {
   authors: [{ name: "intekchat" }],
   creator: "intekchat",
   publisher: "intekchat",
-  metadataBase: new URL("https://intekchat.com"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://intekchat.vercel.app"),
   alternates: {
     canonical: "/"
   },
