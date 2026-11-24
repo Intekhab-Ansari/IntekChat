@@ -12,21 +12,29 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "intekchat | Next-Gen File Sharing & Private Encrypted Chat",
-  description: "Share files directly at high speed without server limits. Anonymous room chat with zero login, self-destructing View-Once photos, and private encryption.",
+  title: {
+    default: "intekchat & intekdrop | Ultra-Fast P2P File Sharing & Private Encrypted Chat",
+    template: "%s | intekchat"
+  },
+  description: "Share files directly at maximum network speed and chat privately with end-to-end encryption. Zero login, no app installation, self-destructing View-Once media, and zero server storage. Free open-source AirDrop alternative for Windows, Android, Mac, and iOS.",
   keywords: [
     "intekchat",
+    "intekdrop",
+    "airdrop for windows",
+    "airdrop alternative for android",
     "p2p file sharing",
     "snapdrop alternative",
-    "klaklak alternative",
-    "high speed file transfer",
-    "webrtc file sharing",
-    "encrypted chat",
+    "send large files online free",
+    "webrtc file transfer",
+    "encrypted chat room",
     "end to end encryption",
-    "e2ee chat without server",
-    "view once images",
-    "anonymous chat room",
-    "clear chat"
+    "e2ee private messaging",
+    "view once photos",
+    "anonymous chat online",
+    "no login file share",
+    "local network transfer",
+    "cross platform file sharing",
+    "browser to browser file transfer"
   ],
   authors: [{ name: "intekchat" }],
   creator: "intekchat",
@@ -35,18 +43,30 @@ export const metadata = {
   alternates: {
     canonical: "/"
   },
+  category: "technology",
+  classification: "File Sharing & Private Communication Tool",
   openGraph: {
-    title: "intekchat | High-Speed File Sharing & Private Encrypted Chat",
-    description: "Fast direct file drop and private encrypted chat rooms. No apps, no accounts, no server file storage.",
-    url: "https://intekchat.com",
+    title: "intekchat & intekdrop | Ultra-Fast P2P File Sharing & Encrypted Chat",
+    description: "Direct peer-to-peer file sharing and private encrypted rooms without server storage. Works on any browser, PC, Mac, iPhone, and Android.",
+    url: "https://intekchat.vercel.app",
     siteName: "intekchat",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "intekchat & intekdrop - P2P File Sharing and Private Encrypted Chat",
+        type: "image/png"
+      }
+    ],
     locale: "en_US",
     type: "website"
   },
   twitter: {
     card: "summary_large_image",
-    title: "intekchat | High-Speed File Sharing & Encrypted Chat",
-    description: "Send any file directly at maximum network speed. Chat anonymously with View-Once photos and zero server footprints."
+    title: "intekchat & intekdrop | Ultra-Fast P2P File Sharing & Encrypted Chat",
+    description: "Direct peer-to-peer file sharing and private encrypted rooms without server storage. Free AirDrop alternative for all platforms.",
+    images: ["/og-image.png"]
   },
   robots: {
     index: true,
@@ -70,6 +90,7 @@ export const metadata = {
     shortcut: "/favicon.ico",
     apple: "/apple-touch-icon.png"
   },
+  manifest: "/manifest.webmanifest",
   verification: {
     google: "V8f0J8ZCCksA3QqysLVFYCU6PckCFFdtCt34JiR86vs"
   }
@@ -85,18 +106,87 @@ export const viewport = {
 };
 
 export default function RootLayout({ children }) {
-  const jsonLd = {
+  const jsonLdWebapp = {
     "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    "name": "intekchat",
-    "operatingSystem": "Web, Android, iOS, Windows, macOS, Linux",
+    "@type": "WebApplication",
+    "name": "intekchat & intekdrop",
+    "alternateName": ["intekchat", "intekdrop"],
+    "url": "https://intekchat.vercel.app",
     "applicationCategory": "CommunicationApplication",
-    "description": "Ultra-fast direct file sharing and private encrypted instant chat without server storage.",
+    "operatingSystem": "Web, Windows, macOS, Linux, iOS, Android",
+    "description": "Ultra-fast direct P2P file sharing and private encrypted instant chat without server storage. Works across all operating systems via WebRTC.",
+    "browserRequirements": "Requires WebRTC and JavaScript enabled",
     "offers": {
       "@type": "Offer",
       "price": "0",
       "priceCurrency": "USD"
-    }
+    },
+    "featureList": [
+      "Direct WebRTC gigabit P2P file transfers",
+      "AES-256-GCM End-to-End Encrypted Chat",
+      "Self-destructing View-Once photos",
+      "Zero server file storage or chat logs",
+      "Instant QR code room & file pairing",
+      "Works across Windows, Android, Mac, iOS, and Linux"
+    ]
+  };
+
+  const jsonLdOrg = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "intekchat",
+    "url": "https://intekchat.vercel.app",
+    "logo": "https://intekchat.vercel.app/icon-512.png",
+    "sameAs": [
+      "https://github.com/Intekhab-Ansari/IntekChat"
+    ]
+  };
+
+  const jsonLdFaq = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "What is IntekDrop?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "IntekDrop is a free, open-source peer-to-peer (P2P) file sharing tool inspired by AirDrop and Snapdrop. It lets devices on the same local network or anywhere on the internet transfer files directly to each other at maximum speed via WebRTC DataChannels with zero file size limits and zero server storage."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What is IntekChat?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "IntekChat is a private, ephemeral room chat application featuring client-side AES-256-GCM end-to-end encryption, password-protected rooms, self-destructing View-Once media, and auto-delete room timers. No phone numbers, emails, or accounts are required."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Do I need to install an app or register an account?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No. IntekChat and IntekDrop work 100% inside any modern web browser on Windows, Mac, iPhone, iPad, Android, and Linux. No app downloads, accounts, or logins are needed."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Are my files or messages stored on a server?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Never. All file transfers stream directly between devices via encrypted WebRTC DataChannels. Messages are encrypted locally in your browser with AES-256-GCM before transmission. Our signaling infrastructure has zero knowledge of your encryption keys and stores zero files or chat messages."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Can I transfer files between Windows, iPhone, and Android?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes! IntekDrop works seamlessly across different operating systems. Just open intekdrop.vercel.app on both devices, or scan the QR code to pair them instantly."
+        }
+      }
+    ]
   };
 
   return (
@@ -104,7 +194,15 @@ export default function RootLayout({ children }) {
       <head>
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdWebapp) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdOrg) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdFaq) }}
         />
       </head>
       <body>{children}</body>

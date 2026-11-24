@@ -32,7 +32,8 @@ export default function RadarView({
   onCancelTransfer,
   onOpenQr,
   roomName,
-  dropPairId = ''
+  dropPairId = '',
+  onOpenAbout
 }) {
   const [selectedPeer, setSelectedPeer] = useState(null);
   const [dragOverPeerId, setDragOverPeerId] = useState(null);
@@ -372,6 +373,15 @@ export default function RadarView({
             >
               {copiedLink ? <Check size={14} className="text-emerald" /> : <Share2 size={14} />}
               <span>{copiedLink ? 'Copied!' : 'Share Link'}</span>
+            </button>
+            <button 
+              type="button" 
+              className="btn-secondary btn-compact" 
+              onClick={onOpenAbout}
+              title="How IntekDrop Works & Frequently Asked Questions"
+            >
+              <Sparkles size={13} className="text-cyan" />
+              <span>About &amp; FAQ</span>
             </button>
           </div>
         </aside>

@@ -10,6 +10,7 @@ import FileReceiveModal from '@/components/Modals/FileReceiveModal';
 import RoomModal from '@/components/Modals/RoomModal';
 import PasswordPromptModal from '@/components/Modals/PasswordPromptModal';
 import WallpaperModal from '@/components/Modals/WallpaperModal';
+import AboutFaqModal from '@/components/Modals/AboutFaqModal';
 import { getOrCreatePeerProfile } from '@/lib/peer';
 import { sounds } from '@/lib/sound';
 import { deriveKey, encryptPayload, decryptPayload, hashPassword } from '@/lib/crypto';
@@ -67,6 +68,7 @@ export default function Home() {
   const [soundMuted, setSoundMuted] = useState(false);
   const [currentTheme, setCurrentTheme] = useState('sapphire'); // 'sapphire' | 'silk' | 'cyberpunk' | 'amber' | 'amethyst' | 'emerald' | 'obsidian' | 'frost'
   const [isAppearanceModalOpen, setIsAppearanceModalOpen] = useState(false);
+  const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
   const [appearanceInitialTab, setAppearanceInitialTab] = useState('theme');
   const [wallpaperType, setWallpaperType] = useState('doodles');
   const [customWallpaper, setCustomWallpaper] = useState(null);
@@ -2225,6 +2227,7 @@ export default function Home() {
         isRoomProtected={isRoomProtected}
         onOpenRoomModal={() => handleOpenRoomModal()}
         autoDeleteExpiresAt={autoDeleteExpiresAt}
+        onOpenAbout={() => setIsAboutModalOpen(true)}
       />
 
       {/* Main View Area */}
@@ -2242,6 +2245,7 @@ export default function Home() {
             }}
             roomName={roomName}
             dropPairId={dropPairId || ''}
+            onOpenAbout={() => setIsAboutModalOpen(true)}
           />
         ) : (
           <ChatView
@@ -2364,6 +2368,12 @@ export default function Home() {
         onChangeOpacity={handleChangeWallpaperOpacity}
         onToggleBlur={handleToggleWallpaperBlur}
         onBroadcastWallpaper={handleBroadcastWallpaper}
+      />
+
+      {/* Crawlable About & FAQ Modal for Search Engine Rich Snippets & Users */}
+      <AboutFaqModal
+        isOpen={isAboutModalOpen}
+        onClose={() => setIsAboutModalOpen(false)}
       />
     </div>
   );

@@ -10198,3 +10198,242 @@ body {
     border-radius: 8px !important;
   }
 }
+
+/* ==========================================================================
+   SEO & Accessibility Utilities + About/FAQ Modal Styling
+   ========================================================================== */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border-width: 0 !important;
+}
+
+.about-faq-modal {
+  max-width: 680px !important;
+  max-height: 88vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.about-faq-body {
+  overflow-y: auto !important;
+  padding: 1.25rem 1.5rem !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1.25rem !important;
+}
+
+.about-pillars-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 0.75rem !important;
+}
+
+@media (max-width: 580px) {
+  .about-pillars-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+.about-pillar-card {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.07) !important;
+  border-radius: 12px !important;
+  padding: 0.9rem !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.35rem !important;
+}
+
+.about-pillar-card h3 {
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+  color: #f1f5f9 !important;
+  margin: 0 !important;
+}
+
+.about-pillar-card p {
+  font-size: 0.8rem !important;
+  color: #94a3b8 !important;
+  line-height: 1.4 !important;
+  margin: 0 !important;
+}
+
+.about-pillar-icon {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin-bottom: 0.25rem !important;
+}
+
+.about-pillar-icon.icon-cyan {
+  background: rgba(0, 242, 254, 0.1) !important;
+  color: #00f2fe !important;
+  border: 1px solid rgba(0, 242, 254, 0.2) !important;
+}
+
+.about-pillar-icon.icon-purple {
+  background: rgba(121, 40, 202, 0.1) !important;
+  color: #c084fc !important;
+  border: 1px solid rgba(121, 40, 202, 0.2) !important;
+}
+
+.about-pillar-icon.icon-pink {
+  background: rgba(255, 0, 128, 0.1) !important;
+  color: #ff0080 !important;
+  border: 1px solid rgba(255, 0, 128, 0.2) !important;
+}
+
+.about-pillar-icon.icon-emerald {
+  background: rgba(16, 185, 129, 0.1) !important;
+  color: #10b981 !important;
+  border: 1px solid rgba(16, 185, 129, 0.2) !important;
+}
+
+.about-article {
+  background: rgba(255, 255, 255, 0.02) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-radius: 12px !important;
+  padding: 1rem 1.15rem !important;
+}
+
+.about-article h3 {
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+  color: #f8fafc !important;
+  margin: 0 0 0.35rem 0 !important;
+}
+
+.about-article p {
+  font-size: 0.82rem !important;
+  color: #94a3b8 !important;
+  line-height: 1.5 !important;
+  margin: 0 !important;
+}
+
+.faq-section {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.6rem !important;
+}
+
+.faq-heading {
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+  color: #f8fafc !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.45rem !important;
+  margin: 0 0 0.25rem 0 !important;
+}
+
+.faq-accordion-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.5rem !important;
+}
+
+.faq-item {
+  background: rgba(255, 255, 255, 0.025) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 10px !important;
+  overflow: hidden !important;
+  transition: all 0.2s ease !important;
+}
+
+.faq-item[open] {
+  border-color: rgba(0, 242, 254, 0.25) !important;
+  background: rgba(0, 242, 254, 0.02) !important;
+}
+
+.faq-summary {
+  padding: 0.75rem 1rem !important;
+  font-size: 0.85rem !important;
+  font-weight: 500 !important;
+  color: #e2e8f0 !important;
+  cursor: pointer !important;
+  user-select: none !important;
+  list-style: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.faq-summary::-webkit-details-marker {
+  display: none !important;
+}
+
+.faq-summary::after {
+  content: '+' !important;
+  font-size: 1.1rem !important;
+  color: #64748b !important;
+  font-weight: 400 !important;
+  transition: transform 0.2s ease !important;
+}
+
+.faq-item[open] .faq-summary::after {
+  content: '−' !important;
+  color: #00f2fe !important;
+}
+
+.faq-content {
+  padding: 0 1rem 0.85rem 1rem !important;
+  font-size: 0.8rem !important;
+  color: #94a3b8 !important;
+  line-height: 1.5 !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.04) !important;
+  padding-top: 0.6rem !important;
+}
+
+.faq-content p {
+  margin: 0 !important;
+}
+
+.about-modal-footer {
+  margin-top: 0.5rem !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 0.6rem !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+  padding-top: 0.85rem !important;
+}
+
+.about-footer-links {
+  display: flex !important;
+  align-items: center !important;
+  gap: 1.25rem !important;
+  flex-wrap: wrap !important;
+  justify-content: center !important;
+}
+
+.about-footer-link {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.35rem !important;
+  font-size: 0.78rem !important;
+  color: #cbd5e1 !important;
+  text-decoration: none !important;
+  transition: color 0.15s ease !important;
+}
+
+.about-footer-link:hover {
+  color: #00f2fe !important;
+}
+
+.about-copyright {
+  font-size: 0.72rem !important;
+  color: #64748b !important;
+  margin: 0 !important;
+  text-align: center !important;
+}
+

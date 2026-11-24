@@ -18,7 +18,8 @@ import {
   X,
   Sparkles,
   ExternalLink,
-  Clock
+  Clock,
+  HelpCircle
 } from 'lucide-react';
 import { getAvatarColor, formatRemainingTime } from '@/lib/peer';
 import { sounds } from '@/lib/sound';
@@ -49,7 +50,8 @@ export default function Navbar({
   onOpenAppearance,
   isRoomProtected = false,
   onOpenRoomModal,
-  autoDeleteExpiresAt = null
+  autoDeleteExpiresAt = null,
+  onOpenAbout
 }) {
   const [copied, setCopied] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -116,6 +118,7 @@ export default function Navbar({
       <div className="navbar">
         <div className="nav-left">
           <div className="logo-container">
+            <h1 className="sr-only">intekchat &amp; intekdrop - Ultra-Fast P2P File Sharing &amp; Private Encrypted Room Chat</h1>
             <div className="logo-glow-ring">
               <svg viewBox="0 0 64 64" fill="none" className="logo-svg" width="24" height="24">
                 <defs>
@@ -301,6 +304,17 @@ export default function Navbar({
               aria-label="Toggle Sound"
             >
               {soundMuted ? <VolumeX size={18} className="text-muted" /> : <Volume2 size={18} className="text-cyan" />}
+            </button>
+
+            {/* About & FAQ */}
+            <button 
+              type="button"
+              className="icon-btn" 
+              onClick={onOpenAbout} 
+              title="About & FAQ: How IntekDrop & IntekChat Work"
+              aria-label="About and FAQ"
+            >
+              <HelpCircle size={18} />
             </button>
 
             {/* User Profile Chip */}
@@ -519,6 +533,24 @@ export default function Navbar({
                       <span className={`mobile-item-badge ${soundMuted ? 'text-muted' : 'text-cyan'}`}>
                         {soundMuted ? 'Off' : 'On'}
                       </span>
+                    </button>
+
+                    {/* About & FAQ */}
+                    <button
+                      type="button"
+                      className="mobile-menu-item"
+                      onClick={() => {
+                        sounds.playClick();
+                        setShowMobileMenu(false);
+                        onOpenAbout?.();
+                      }}
+                      aria-label="About and FAQ"
+                    >
+                      <div className="mobile-item-left">
+                        <HelpCircle size={16} className="text-cyan" />
+                        <span>About &amp; FAQ</span>
+                      </div>
+                      <span className="mobile-item-badge text-cyan">Docs</span>
                     </button>
 
                     {/* My Profile */}
