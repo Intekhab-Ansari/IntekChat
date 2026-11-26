@@ -1,8 +1,23 @@
-export default function manifest() {
+import { headers } from 'next/headers';
+
+export default async function manifest() {
+  let host = 'intekchat.vercel.app';
+  try {
+    const headerList = await headers();
+    const reqHost = headerList.get('x-forwarded-host') || headerList.get('host');
+    if (reqHost) host = reqHost;
+  } catch (e) {}
+
+  const isDrop = host.toLowerCase().includes('intekdrop') || host.toLowerCase().includes('drop');
+
   return {
-    name: 'intekchat & intekdrop | P2P File Sharing & Encrypted Chat',
-    short_name: 'intekchat',
-    description: 'Ultra-fast direct P2P file sharing and private encrypted instant chat with zero server storage. Free open-source AirDrop alternative for all platforms.',
+    name: isDrop
+      ? 'intekdrop | Ultra-Fast P2P File Sharing'
+      : 'intekchat | Private Encrypted Chat & P2P File Sharing',
+    short_name: isDrop ? 'intekdrop' : 'intekchat',
+    description: isDrop
+      ? 'Ultra-fast direct P2P file sharing with zero file size limits and zero server storage. Free open-source AirDrop alternative for all platforms.'
+      : 'Ultra-fast direct P2P file sharing and private encrypted instant chat with zero server storage. Free open-source AirDrop alternative for all platforms.',
     start_url: '/',
     display: 'standalone',
     background_color: '#070a12',

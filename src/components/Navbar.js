@@ -118,7 +118,11 @@ export default function Navbar({
       <div className="navbar">
         <div className="nav-left">
           <div className="logo-container">
-            <h1 className="sr-only">intekchat &amp; intekdrop - Ultra-Fast P2P File Sharing &amp; Private Encrypted Room Chat</h1>
+            <h1 className="sr-only">
+              {brandSuffix === 'drop'
+                ? 'intekdrop - Ultra-Fast P2P File Sharing & Local AirDrop Alternative'
+                : 'intekchat - Private Encrypted Room Chat & Ultra-Fast P2P File Sharing'}
+            </h1>
             <div className="logo-glow-ring">
               <svg viewBox="0 0 64 64" fill="none" className="logo-svg" width="24" height="24">
                 <defs>

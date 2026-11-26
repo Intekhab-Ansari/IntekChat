@@ -10,6 +10,7 @@ export default async function sitemap() {
 
   const protocol = host.includes('localhost') ? 'http' : 'https';
   const baseUrl = `${protocol}://${host}`;
+  const isDrop = host.toLowerCase().includes('intekdrop') || host.toLowerCase().includes('drop');
   const lastModified = new Date();
 
   return [
@@ -20,17 +21,16 @@ export default async function sitemap() {
       priority: 1.0,
     },
     {
-      url: `${baseUrl}/?tab=drop`,
+      url: `${baseUrl}/?tab=${isDrop ? 'drop' : 'chat'}`,
       lastModified,
       changeFrequency: 'weekly',
       priority: 0.9,
     },
     {
-      url: `${baseUrl}/?tab=chat`,
+      url: `${baseUrl}/?tab=${isDrop ? 'chat' : 'drop'}`,
       lastModified,
       changeFrequency: 'weekly',
-      priority: 0.9,
+      priority: 0.8,
     },
   ];
 }
-
