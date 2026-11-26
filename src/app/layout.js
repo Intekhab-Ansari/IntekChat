@@ -12,6 +12,8 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const instant = false;
+
 export async function generateMetadata() {
   let host = "intekchat.vercel.app";
   try {
